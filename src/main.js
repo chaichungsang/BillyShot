@@ -1195,6 +1195,7 @@ ipcMain.handle('app:action', async (_e, name) => {
   if (name === 'macRelaunch') { relaunchApp(); return true; }
   if (name === 'macDiag') { const d = await macDiag(); require('electron').clipboard.writeText(JSON.stringify(d, null, 2)); return d; }
   if (name === 'openLogs') { log('open logs'); shell.showItemInFolder(logFile || path.join(app.getPath('userData'), 'logs', 'billyshot.log')); }
+  if (name === 'openSource') { shell.openExternal('https://github.com/chaichungsang/BillyShot'); }
   if (name === 'macAccessPerm') { if (isMac && !hotkeys.axTrusted()) { try { systemPreferences.isTrustedAccessibilityClient(true); } catch {} } shell.openExternal(MAC_PANES.accessibility); }
   if (name === 'macCameraPerm') shell.openExternal(MAC_PANES.camera);
   if (name === 'cameraPreview') return toggleCamera(!(present && present.camOn())).then(() => presentState());

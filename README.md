@@ -1,5 +1,7 @@
 # BillyShot
 
+这个项目是开源的（MIT）：https://github.com/chaichungsang/BillyShot
+
 免费的跨平台（Windows / macOS）截图 + 录屏 + 贴图工具，基于 Electron。
 
 - `src/main.js` 主进程：托盘、快捷键、截图覆盖层、贴图、录屏调度

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; media-src 'self' file: data:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'">
+<title>BillyShot Overlay</title>
+<link rel="stylesheet" href="overlay.css">
+</head>
+<body class="hidden">
+  <canvas id="cv"></canvas>
+  <div id="sizeLabel"></div>
+  <div id="mag"><canvas id="magCv" width="272" height="272"></canvas><div id="magInfo"><div id="magPos"></div><div id="magColor"><i id="magSwatch"></i><span id="magHex"></span></div><div id="magRgb"></div><div class="hint">按 C 复制色值 · Esc 退出</div></div></div>
+  <div id="toolbar"></div>
+  <div id="stylebar"></div>
+  <textarea id="textEditor" spellcheck="false" wrap="off"></textarea>
+  <div id="toast"></div>
+  <script src="../i18n.js"></script>
+<script src="overlay.js"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>BillyShot Camera</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; media-src 'self' blob: mediastream:; style-src 'self' 'unsafe-inline'">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; user-select: none;
+    font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", -apple-system, sans-serif; }
+  .cam { position: absolute; inset: 0; overflow: hidden; background: #1c1c22; cursor: grab;
+    border: 3px solid rgba(255,255,255,.9); border-radius: 50%; }
+  /* 1.3.1：Windows 上显卡会把摄像头画面单独叠加显示，外层 overflow + 圆角裁不到它，画面变成方块。
+     clip-path 直接裁整个圆窗和画面本身；mask 让圆窗先合成成一张图再上屏，画面就不会被单独叠加出去。
+     （Electron 44 / Chromium 144 已经没有 disable-direct-composition-video-overlays 开关，只能在页面里解决） */
+  .cam { clip-path: circle(50%); -webkit-mask-image: linear-gradient(#000, #000); mask-image: linear-gradient(#000, #000); }
+  body.rounded .cam { border-radius: 18px; clip-path: inset(0 round 18px); }
+  body.dragging .cam { cursor: grabbing; }
+  body.outside .cam { border-color: #ff9f1c; }
+  video { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; clip-path: circle(50%); }
+  body.rounded video { border-radius: 15px; clip-path: inset(0 round 15px); }
+  body.mirror video { transform: scaleX(-1); }
+  .msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 18%;
+    color: #d8d8e0; font-size: 12px; line-height: 1.45; }
+  body.ok .msg { display: none; }
+  body.err .msg { color: #ffb3b3; }
+  .tip { position: absolute; left: 50%; top: 12%; transform: translateX(-50%); background: rgba(255,159,28,.95); color: #1b1200; font-size: 11px; font-weight: 600;
+    padding: 3px 8px; border-radius: 10px; white-space: nowrap; display: none; }
+  body.outside .tip { display: block; }
+  .ctl { position: absolute; left: 50%; bottom: 10%; transform: translateX(-50%); display: flex; gap: 4px; padding: 3px; border-radius: 14px;
+    background: rgba(20,20,26,.82); opacity: 0; transition: opacity .15s; }
+  body:hover .ctl { opacity: 1; }
+  body.dragging .ctl { opacity: 0; }
+  .ctl button { width: 26px; height: 22px; border: 0; border-radius: 11px; background: transparent; color: #fff; font-size: 11px; font-weight: 700; cursor: pointer; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center; }
+  .ctl button:hover { background: rgba(255,255,255,.16); }
+  .ctl svg { width: 14px; height: 14px; }
+</style>
+</head>
+<body>
+<div class="cam" id="cam">
+  <video id="v" autoplay muted playsinline></video>
+  <div class="msg" id="msg">摄像头启动中…</div>
+  <div class="tip">不在录制区域内</div>
+  <div class="ctl" id="ctl">
+    <button id="bSize" title="大小（小 / 中 / 大）">M</button>
+    <button id="bShape" title="圆形 / 圆角方形"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="14" rx="4"/></svg></button>
+    <button id="bClose" title="关闭摄像头"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
+  </div>
+</div>
+<script src="../i18n.js"></script>
+<script src="camera.js"></script>
+</body>
+</html>

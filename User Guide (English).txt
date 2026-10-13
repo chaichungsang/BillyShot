@@ -1,0 +1,196 @@
+BillyShot 1.3.5 — free screenshot + screen recording + pin
+==========================================================
+
+1. Install
+----------
+Windows (recommended)
+  · Windows\BillyShot-Setup-1.3.3.exe       Double-click to install (1.3.4 / 1.3.5 only change the Mac version; Windows stays 1.3.3). Creates desktop and Start menu shortcuts.
+    Installing over an older version keeps your settings and screenshot history.
+  · Windows\卸载BillyShot-Uninstall.exe      Double-click to find and uninstall BillyShot on this PC (see "9. Uninstall").
+  If Windows shows "Windows protected your PC" the first time, click "More info → Run anyway"
+  (the app is not code-signed).
+
+Mac
+  · Mac/BillyShot-1.3.5-mac-AppleSilicon.zip   M1 / M2 / M3 / M4
+  · Mac/BillyShot-1.3.5-mac-Intel.zip          Intel
+  Unzip and drag BillyShot into Applications. If macOS says it "cannot verify the developer":
+    System Settings → Privacy & Security → scroll down and click "Open Anyway";
+    or run in Terminal: xattr -cr /Applications/BillyShot.app
+  Then allow BillyShot in System Settings → Privacy & Security:
+    · Screen & System Audio Recording (required for screenshots and recording)
+    · Accessibility (only for mouse shortcuts and click ripples)
+    · Microphone (only when recording the mic)
+    · Camera (only for the camera bubble)
+  Screen Recording only takes effect after BillyShot quits and reopens (closing the Settings window is
+    not enough — it keeps running in the menu bar). The permission dialog and Settings → General →
+    "macOS permissions" both have a "Reopen BillyShot" button. Accessibility takes effect within a few
+    seconds without reopening. (1.3.5)
+  Settings → General → "macOS permissions" shows whether Screen Recording and Accessibility are allowed.
+  If the switch is already on but BillyShot keeps asking (usually records left by an older version):
+    click "Repair permissions" (in the dialog or in Settings → General). It clears BillyShot's old
+    records; turn the switch on again in System Settings, then click "Reopen BillyShot".
+    Still stuck? Click "Copy diagnostics" and send us what it copies.
+  If BillyShot isn't running from the Applications folder (e.g. straight from Downloads), it offers to
+    move itself there — otherwise macOS often loses track of its permissions.
+  From this build on, the Mac version is signed with a fixed certificate, so future updates keep the permission.
+  On macOS 15 and later, macOS may occasionally ask whether to keep allowing screen recording — click Allow; that reminder comes from macOS itself.
+
+BillyShot lives in the tray (bottom right; on a Mac, the menu bar). There is no main window.
+Click the tray icon = screenshot; double-click = Settings; right-click = menu
+(record, pin, history, language, settings, quit).
+
+Interface language (Chinese / English)
+  · Follows the system by default: Chinese (Simplified or Traditional) systems show Chinese,
+    every other language shows English
+  · Change it in Settings → General → "界面语言 · Language", or right-click the tray icon → "语言 / Language"
+  · Takes effect immediately, no restart needed
+
+
+2. Default shortcuts (change them in Settings → Shortcuts; keyboard and mouse both work)
+-------------------------------------------------------------------------------------
+                                   Windows            Mac
+  Screenshot (select + edit)       Alt + A            ⌃ ⌘ A
+  Full screen to clipboard         Alt + Shift + A    ⌃ ⌘ ⇧ A
+  Record region / stop             Alt + R            ⌃ ⌘ R
+  Record full screen / stop        Alt + Shift + R    ⌃ ⌘ ⇧ R
+  Pin clipboard image              Alt + P            ⌃ ⌘ P
+
+  * WeChat also uses Alt+A. Every time BillyShot starts it checks for conflicts; if a shortcut is taken,
+    it switches to Ctrl+Alt+A (or another free combo), shows a notification and a red dot in Settings.
+  * Mouse shortcuts: click the "Mouse" box in Settings, then press the middle or a side button
+    (you can hold Ctrl / Alt / Shift). In browsers the side buttons already mean Back / Forward and
+    BillyShot can't block that, so combine them with Ctrl / Alt.
+  * To use PrintScreen: Windows 11 gives it to the Snipping Tool by default. First turn off
+    "Use the Print screen key to open screen capture" in Windows Settings → Accessibility → Keyboard.
+
+
+3. Screenshot screen
+--------------------
+  Drag                 Select a region; hovering highlights windows, click to select one
+  Drag edges / 8 dots  Resize the selection; drag inside it to move it
+  Enter / double-click Finish and copy to the clipboard (paste into WeChat, Word, etc.)
+  Esc                  Exit
+  Right-click          Cancel the tool → reselect → exit
+
+  Toolbar: Rectangle(R) Ellipse(E) Arrow(A) Pen(P) Highlighter(H) Mosaic(M) Text(T) Number(N)
+           Undo(Ctrl+Z) Redo(Ctrl+Y) · Record this region · Pin · Save(Ctrl+S) · Done
+  · Size and color appear below the toolbar after you pick a tool
+  · Hold Shift for a square / circle / 45° arrow
+  · Click an annotation to select, move or recolor it; Delete removes it; double-click text to edit it
+  · Mosaic has Brush and Box modes
+  · The magnifier shows pixels and colors; press C to copy the color; arrow keys nudge the selection
+  · If copying to the clipboard fails (another app is using it), you are told, and the screenshot
+    is still in Settings → History
+
+
+4. Recording
+------------
+  · Press the record-region shortcut → select a region → choose MP4 or GIF, System audio, Mic → Start recording
+    The region recorder remembers your last format; full-screen recording uses Settings → Recording → Default format.
+  · While recording, the region has a red border and a control bar: pause / stop and save / discard.
+    Pressing the shortcut again also stops.
+  · Resolution: Original / 4K / 2K / 1080p / 720p; frame rate 24 / 30 / 60. Click "1080p" or "30 fps"
+    on the toolbar to choose; it shows the real output size and is remembered. Default 1080p.
+    Output never exceeds your screen's resolution — to record 4K, the screen must be 4K.
+    If the computer can't keep up, you'll see "Low recording frame rate"; lower the fps or resolution.
+  · If something fails mid-recording (e.g. a graphics driver reset), the part already recorded is kept
+  · Recordings go to "Videos/BillyShot", screenshots to "Pictures/BillyShot"
+  · After you press stop, the control bar shows "Saving…" with progress, then a green "Saved" with
+    Open folder / Play buttons (it hides itself after 20 seconds). While recording, the file in the folder is named
+    "….mp4.part"; it becomes .mp4 only when it's finished — if you see the .mp4, it's done.
+    If BillyShot is closed or the PC loses power mid-recording, the recorded part is recovered as .mp4 the next time BillyShot starts. (1.3.2)
+  · Recording system audio on a Mac needs macOS 13 or later
+  · Choosing audio:
+      Only the computer's sound (videos, music) → turn on System audio only, turn off Mic. Cleanest sound.
+      Your voice too → turn both on and wear headphones. Without headphones the mic picks up your
+      speakers again and it sounds like an echo (the toolbar shows "Use headphones").
+      Don't pick "Stereo Mix" as the microphone — it records your speaker output, not your voice.
+
+
+5. App icon (new in 1.2.4)
+--------------------------
+  · The default is the new portrait icon. To go back to the original purple glass icon:
+    Settings → General → App icon → "Purple glass". You can switch back any time.
+  · Windows: the tray, Settings window, notifications and the BillyShot shortcuts on the desktop /
+    Start menu / taskbar all change. If the desktop icon doesn't change right away, wait a few
+    seconds or press F5. The icon of BillyShot.exe itself in the install folder doesn't change.
+    Upgrading recreates the shortcuts with the portrait icon; BillyShot switches them back to your choice when it starts.
+  · Mac: the menu bar, Dock (while Settings is open) and BillyShot.app in Applications all change.
+    If macOS doesn't allow changing the icon in Applications, Settings tells you; in Finder select
+    BillyShot → Get Info and drag Contents/Resources/app.asar.unpacked/assets/logos/purple/mac.png
+    from inside BillyShot.app onto the small icon at the top left.
+
+
+6. Color themes (new in 1.2.6)
+------------------------------
+  · Settings → General → Color theme. Changes apply right away, and the screenshot toolbar's
+    accent color follows too. 9 themes:
+      Midnight Purple (the original), Black Gold, Graphite (minimal black & white), Deep Ocean,
+      Forest, Rose, Paper White (light sidebar), Glass, Matrix (black + neon green with
+      falling code in the sidebar; dark only)
+  · The default is "Match icon": the portrait icon uses Black Gold, the purple icon uses
+    Midnight Purple. Once you pick a theme, it stays.
+  · Glass: on Windows 11 (22H2 or later) and Mac the desktop shows through the window (system
+    blur). Windows 10 has no system blur, so it shows a colored gradient with see-through cards.
+    On a Mac, the settings window reopens once (same place) when you switch to or from Glass —
+    that's expected. (1.3.4 fixes the ghosting / leftover colors on Mac.)
+  · The drop-down on the right sets "Light / dark: follow system / Light / Dark". Every theme has
+    a light and a dark version (Matrix is dark only).
+
+
+7. Presenting (new in 1.3.0)
+----------------------------
+  For lessons, software walkthroughs and sharing your screen in meetings. The effects are drawn
+  on the screen, so they appear in recordings and viewers see them in Zoom / Teams shares.
+  They are hidden automatically when you take a screenshot.
+
+  · Cursor halo: a translucent ring around the pointer. Click ripples: each click sends out a few
+    rings like ripples on water, with highlights and shadows; left clicks are tinted red and right
+    clicks blue (colors can be changed). If the water ripple is unavailable, the click shows two or three translucent white rings instead of one pink ring. (1.3.5) Turn them on in Settings → Presenting,
+    where you can also change colors and size. With "Show while recording" on, they appear when a
+    recording starts and go away when it ends.
+  · Demo mode (to use them without recording, e.g. while sharing your screen): tick "Demo mode"
+    in the tray menu. If neither the halo nor ripples is on yet, this turns both on (they then
+    also show in recordings; you can change that in Settings).
+  · Spotlight: dims the whole screen except around the pointer. Toggle it from the tray menu,
+    Settings or the recording bar. A spotlight turned on during a recording turns off when it ends.
+  · Camera bubble:
+      Region recording: click "Camera" on the toolbar. Full-screen recording uses
+      Settings → Presenting → "Show camera while recording".
+      The bubble starts in the bottom-right of the recording area. Drag it anywhere (the position
+      is remembered). Hover it for size / shape / close buttons. Its border turns orange when it
+      is outside the recording area (that part is not recorded).
+      Without recording: "Camera bubble" in the tray menu, or "Preview" in Settings.
+      Some cameras work with only one app at a time. If Zoom / Teams / WeChat has the camera open,
+      BillyShot may not be able to open it; the recording bar shows why and recording continues.
+  · The recording bar has three new buttons: mouse effects, spotlight and camera.
+  · Shortcuts: Demo mode and Spotlight have no shortcut by default (so they don't take keys from
+    your other apps). Set them in Settings → Shortcuts if you want.
+  · Mac: click ripples need Accessibility permission, and the camera needs Camera permission
+    (macOS asks the first time).
+
+
+8. Other
+--------
+  · Screenshot history: Settings → History / Clipboard, click an image to copy it again
+  · Pin: scroll to zoom, drag to move, double-click or Esc to close; right-click for opacity / copy / save
+  · Problems: Settings → About → Open log file, and send billyshot.log to Billy Chai
+  · Free, offline, no ads, no watermark, no account
+
+
+9. Uninstall
+------------
+Windows (any one of these)
+  · Start menu → "Uninstall BillyShot" (on Chinese systems: 卸载 BillyShot)
+  · Double-click 卸载BillyShot-Uninstall.exe next to the installer
+  · Windows Settings → Apps → Installed apps → BillyShot → Uninstall
+  Uninstalling asks "Also delete BillyShot's settings and screenshot history?"
+    Yes = uninstall and delete settings; No = uninstall but keep settings (a reinstall picks up
+    where you left off); Cancel = don't uninstall
+  Your saved screenshots and recordings ("Pictures/BillyShot", "Videos/BillyShot") are never deleted.
+  Portable (zip) version: quit BillyShot and delete its folder.
+
+Mac
+  · Click the BillyShot icon in the menu bar → Quit, then drag BillyShot from Applications to the Trash
+  · To remove settings too: in Finder press ⇧⌘G, go to ~/Library/Application Support/BillyShot and delete that folder
+  · You can also remove BillyShot from System Settings → Privacy & Security

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>BillyShot RecBar</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; user-select: none;
+    font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", -apple-system, sans-serif; }
+  .bar { position: absolute; inset: 3px; background: rgba(20,20,26,.9); border-radius: 20px; display: flex; align-items: center; padding: 0 6px 0 14px; gap: 3px; color: #fff;
+    border: 1px solid rgba(255,255,255,.1); box-shadow: 0 1px 0 rgba(255,255,255,.06) inset; backdrop-filter: blur(20px) saturate(1.5); }
+  .grip { display: flex; align-items: center; gap: 8px; flex: 1; cursor: move; height: 100%; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #ff4d6d; box-shadow: 0 0 0 3px rgba(255,77,109,.22), 0 0 10px rgba(255,77,109,.6); animation: blink 1.2s infinite; }
+  body.paused .dot { animation: none; background: #ffc53d; box-shadow: 0 0 0 3px rgba(255,197,61,.2); }
+  body.prep .dot { animation: none; background: #6f6f80; box-shadow: none; }
+  @keyframes blink { 50% { opacity: .25; } }
+  .time { font: 600 14px/1 "SF Mono", ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .02em; font-variant-numeric: tabular-nums; min-width: 62px; }
+  .meta { font-size: 11px; color: #8d8da0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+  button { width: 30px; height: 30px; border: 0; border-radius: 15px; background: transparent; color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+  button:hover { background: rgba(255,255,255,.1); }
+  button svg { width: 17px; height: 17px; }
+  #stop { background: linear-gradient(135deg, #ff6a5c, #ff3b6b); box-shadow: 0 2px 10px rgba(255,59,107,.4); }
+  #stop:hover { filter: brightness(1.1); }
+  button.off { color: #8e8e93; }
+  .fxb { color: #8e8e93; }
+  .fxb.on { color: #c4c6ff; background: rgba(124,128,255,.2); }
+  .div { width: 1px; height: 18px; background: rgba(255,255,255,.12); margin: 0 3px; }
+  button[hidden] { display: none; }
+  /* 停止以后：正在保存（底部进度条）→ 已保存（打开文件夹 / 播放） */
+  .prog { position: absolute; left: 16px; right: 16px; bottom: 5px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.1); overflow: hidden; display: none; }
+  .prog i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 2px; background: linear-gradient(90deg, #7c80ff, #c4c6ff); transition: width .2s; }
+  body.saving .prog { display: block; }
+  body.saving .prog.indet i { width: 35%; animation: indet 1.1s ease-in-out infinite; }
+  @keyframes indet { 0% { left: -35%; } 100% { left: 100%; } }
+  .ctl { display: flex; align-items: center; gap: 3px; }
+  body.saving .ctl, body.done .ctl { display: none; }
+  body.saving .meta, body.done .meta { max-width: 220px; color: #c9c9d6; }
+  .donebtns { display: none; align-items: center; gap: 4px; }
+  body.done .donebtns { display: flex; }
+  .donebtns .txt { width: auto; padding: 0 12px; font-size: 12px; font-weight: 600; font-family: inherit; gap: 5px; background: rgba(255,255,255,.08); }
+  .donebtns .txt:hover { background: rgba(255,255,255,.16); }
+  .donebtns .txt svg { width: 14px; height: 14px; }
+  .donebtns .primary { background: linear-gradient(135deg, #34c759, #22a447); box-shadow: 0 2px 10px rgba(52,199,89,.35); }
+  .donebtns .primary:hover { background: linear-gradient(135deg, #34c759, #22a447); filter: brightness(1.08); }
+  body.done .dot { animation: none; width: 16px; height: 16px; background: #34c759; box-shadow: 0 0 0 3px rgba(52,199,89,.22);
+    -webkit-mask: none; display: inline-flex; align-items: center; justify-content: center; }
+  body.done .dot::after { content: ""; width: 7px; height: 4px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: translateY(-1px) rotate(-45deg); }
+  body.done.partial .dot { background: #ffb020; box-shadow: 0 0 0 3px rgba(255,176,32,.22); }
+</style>
+</head>
+<body class="prep">
+<div class="bar">
+  <div class="grip" id="grip"><span class="dot"></span><span class="time" id="time">00:00</span><span class="meta" id="meta">准备中…</span></div>
+  <div class="ctl" id="ctl">
+  <button id="fx" class="fxb" title="鼠标光圈 / 点击波纹"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><circle cx="10" cy="10" r="6.5" stroke-dasharray="2.6 2.4"/><path d="M10 9.5l9 3.6-3.9 1.4-1.5 3.9z" fill="currentColor"/></svg></button>
+  <button id="spot" class="fxb" title="聚光灯"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M5.6 18.4l1.6-1.6M16.8 7.2l1.6-1.6"/></svg></button>
+  <button id="cam" class="fxb" title="摄像头"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="6.5" width="12.5" height="11" rx="2.5"/><path d="M15.5 10.5l5-3v9l-5-3z"/></svg></button>
+  <span class="div"></span>
+  <button id="mic" title="麦克风开关" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/></svg></button>
+  <button id="pause" title="暂停 / 继续"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="3.6" height="14" rx="1"/><rect x="13.9" y="5" width="3.6" height="14" rx="1"/></svg></button>
+  <button id="stop" title="停止并保存"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>
+  <button id="cancel" title="放弃录制"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
+  </div>
+  <div class="donebtns" id="donebtns">
+    <button id="dFolder" class="txt primary" title="打开文件夹"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></svg><span id="dFolderT">打开文件夹</span></button>
+    <button id="dPlay" class="txt" title="播放"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L8.5 4.64A1 1 0 0 0 7 5.5z"/></svg><span id="dPlayT">播放</span></button>
+    <button id="dClose" title="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
+  </div>
+  <div class="prog indet" id="prog"><i id="progBar"></i></div>
+</div>
+<script src="../i18n.js"></script>
+<script src="recbar.js"></script>
+</body>
+</html>

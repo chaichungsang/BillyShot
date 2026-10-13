@@ -1,0 +1,241 @@
+﻿diff --git a/User Guide (English).txt b/User Guide (English).txt
+index 26f2edc..7bac710 100644
+--- a/User Guide (English).txt	
++++ b/User Guide (English).txt	
+@@ -146,8 +146,7 @@ Interface language (Chinese / English)
+ 
+   · Cursor halo: a translucent ring around the pointer. Click ripples: each click sends out a few
+     rings like ripples on water, with highlights and shadows; left clicks are tinted red and right
+-    clicks blue (colors can be changed). Prefer the old single small ring? Choose "Single ring
+-    (classic)" under Settings → Presenting → Ripple style. (1.3.3) Turn them on in Settings → Presenting,
++    clicks blue (colors can be changed). If the water ripple is unavailable, the click shows two or three translucent white rings instead of one pink ring. (1.3.5) Turn them on in Settings → Presenting,
+     where you can also change colors and size. With "Show while recording" on, they appear when a
+     recording starts and go away when it ends.
+   · Demo mode (to use them without recording, e.g. while sharing your screen): tick "Demo mode"
+@@ -175,7 +174,7 @@ Interface language (Chinese / English)
+ --------
+   · Screenshot history: Settings → History / Clipboard, click an image to copy it again
+   · Pin: scroll to zoom, drag to move, double-click or Esc to close; right-click for opacity / copy / save
+-  · Problems: Settings → About → Open log file, and send billyshot.log to Benji
++  · Problems: Settings → About → Open log file, and send billyshot.log to Billy Chai
+   · Free, offline, no ads, no watermark, no account
+ 
+ 
+diff --git a/package.json b/package.json
+index 1c3b5b0..3450bf8 100644
+--- a/package.json
++++ b/package.json
+@@ -10,7 +10,7 @@
+     "dist:mac": "node scripts/fetch-natives.js && electron-builder --mac --x64 --arm64 && node scripts/sign-mac.js"
+   },
+   "keywords": [],
+-  "author": "Benji",
++  "author": "Billy Chai",
+   "license": "MIT",
+   "devDependencies": {
+     "electron": "^44.5.1",
+diff --git a/src/i18n.js b/src/i18n.js
+index da671cb..3731c45 100644
+--- a/src/i18n.js
++++ b/src/i18n.js
+@@ -298,6 +298,8 @@
+     '其他': 'Other',
+     '全屏录制时隐藏控制条': 'Hide the control bar for full-screen recording',
+     '用快捷键或托盘菜单停止录制': 'Stop with the shortcut or the tray menu',
++    '演示时截图包含录制条': 'Include the recording bar in demo stills',
++    '只在没有正在录屏时生效，外部或本软件的截图可以拍到录制条。不会把录制条放进正常的录屏画面。': 'Only while nothing is recording, so an external or in-app still can include the bar. This does not put the bar into a normal recording.',
+     '截图、录屏和通知的提示音。点「试听」听一下效果。': 'Sounds for screenshots, recording and notifications. Click Play to preview.',
+     '音量': 'Volume',
+     '截图音效': 'Screenshot sound',
+diff --git a/src/main.js b/src/main.js
+index f223852..cd5ca8f 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -1093,6 +1093,7 @@ ipcMain.handle('settings:set', (_e, patch) => {
+   }
+   if (JSON.stringify(s.hotkeys) !== before) applyHotkeys();
+   if (patch && patch.present && present) present.applySettings();
++  if (patch && patch.record && Object.prototype.hasOwnProperty.call(patch.record, 'demoCaptureBar')) syncDemoBarCapture();
+   return { settings: s, status: hotkeyStatus };
+ });
+ ipcMain.handle('settings:reset', async () => {
+@@ -1102,6 +1103,7 @@ ipcMain.handle('settings:reset', async () => {
+   if (hadLogo !== logoName()) await applyLogo({ system: true });
+   applyAppearance(); applyTheme();
+   if (present) present.applySettings();
++  syncDemoBarCapture();
+   if (applyLanguage() !== before) setTimeout(refreshLanguageUi, 30);
+   return { settings: settings.get(), status: hotkeyStatus };
+ });
+@@ -1471,6 +1473,15 @@ function stopRecording(cancel = false) {
+ }
+ 
+ let doneBar = null; // 保存中 / 已保存的控制条 { win, file }
++function syncDemoBarCapture() {
++  // Idle only. While a recording exists, protect() keeps barWin and frameWin excluded.
++  // The switch never moves the bar, never unprotects frameWin, and never touches the present layer.
++  if (!canExcludeFromCapture || rec) return;
++  const win = doneBar && doneBar.win;
++  if (!win || win.isDestroyed()) return;
++  const show = !!((settings.get().record || {}).demoCaptureBar);
++  try { win.setContentProtection(!show); } catch {}
++}
+ function closeDoneBar() {
+   const d = doneBar; doneBar = null;
+   if (d && d.win) { try { if (!d.win.isDestroyed()) d.win.destroy(); } catch {} }
+@@ -1503,6 +1514,7 @@ function finishRecording(status, msg) {
+     doneBar = { win: bar, file: null };
+     try { if (!bar.isVisible()) bar.showInactive(); } catch {}
+     sendTo(bar, 'recbar:state', { state: 'finalizing', pct: 0 });
++    syncDemoBarCapture();
+   }
+   saveRecording(r, partial, msg, bar).catch((e) => { reportError(t('录屏收尾出错'), e); if (doneBar && doneBar.win === bar) closeDoneBar(); });
+ }
+diff --git a/src/present.js b/src/present.js
+index 2e40c27..406374e 100644
+--- a/src/present.js
++++ b/src/present.js
+@@ -37,6 +37,7 @@ function createPresent(deps) {
+   let testFail = '';         // 自动化测试：模拟摄像头错误
+ 
+   // ------------------------------------------------------------ 设置（读出时校验，防止异常值）
++  // 'single' is a stored legacy value only (not shown in settings). The layer draws concentric white rings for it.
+   const RIPPLE_STYLES = ['water', 'single'];
+   function P() {
+     const p = settings.get().present || {};
+diff --git a/src/renderer/present-layer.js b/src/renderer/present-layer.js
+index 96b9b26..539e300 100644
+--- a/src/renderer/present-layer.js
++++ b/src/renderer/present-layer.js
+@@ -108,7 +108,7 @@ void main() {
+   function init() {
+     try {
+       gl = cv.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false, depth: false, stencil: false });
+-      if (!gl) { console.warn('water: WebGL unavailable, using single ring'); failed = true; return false; }
++      if (!gl) { console.warn('water: WebGL unavailable, using concentric white rings'); failed = true; return false; }
+       const sh = (type, src) => { const o = gl.createShader(type); gl.shaderSource(o, src); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
+       prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
+       if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+@@ -159,7 +159,7 @@ void main() {
+     ok: () => ready(),
+     add(c, button, hex) {
+       if (!ready()) return false;
+-      if (!HEX.test(hex)) hex = '#ff4d6d';
++      if (!HEX.test(hex)) hex = '#ffffff';
+       const n = parseInt(hex.slice(1), 16);
+       if (!list.length) size();
+       while (list.length >= MAX_RIPPLES) drop(list.shift());
+@@ -188,19 +188,23 @@ void main() {
+   };
+ })();
+ 
+-api.on('present:click', (c) => {
+-  if (!cfg.clicks) return;
+-  const color = c.button === 'left' ? cfg.clickLeft : cfg.clickRight;
+-  if (cfg.rippleStyle !== 'single' && water.add(c, c.button === 'left' ? 'left' : 'right', color)) return;
+-  // 单圈（旧样式）；电脑不支持 WebGL 时也用它
++function addConcentricRings(c) {
+   const all = document.querySelectorAll('.rip');
+   if (all.length >= MAX_RIPPLES) all[0].remove();
+   const d = document.createElement('div');
+-  d.className = 'rip ' + (c.button === 'left' ? 'left' : 'right');
+-  d.style.borderColor = color;
++  d.className = 'rip';
+   d.style.left = c.x + 'px'; d.style.top = c.y + 'px';
+   d.addEventListener('animationend', () => d.remove());
+   document.body.appendChild(d);
++}
++api.on('present:click', (c) => {
++  if (!cfg.clicks) return;
++  // Stored "single", or no WebGL: concentric translucent white rings. Not clickLeft, not one pink ring.
++  if (cfg.rippleStyle !== 'single') {
++    const color = c.button === 'left' ? cfg.clickLeft : cfg.clickRight;
++    if (water.add(c, c.button === 'left' ? 'left' : 'right', color)) return;
++  }
++  addConcentricRings(c);
+ });
+ api.on('present:patch', (p) => water.patch(p));
+ window.addEventListener('resize', () => { applyStyle(); schedule(); water.resize(); });
+diff --git a/src/renderer/present.html b/src/renderer/present.html
+index bef93ef..c46ad74 100644
+--- a/src/renderer/present.html
++++ b/src/renderer/present.html
+@@ -8,9 +8,12 @@
+   html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; pointer-events: none; user-select: none; }
+   #halo, .rip, #spot, #dimAll { position: fixed; left: 0; top: 0; pointer-events: none; will-change: transform; }
+   #halo { border-radius: 50%; display: none; }
+-  /* 单圈（旧样式，也是显卡不支持 WebGL 时的退路） */
+-  .rip { width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; border: 3px solid; box-sizing: border-box;
+-    animation: rip .5s cubic-bezier(.2,.7,.3,1) forwards; }
++  /* Fallback when rippleStyle is single or WebGL is unavailable: 3 concentric translucent white rings, not pink. */
++  .rip { width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: 50%; box-sizing: border-box;
++    border: 2px solid rgba(255,255,255,.78);
++    box-shadow: 0 0 0 10px rgba(255,255,255,.34), 0 0 0 22px rgba(255,255,255,.16);
++    background: transparent;
++    animation: rip .7s cubic-bezier(.2,.7,.3,1) forwards; }
+   /* 水波纹（1.3.3）：WebGL 按水面起伏算高光和阴影 */
+   #water { position: fixed; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
+   @keyframes rip { from { transform: scale(.25); opacity: 1; } to { transform: scale(1); opacity: 0; } }
+diff --git a/src/renderer/settings.html b/src/renderer/settings.html
+index 33a9071..81622a5 100644
+--- a/src/renderer/settings.html
++++ b/src/renderer/settings.html
+@@ -114,6 +114,7 @@
+     <h2>其他</h2>
+     <div class="group">
+       <div class="row"><div class="lbl"><b>全屏录制时隐藏控制条</b><small>用快捷键或托盘菜单停止录制</small></div><label class="sw"><input type="checkbox" data-k="record.hideBarFull"><span></span></label></div>
++      <div class="row"><div class="lbl"><b>演示时截图包含录制条</b><small>只在没有正在录屏时生效，外部或本软件的截图可以拍到录制条。不会把录制条放进正常的录屏画面。</small></div><label class="sw"><input type="checkbox" data-k="record.demoCaptureBar"><span></span></label></div>
+       <div class="row"><div class="lbl"><b>保存位置</b></div><div class="path"><input type="text" readonly data-k="record.saveDir"><button data-pick="record.saveDir">更改</button><button data-open="record.saveDir">打开</button></div></div>
+     </div>
+   </section>
+@@ -129,7 +130,6 @@
+       <div class="row"><div class="lbl"><b>光圈大小</b></div><input type="range" min="32" max="120" step="4" data-k="present.haloSize" data-num><em data-v="present.haloSize"></em></div>
+       <div class="row"><div class="lbl"><b>光圈不透明度</b></div><input type="range" min="0.15" max="0.8" step="0.05" data-k="present.haloOpacity" data-num><em data-v="present.haloOpacity"></em></div>
+       <div class="row"><div class="lbl"><b>点击波纹</b><small>点击时像水波一样荡开，左键和右键颜色不同</small></div><label class="sw"><input type="checkbox" data-k="present.clicks"><span></span></label></div>
+-      <div class="row"><div class="lbl"><b>波纹样式</b></div><select data-k="present.rippleStyle"><option value="water">水波纹</option><option value="single">单圈（旧样式）</option></select></div>
+       <div class="row"><div class="lbl"><b>左键颜色</b></div><div class="swatches" data-color="present.clickLeft"></div></div>
+       <div class="row"><div class="lbl"><b>右键颜色</b></div><div class="swatches" data-color="present.clickRight"></div></div>
+       <div class="row"><div class="lbl"><b>录屏时自动显示</b><small>开始录屏时显示上面开启的光圈 / 波纹，录完自动收起；录制中也可以在控制条上开关</small></div><label class="sw"><input type="checkbox" data-k="present.withRecord"><span></span></label></div>
+diff --git a/src/settings.js b/src/settings.js
+index afc603d..cd03d57 100644
+--- a/src/settings.js
++++ b/src/settings.js
+@@ -30,7 +30,7 @@ function defaults() {
+       clicks: false,          // 点击波纹
+       clickLeft: '#ff4d6d',
+       clickRight: '#3d8bff',
+-      rippleStyle: 'water',   // 波纹样式（1.3.3）：water 水波纹 | single 单圈（旧样式）
++      rippleStyle: 'water',   // water 水波纹。存过的 single 由演示层画成同心白圈，设置里不再提供单圈
+       withRecord: true,       // 录屏时自动显示已开启的光圈 / 波纹
+       spotRadius: 170,        // 聚光灯亮圈半径（px）
+       spotDim: 0.6,           // 聚光灯变暗程度 0–1
+@@ -60,6 +60,7 @@ function defaults() {
+       micDeviceId: '',
+       countdown: 3,
+       hideBarFull: false,     // 全屏录制时隐藏控制条
++      demoCaptureBar: false, // 演示时截图包含录制条（默认关；不进入正常录屏画面）
+       bitrate: 0,             // Mbps，0 = 自动
+       gifFps: 12,
+       gifMaxWidth: 960,
+diff --git "a/\344\275\277\347\224\250\350\257\264\346\230\216.txt" "b/\344\275\277\347\224\250\350\257\264\346\230\216.txt"
+index bc5e1b9..a2d51a4 100644
+--- "a/\344\275\277\347\224\250\350\257\264\346\230\216.txt"
++++ "b/\344\275\277\347\224\250\350\257\264\346\230\216.txt"
+@@ -129,7 +129,7 @@ Mac
+   Zoom / Teams / 腾讯会议 共享屏幕时观众也看得到；截图时会自动隐藏，不会出现在截图里。
+ 
+   · 鼠标光圈：鼠标周围一圈半透明光圈。点击波纹：每次点击像水面一样荡开几道波纹（有高光和阴影），
+-    左键偏红、右键偏蓝（颜色可改）。想要以前那种单个小圈，在 设置 → 演示 →「波纹样式」选「单圈（旧样式）」。（1.3.3）
++    左键偏红、右键偏蓝（颜色可改）。显卡不支持水波纹时，改成两三道半透明白圈，不再用粉色单圈。（1.3.5）
+     在 设置 → 演示 打开，颜色、大小可调。开着「录屏时自动显示」时，录屏一开始就显示、录完自动收起。
+   · 演示模式（不录屏也要用，例如开会共享屏幕讲解）：托盘菜单勾选「演示模式」。
+     第一次用时如果光圈和波纹都没开，会自动帮你打开（录屏时也会显示，可以在设置里关）。
+@@ -152,7 +152,7 @@ Mac
+ --------
+   · 截图历史：设置 → 历史 / 剪贴板，点图片重新复制
+   · 贴图：滚轮缩放，拖动移动，双击或 Esc 关闭，右键有透明度 / 复制 / 保存
+-  · 出问题时：设置 → 关于 → 打开日志，把 billyshot.log 发给 Benji
++  · 出问题时：设置 → 关于 → 打开日志，把 billyshot.log 发给 Billy Chai
+   · 完全免费、不联网、无广告、无水印、无账号
+ 
+ 九、卸载

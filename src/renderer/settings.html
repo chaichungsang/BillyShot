@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; media-src 'self' file: data:; img-src 'self' data:; style-src 'self' 'unsafe-inline'">
+<title>BillyShot</title>
+<link rel="stylesheet" href="settings.css">
+<link rel="stylesheet" href="themes.css">
+<script src="theme-boot.js"></script>
+</head>
+<body>
+<div class="drag"></div>
+<aside>
+  <div class="brand"><img class="logo-img" src="../../assets/logos/portrait/icon256.png" alt=""><div><b>BillyShot</b><small>截图 · 录屏 · 贴图</small></div></div>
+  <nav id="nav">
+    <a data-tab="welcome"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5L12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z"/></svg>开始使用</a>
+    <a data-tab="hotkeys"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg>快捷键</a>
+    <a data-tab="capture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/></svg>截图</a>
+    <a data-tab="record"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3"/></svg>录屏</a>
+    <a data-tab="present"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><circle cx="10" cy="10" r="6.5" stroke-dasharray="2.6 2.4"/><path d="M10 9.5l9 3.6-3.9 1.4-1.5 3.9z" fill="currentColor"/></svg>演示</a>
+    <a data-tab="sound"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>声音</a>
+    <a data-tab="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="13" height="13" rx="2.5"/><path d="M4 15.5V6a2 2 0 0 1 2-2h9.5"/></svg>历史 / 剪贴板</a>
+    <a data-tab="general"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>常规</a>
+    <a data-tab="about"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></svg>关于</a>
+  </nav>
+  <div class="quick">
+    <button class="primary" id="qCapture">截图</button>
+    <button id="qRecord">区域录屏</button>
+  </div>
+</aside>
+<main>
+  <!-- 开始使用 -->
+  <section data-tab="welcome">
+    <div class="hero"><img class="logo-img" src="../../assets/logos/portrait/icon256.png" alt=""><div><h1>欢迎使用 BillyShot</h1><p class="lead" style="margin:0">免费的截图与录屏工具，常驻在托盘 / 菜单栏，一个快捷键随叫随到。</p></div></div>
+    <div class="cards">
+      <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/></svg></div><h3>截图 <span class="k" data-show="capture"></span></h3><p>拖动框选或单击识别窗口，直接画框、箭头、写字、马赛克。Enter 或双击复制到剪贴板。</p></div>
+      <div class="card rec"><div class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg></div><h3>区域录屏 <span class="k" data-show="recordRegion"></span></h3><p>框选区域，选择 MP4 或 GIF，可录系统声音与麦克风，最高 4K。再按一次停止。</p></div>
+      <div class="card rec"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="5" width="17" height="12" rx="2"/><path d="M9 20h6" stroke-linecap="round"/></svg></div><h3>全屏录屏 <span class="k" data-show="recordFull"></span></h3><p>直接录制鼠标所在的屏幕，再按一次停止。</p></div>
+      <div class="card rec"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="10" cy="10" r="6.5" stroke-dasharray="2.6 2.4"/><path d="M10 9.5l9 3.6-3.9 1.4-1.5 3.9z" fill="currentColor"/></svg></div><h3>演示录屏</h3><p>鼠标光圈、点击波纹、聚光灯、摄像头画中画。录课、开会共享屏幕时用，在「演示」里设置。</p></div>
+      <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l5 5-3 1-3.5 3.5L13 18l-7-7 4.5-.5L14 7z"/><path d="M8.5 15.5L4 20"/></svg></div><h3>贴图 <span class="k" data-show="pinClipboard"></span></h3><p>把剪贴板里的图片钉在屏幕最上层，滚轮缩放，双击关闭。</p></div>
+    </div>
+    <h2>截图界面操作</h2>
+    <table class="keys">
+      <tr><td>拖动 / 单击</td><td>框选区域；单击选中鼠标下的窗口</td></tr>
+      <tr><td>Enter · 双击</td><td>完成并复制到剪贴板</td></tr>
+      <tr><td>Esc</td><td>退出截图</td></tr>
+      <tr><td>右键</td><td>取消当前工具 → 重新框选 → 退出</td></tr>
+      <tr><td>R E A P H M T N</td><td>矩形 · 椭圆 · 箭头 · 画笔 · 荧光笔 · 马赛克 · 文字 · 序号</td></tr>
+      <tr><td><span class="mod"></span>Z · <span class="mod"></span>Y</td><td>撤销 · 重做</td></tr>
+      <tr><td><span class="mod"></span>S</td><td>保存到文件</td></tr>
+      <tr><td>方向键</td><td>微调选区（Shift 10 像素，<span class="mod"></span>方向键调整大小）</td></tr>
+      <tr><td>C</td><td>复制放大镜下的颜色值</td></tr>
+      <tr><td>滚轮 · [ ]</td><td>调整画笔 / 马赛克 / 模糊的笔刷大小（圆圈显示实际大小）</td></tr>
+      <tr><td>Shift + 拖动</td><td>正方形 · 正圆 · 45° 箭头</td></tr>
+      <tr><td>Delete</td><td>删除选中的标注（单击标注可选中、拖动、改颜色）</td></tr>
+    </table>
+    <div class="note mac-only"><span data-i18n-html="macFirstUse">macOS 首次使用请在 <b>系统设置 → 隐私与安全性</b> 中允许 <b>屏幕与系统录音</b>；使用鼠标快捷键、点击波纹还需允许 <b>辅助功能</b>；录摄像头需允许 <b>摄像头</b>。</span>
+      <div class="row-btns"><button data-act="macScreenPerm">打开屏幕录制权限</button><button data-act="macAccessPerm">打开辅助功能权限</button></div></div>
+  </section>
+
+  <!-- 快捷键 -->
+  <section data-tab="hotkeys">
+    <h1>快捷键</h1>
+    <p class="lead">点击输入框后直接按下组合键。键盘与鼠标可同时设置，任意一个都能触发。鼠标支持中键、侧键（后退 / 前进），可配合 Ctrl / Alt / Shift；右键需配合修饰键。Backspace 清除。<br><small>提示：鼠标侧键在浏览器里本身是「后退 / 前进」，BillyShot 无法拦截，截图前页面可能已经后退，建议侧键配合 Ctrl / Alt 使用。Windows 11 默认把 PrintScreen 交给系统截图工具，要用它请先在 Windows 设置 → 辅助功能 → 键盘 里关掉「使用 Print Screen 键打开屏幕截图」。</small></p>
+    <table class="hk" id="hkTable">
+      <thead><tr><th>功能</th><th>键盘</th><th>鼠标</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="legend"><span><i class="st ok"></i>已生效</span><span><i class="st fail"></i>被其他软件占用</span><span><i class="st perm"></i>需要授权</span><span style="flex:1"></span><button id="hkReset">恢复默认快捷键</button></div>
+  </section>
+
+  <!-- 截图 -->
+  <section data-tab="capture">
+    <h1>截图</h1>
+    <p class="lead">截图界面的行为与输出方式。</p>
+    <div class="group">
+      <div class="row"><div class="lbl"><b>自动识别窗口</b><small>鼠标悬停时高亮下方窗口，单击即可选中</small></div><label class="sw"><input type="checkbox" data-k="capture.windowDetect"><span></span></label></div>
+      <div class="row"><div class="lbl"><b>放大镜与取色器</b><small>精确到像素的对齐，按 C 复制颜色</small></div><label class="sw"><input type="checkbox" data-k="capture.magnifier"><span></span></label></div>
+      <div class="row"><div class="lbl"><b>同时自动保存</b><small>复制到剪贴板的同时，保存一份到截图文件夹</small></div><label class="sw"><input type="checkbox" data-k="capture.autoSave"><span></span></label></div>
+    </div>
+    <div class="group">
+      <div class="row"><div class="lbl"><b>图片格式</b></div><select data-k="capture.imageFormat"><option value="png">PNG · 无损</option><option value="jpg">JPG · 体积小</option></select></div>
+      <div class="row"><div class="lbl"><b>JPG 质量</b></div><input type="range" min="60" max="100" data-k="capture.jpgQuality" data-num><em data-v="capture.jpgQuality"></em></div>
+      <div class="row"><div class="lbl"><b>保存位置</b></div><div class="path"><input type="text" readonly data-k="capture.saveDir"><button data-pick="capture.saveDir">更改</button><button data-open="capture.saveDir">打开</button></div></div>
+      <div class="row"><div class="lbl"><b>历史记录</b><small>保留最近的截图，可在「历史 / 剪贴板」重新复制</small></div><select data-k="capture.historyMax" data-num><option value="10">10 张</option><option value="30">30 张</option><option value="60">60 张</option><option value="100">100 张</option></select></div>
+    </div>
+  </section>
+
+  <!-- 录屏 -->
+  <section data-tab="record">
+    <h1>录屏</h1>
+    <p class="lead">输出不会超过屏幕本身的分辨率 —— 要录 4K，屏幕需要是 4K。</p>
+    <div class="group">
+      <div class="row"><div class="lbl"><b>分辨率</b></div><select data-k="record.quality">
+        <option value="source">原画 · 与屏幕一致</option><option value="2160">4K · 2160p</option><option value="1440">2K · 1440p</option><option value="1080">1080p · 推荐</option><option value="720">720p</option></select></div>
+      <div class="row"><div class="lbl"><b>帧率</b></div><select data-k="record.fps" data-num><option value="24">24 fps</option><option value="30">30 fps</option><option value="60">60 fps</option></select></div>
+      <div class="row"><div class="lbl"><b>码率</b><small>自动会按分辨率与帧率选择合适的清晰度</small></div><select data-k="record.bitrate" data-num><option value="0">自动</option><option value="4">4 Mbps</option><option value="8">8 Mbps</option><option value="16">16 Mbps</option><option value="30">30 Mbps</option><option value="50">50 Mbps</option></select></div>
+      <div class="row"><div class="lbl"><b>默认格式</b></div><select data-k="record.format"><option value="mp4">MP4 视频</option><option value="gif">GIF 动图</option></select></div>
+      <div class="row"><div class="lbl"><b>开始前倒计时</b></div><select data-k="record.countdown" data-num><option value="0">不倒计时</option><option value="3">3 秒</option><option value="5">5 秒</option></select></div>
+    </div>
+    <h2>声音</h2>
+    <div class="group">
+      <div class="row"><div class="lbl"><b>系统声音</b><small>录制电脑正在播放的声音</small></div><label class="sw"><input type="checkbox" data-k="record.systemAudio"><span></span></label></div>
+      <div class="row"><div class="lbl"><b>麦克风</b><small>录制时可在控制条上随时静音</small></div><label class="sw"><input type="checkbox" data-k="record.mic"><span></span></label></div>
+      <div class="row"><div class="lbl"><b>麦克风设备</b></div><select data-k="record.micDeviceId" id="micSel"><option value="">系统默认</option></select><button id="micScan">检测设备</button></div>
+    </div>
+    <div class="note warn" id="echoTip" hidden><b>建议戴耳机录制。</b>同时开着系统声音和麦克风时，喇叭放出的声音会被麦克风再录一次，听起来像回音。只想录电脑里的声音，关掉麦克风即可。</div>
+    <div class="note warn" id="mixTip" hidden><b>选中的麦克风设备是「立体声混音」类设备。</b>它录的是喇叭输出，不是你的声音。录系统声音请用上面的「系统声音」开关，麦克风设备请选真正的麦克风。</div>
+    <h2>GIF</h2>
+    <div class="group">
+      <div class="row"><div class="lbl"><b>GIF 帧率</b></div><select data-k="record.gifFps" data-num><option value="8">8 fps</option><option value="10">10 fps</option><option value="12">12 fps</option><option value="15">15 fps</option><option value="20">20 fps</option></select></div>
+      <div class="row"><div class="lbl"><b>GIF 最大宽度</b><small>越大越清晰，文件也越大</small></div><select data-k="record.gifMaxWidth" data-num><option value="480">480 px</option><option value="640">640 px</option><option value="800">800 px</option><option value="960">960 px</option><option value="1280">1280 px</option><option value="1920">1920 px</option></select></div>
+    </div>
+    <h2>其他</h2>
+    <div class="group">
+      <div class="row"><div class="lbl"><b>全屏录制时隐藏控制条</b><small>用快捷键或托盘菜单停止录制</small></div><label class="sw"><input type="checkbox" data-k="record.hideBarFull"><span></span></label></div>
+      <div class="row"><div class="lbl"><b>演示时截图包含录制条</b><small>正在录的时候，外部截图可以拍到这条。它仍在选区外面，正常录像里没有。全屏若藏起控制条，静图里也没有。</small></div><label class="sw"><input type="checkbox" data-k="record.demoCaptureBar"><span></span></label></div>
+      <div class="row"><div class="lbl"><b>保存位置</b></div><div class="path"><input type="text" readonly data-k="record.saveDir"><button data-pick="record.saveDir">更改</button><button data-open="record.saveDir">打开</button></div></div>
+    </div>
+  </section>
+
+  <!-- 演示 -->
+  <section data-tab="present">
+    <h1>演示</h1>
+    <p class="lead">录课、讲解、开会共享屏幕时用。效果直接显示在屏幕上，所以录屏和 Zoom / Teams 共享时观众都看得到；截图时会自动隐藏。</p>
+    <h2>鼠标</h2>
+    <div class="group">
+      <div class="row"><div class="lbl"><b>鼠标光圈</b><small>鼠标周围一圈半透明光圈，观众更容易跟上</small></div><label class="sw"><input type="checkbox" data-k="present.halo"><span></span></label></div>
+      <div class="row"><div class="lbl"><b>光圈颜色</b></div><div class="swatches" data-color="present.haloColor"></div></div>
+      <div class="row"><div class="lbl"><b>光圈大小</b></div><input type="range" min="32" max="120" step="4" data-k="present.haloSize" data-num><em data-v="present.haloSize"></em></div>
+      <div class="row"><div class="lbl"><b>光圈不透明度</b></div><input type="range" min="0.15" max="0.8" step="0.05" data-k="present.haloOpacity" data-num><em data-v="present.haloOpacity"></em></div>
+      <div class="row"><div class="lbl"><b>点击波纹</b><small>点击时像水波一样荡开，左键和右键颜色不同</small></div><label class="sw"><input type="checkbox" data-k="present.clicks"><span></span></label></div>
+      <div class="row"><div class="lbl"><b>左键颜色</b></div><div class="swatches" data-color="present.clickLeft"></div></div>
+      <div class="row"><div class="lbl"><b>右键颜色</b></div><div class="swatches" data-color="present.clickRight"></div></div>
+      <div class="row"><div class="lbl"><b>录屏时自动显示</b><small>开始录屏时显示上面开启的光圈 / 波纹，录完自动收起；录制中也可以在控制条上开关</small></div><label class="sw"><input type="checkbox" data-k="present.withRecord"><span></span></label></div>
+    </div>
+    <div class="note"><span data-i18n-html="presentDemoNote">不录屏也想用（例如在会议里共享屏幕讲解）：托盘菜单勾选 <b>演示模式</b>。也可以在 <b>快捷键</b> 里给它设一个快捷键（当前：<span class="k" data-show="presentMode"></span>）。</span></div>
+    <h2>聚光灯</h2>
+    <div class="group">
+      <div class="row"><div class="lbl"><b>开关</b><small data-i18n-html="presentSpotHint">屏幕变暗，只有鼠标周围亮着。录制中可以在控制条上开关；快捷键：<span class="k" data-show="spotlight"></span>（在「快捷键」里设置）</small></div><button id="spotToggle">打开聚光灯</button></div>
+      <div class="row"><div class="lbl"><b>亮圈大小</b></div><input type="range" min="80" max="400" step="10" data-k="present.spotRadius" data-num><em data-v="present.spotRadius"></em></div>
+      <div class="row"><div class="lbl"><b>变暗程度</b></div><input type="range" min="0.3" max="0.85" step="0.05" data-k="present.spotDim" data-num><em data-v="present.spotDim"></em></div>
+    </div>
+    <h2>摄像头</h2>
+    <div class="group">
+      <div class="row"><div class="lbl"><b>录屏时显示摄像头</b><small>在录制区域右下角显示你的画面，可以拖到别处（会记住位置）。区域录屏的工具栏上也能开关</small></div><label class="sw"><input type="checkbox" data-k="present.camera"><span></span></label></div>
+      <div class="row"><div class="lbl"><b>摄像头设备</b></div><select data-k="present.cameraDeviceId" id="camSel"><option value="">系统默认</option></select><button id="camScan">检测设备</button></div>
+      <div class="row"><div class="lbl"><b>形状</b></div><select data-k="present.cameraShape"><option value="circle">圆形</option><option value="rounded">圆角方形</option></select></div>
+      <div class="row"><div class="lbl"><b>大小</b></div><select data-k="present.cameraSize"><option value="s">小</option><option value="m">中</option><option value="l">大</option></select></div>
+      <div class="row"><div class="lbl"><b>镜像</b><small>像照镜子一样左右翻转（举字给观众看时可以关掉）</small></div><label class="sw"><input type="checkbox" data-k="present.cameraMirror"><span></span></label></div>
+      <div class="row"><div class="lbl"><b>预览</b><small>不录屏也能打开，可以当作开会时的画中画</small></div><button id="camPreview">打开摄像头</button></div>
+    </div>
+    <div class="note">有些摄像头同一时间只能给一个程序用：Zoom / Teams / 微信 正开着摄像头时，BillyShot 可能打不开，会在控制条上提示，录屏照常进行。
+      <div class="row-btns mac-only"><button data-act="macCameraPerm">打开摄像头权限</button><button data-act="macAccessPerm">辅助功能权限（点击波纹）</button></div></div>
+  </section>
+
+  <!-- 声音 -->
+  <section data-tab="sound">
+    <h1>声音</h1>
+    <p class="lead">截图、录屏和通知的提示音。点「试听」听一下效果。</p>
+    <div class="group">
+      <div class="row"><div class="lbl"><b>音量</b></div><input type="range" min="0" max="100" data-k="sound.volume" data-num><em data-v="sound.volume"></em></div>
+      <div class="row"><div class="lbl"><b>截图音效</b><small>完成截图、复制或保存时播放</small></div>
+        <select data-k="sound.capture"><option value="shutter">相机快门</option><option value="soft">清脆「叮」</option><option value="done">提示和弦</option><option value="off">关闭</option></select>
+        <button data-play="capture">试听</button></div>
+      <div class="row"><div class="lbl"><b>录屏开始 / 结束提示音</b><small>开始音播放完才正式开录，不会被录进视频</small></div>
+        <button data-play="rec_start">试听开始</button><button data-play="rec_stop">试听结束</button><label class="sw"><input type="checkbox" data-k="sound.record"><span></span></label></div>
+      <div class="row"><div class="lbl"><b>倒计时滴答声</b><small>录屏开始前的每一秒</small></div><button data-play="tick">试听</button><label class="sw"><input type="checkbox" data-k="sound.countdown"><span></span></label></div>
+      <div class="row"><div class="lbl"><b>系统通知提示音</b><small>「录屏完成」「已保存」等通知弹出时的系统声音</small></div><label class="sw"><input type="checkbox" data-k="sound.notify"><span></span></label></div>
+    </div>
+  </section>
+
+  <!-- 历史 -->
+  <section data-tab="history">
+    <h1>历史 / 剪贴板</h1>
+    <p class="lead">最近的截图都在这里，点击图片即可重新复制到剪贴板。</p>
+    <div class="row-btns"><button id="histRefresh">刷新</button><button id="histClear" class="danger">清空历史</button></div>
+    <div class="grid" id="histGrid"></div>
+  </section>
+
+  <!-- 常规 -->
+  <section data-tab="general">
+    <h1>常规</h1>
+    <p class="lead">语言、图标、配色、启动与重置。</p>
+    <div class="group logo-pick">
+      <div class="row"><div class="lbl"><b>应用图标</b><small id="logoHint"></small></div></div>
+      <div class="logos" id="logoOpts">
+        <label class="logo-opt" data-logo="portrait"><input type="radio" name="logo" value="portrait"><img src="../../assets/logos/portrait/icon256.png" alt=""><span><b>头像版</b><small>默认</small></span><i class="tick"></i></label>
+        <label class="logo-opt" data-logo="purple"><input type="radio" name="logo" value="purple"><img src="../../assets/logos/purple/icon256.png" alt=""><span><b>紫色玻璃版</b><small>原来的图标</small></span><i class="tick"></i></label>
+      </div>
+      <div class="logo-msg" id="logoMsg" hidden></div>
+    </div>
+    <div class="group theme-pick">
+      <div class="row"><div class="lbl"><b>主题配色</b><small>设置窗口的背景和强调色，截图工具栏也会跟着变</small></div>
+        <select data-k="general.appearance" id="modeSel"><option value="system">深浅色：跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></div>
+      <div class="themes" id="themeOpts"></div>
+      <div class="logo-msg" id="themeMsg" hidden></div>
+    </div>
+    <div class="group">
+      <div class="row"><div class="lbl"><b>界面语言 · Language</b><small>「跟随系统」：电脑是中文就显示中文，否则显示英文</small></div><select data-k="general.language" id="langSel"><option value="auto">跟随系统 · System</option><option value="zh">简体中文</option><option value="en">English</option></select></div>
+      <div class="row"><div class="lbl"><b>开机自动启动</b><small>登录后在后台静默运行</small></div><label class="sw"><input type="checkbox" data-k="general.launchAtLogin"><span></span></label></div>
+      <div class="row"><div class="lbl"><b>恢复全部默认设置</b><small>快捷键、截图与录屏选项都会还原</small></div><button id="resetAll" class="danger">恢复默认</button></div>
+    </div>
+    <div class="note mac-only" id="macPerm">macOS 权限：
+      <div class="perm-st"><span class="mperm" data-perm="screen"><i></i><b>屏幕录制</b><em></em></span><span class="mperm" data-perm="accessibility"><i></i><b>辅助功能</b><em></em></span></div>
+      <div class="row-btns"><button data-act="macScreenPerm">屏幕录制权限</button><button data-act="macAccessPerm">辅助功能权限（鼠标快捷键）</button><button data-act="macRelaunch">重新打开 BillyShot</button><button data-act="macPermRepair">修复权限</button><button id="macDiag">复制诊断信息</button></div>
+      <small class="perm-tip">屏幕录制的开关打开后，要点「重新打开 BillyShot」才生效；开关开着还一直提示，点「修复权限」（清掉旧版本的授权记录，再打开一次开关）。</small>
+    </div>
+  </section>
+
+  <!-- 关于 -->
+  <section data-tab="about">
+    <div class="hero"><img class="logo-img" src="../../assets/logos/portrait/icon256.png" alt=""><div><h1>BillyShot <span class="badge" id="ver"></span></h1><p class="lead" style="margin:0">免费使用 · 无广告 · 无账号 · 无水印 · 不联网</p></div></div>
+    <div class="row-btns"><button data-act="openLogs">打开日志文件</button></div>
+    <p class="lead" style="font-size:12px">遇到问题时，把日志文件 billyshot.log 发给开发者，就能看到具体原因。</p>
+    <ul class="plain">
+      <li>截图：区域 / 窗口 / 全屏，原生分辨率（支持 4K、高 DPI）</li>
+      <li>标注：矩形、椭圆、箭头、画笔、荧光笔、马赛克、文字、序号，可撤销重做、可拖动修改</li>
+      <li>输出：复制到剪贴板、保存 PNG / JPG、钉在屏幕（贴图）</li>
+      <li>录屏：区域 / 全屏，MP4（H.264）或 GIF，1080p / 2K / 4K，24–60 fps，系统声音 + 麦克风</li>
+      <li>演示：鼠标光圈、点击波纹、聚光灯、摄像头画中画（录屏和会议共享都看得到）</li>
+      <li>快捷键：键盘与鼠标（中键 / 侧键）都能自定义</li>
+      <li>中文 / English 界面，默认跟随系统</li>
+    </ul>
+  </section>
+</main>
+<script src="../i18n.js"></script>
+<script src="settings.js"></script>
+</body>
+</html>

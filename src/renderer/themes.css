@@ -1,0 +1,124 @@
+/* 主题配色（设置 → 常规 → 主题配色）
+   <html data-theme="…">，由 settings.js 按设置写入；midnight（午夜紫）就是 settings.css 里的默认值。
+   深浅色跟随 prefers-color-scheme（主进程用 nativeTheme.themeSource 控制「跟随系统 / 浅色 / 深色」）。
+   每个主题至少给：侧栏（--side*）、背景（--bg / --panel）、强调色（--accent* / --on-accent）、侧栏光晕（--glow）。 */
+
+/* ---------------------------------------------------------------- 黑金：和头像图标同一套颜色 */
+html[data-theme="gold"] {
+  --side: #0b0b0c; --side-ink: #d6d0c4; --side-mute: #7a7468; --glow: rgba(226,190,130,.20); --nav-on: #ecd3a2;
+  --accent: #c99a52; --accent2: #e9cf9c; --accent-ink: #93682a; --accent-soft: rgba(201,154,82,.13);
+  --accent-glow: rgba(201,154,82,.28); --accent-line: rgba(201,154,82,.3); --on-accent: #1d1608;
+  --bg: #f7f5f1; --panel: #fffdf9; --line: #ebe6dc; --line2: #f2eee7; --field-line: #ddd6c8; --hover: #f3efe7;
+}
+@media (prefers-color-scheme: dark) {
+  html[data-theme="gold"] { --bg: #121110; --panel: #1b1a17; --line: #2e2b25; --line2: #25231e; --field: #141311; --field-line: #3a362e; --hover: #26241f;
+    --accent-ink: #e6c78f; --accent-soft: rgba(226,190,130,.14); --side: #080807; }
+}
+
+/* ---------------------------------------------------------------- 石墨：极简黑白 */
+html[data-theme="graphite"] {
+  --side: #18181b; --side-ink: #d4d4d8; --side-mute: #71717a; --glow: rgba(255,255,255,.06); --nav-on: #ffffff;
+  --accent: #27272a; --accent2: #52525b; --accent-ink: #18181b; --accent-soft: rgba(24,24,27,.07);
+  --accent-glow: rgba(24,24,27,.22); --accent-line: rgba(24,24,27,.18); --on-accent: #fff;
+  --bg: #f4f4f5; --panel: #ffffff; --line: #e4e4e7; --line2: #f0f0f2; --field-line: #d4d4d8; --hover: #f0f0f2;
+}
+@media (prefers-color-scheme: dark) {
+  html[data-theme="graphite"] { --bg: #101012; --panel: #1a1a1d; --line: #2c2c31; --line2: #232327; --field: #121214; --field-line: #36363c; --hover: #25252a;
+    --accent: #f4f4f5; --accent2: #a1a1aa; --accent-ink: #f4f4f5; --accent-soft: rgba(255,255,255,.08); --accent-glow: rgba(255,255,255,.12);
+    --accent-line: rgba(255,255,255,.18); --on-accent: #18181b; --knob: #18181b; --side: #0c0c0e; }
+}
+
+/* ---------------------------------------------------------------- 深海蓝 */
+html[data-theme="ocean"] {
+  --side: #08121f; --side-ink: #c3cfdf; --side-mute: #5f6f85; --glow: rgba(56,140,255,.30); --nav-on: #9ccaff;
+  --accent: #2f7bff; --accent2: #22c3ee; --accent-ink: #1f64e0; --accent-soft: rgba(47,123,255,.11);
+  --accent-glow: rgba(47,123,255,.3); --accent-line: rgba(47,123,255,.28);
+  --bg: #f4f7fb; --panel: #ffffff; --line: #e2e8f0; --line2: #eef2f7; --field-line: #d3dbe6; --hover: #eef3f9;
+}
+@media (prefers-color-scheme: dark) {
+  html[data-theme="ocean"] { --bg: #0f141b; --panel: #161d27; --line: #243041; --line2: #1d2734; --field: #10161e; --field-line: #2c3a4e; --hover: #1e2836;
+    --accent-ink: #8cc2ff; --accent-soft: rgba(64,150,255,.16); --side: #060d17; }
+}
+
+/* ---------------------------------------------------------------- 森林绿 */
+html[data-theme="forest"] {
+  --side: #0b1511; --side-ink: #c6d6ce; --side-mute: #62786d; --glow: rgba(46,196,120,.24); --nav-on: #9ee8c6;
+  --accent: #16a36a; --accent2: #5ad3a0; --accent-ink: #0f8a57; --accent-soft: rgba(22,163,106,.11);
+  --accent-glow: rgba(22,163,106,.3); --accent-line: rgba(22,163,106,.28);
+  --bg: #f4f8f6; --panel: #ffffff; --line: #e0e9e4; --line2: #edf3ef; --field-line: #d0ddd6; --hover: #edf4f0;
+}
+@media (prefers-color-scheme: dark) {
+  html[data-theme="forest"] { --bg: #0f1412; --panel: #161d1a; --line: #243129; --line2: #1d2822; --field: #101613; --field-line: #2c3b33; --hover: #1e2924;
+    --accent-ink: #86e0b8; --accent-soft: rgba(70,210,150,.14); --side: #08110d; }
+}
+
+/* ---------------------------------------------------------------- 玫瑰粉 */
+html[data-theme="rose"] {
+  --side: #170d12; --side-ink: #dccbd1; --side-mute: #7f6a72; --glow: rgba(255,100,150,.26); --nav-on: #ffb3c8;
+  --accent: #f2557f; --accent2: #ff9a76; --accent-ink: #d6406a; --accent-soft: rgba(242,85,127,.10);
+  --accent-glow: rgba(242,85,127,.3); --accent-line: rgba(242,85,127,.28);
+  --bg: #fbf6f7; --panel: #ffffff; --line: #efe3e6; --line2: #f6eef0; --field-line: #e4d4d9; --hover: #f8eef1;
+}
+@media (prefers-color-scheme: dark) {
+  html[data-theme="rose"] { --bg: #151012; --panel: #1e171a; --line: #34272c; --line2: #2a2024; --field: #161113; --field-line: #3e2f35; --hover: #2a2025;
+    --accent-ink: #ffa3bd; --accent-soft: rgba(255,110,150,.15); --side: #12090e; }
+}
+
+/* ---------------------------------------------------------------- 纯白：浅色侧栏（深色模式下是一体的深灰） */
+html[data-theme="paper"] {
+  --side: #ffffff; --side-ink: #3b3b47; --side-mute: #8b8b99; --side-strong: #18181d; --side-hover: rgba(0,0,0,.04); --side-active: rgba(0,0,0,.06);
+  --side-btn: #f2f2f6; --side-btn-line: #e4e4ea; --side-btn-hover: #ebebf0; --glow: rgba(110,107,255,.10); --nav-on: #5552e8;
+}
+html[data-theme="paper"] aside { border-right: 1px solid var(--line); }
+@media (prefers-color-scheme: dark) {
+  html[data-theme="paper"] { --side: #1b1b21; --side-ink: #c9c9d4; --side-mute: #6e6e7e; --side-strong: #fff; --side-hover: rgba(255,255,255,.05);
+    --side-active: rgba(255,255,255,.08); --side-btn: rgba(255,255,255,.06); --side-btn-line: rgba(255,255,255,.08); --side-btn-hover: rgba(255,255,255,.1);
+    --glow: transparent; --nav-on: #a5a7ff; --bg: #1b1b21; --panel: #22222a; }
+}
+
+/* ---------------------------------------------------------------- 透明玻璃
+   Windows 11 用系统亚克力、macOS 用毛玻璃（html.material：窗口背后真的透出桌面）；
+   其他系统（Windows 10 等）没有系统毛玻璃，用彩色渐变底 + 半透明卡片模拟。 */
+html[data-theme="glass"] {
+  --side: rgba(255,255,255,.38); --side-ink: #343448; --side-mute: #7a7a90; --side-strong: #15151f;
+  --side-hover: rgba(255,255,255,.4); --side-active: rgba(255,255,255,.62); --side-btn: rgba(255,255,255,.5); --side-btn-line: rgba(255,255,255,.75); --side-btn-hover: rgba(255,255,255,.7);
+  --glow: transparent; --nav-on: #5a63f0;
+  --accent: #5b7cfa; --accent2: #b06bff; --accent-ink: #4a52e0; --accent-soft: rgba(91,124,250,.14); --accent-glow: rgba(91,124,250,.3); --accent-line: rgba(91,124,250,.3);
+  --bg: #eef0f7; --panel: rgba(255,255,255,.55); --line: rgba(255,255,255,.75); --line2: rgba(20,20,40,.06); --field: rgba(255,255,255,.7); --field-line: rgba(20,20,40,.12); --hover: rgba(255,255,255,.55);
+  --mesh: radial-gradient(at 12% 8%, #cbb9ff 0, transparent 46%), radial-gradient(at 88% 14%, #9fd8ff 0, transparent 44%), radial-gradient(at 62% 96%, #ffc6e2 0, transparent 50%), radial-gradient(at 8% 92%, #b9f0da 0, transparent 40%);
+}
+@media (prefers-color-scheme: dark) {
+  html[data-theme="glass"] {
+    --side: rgba(10,10,20,.35); --side-ink: #d4d4e4; --side-mute: #8a8aa2; --side-strong: #fff;
+    --side-hover: rgba(255,255,255,.06); --side-active: rgba(255,255,255,.12); --side-btn: rgba(255,255,255,.08); --side-btn-line: rgba(255,255,255,.12); --side-btn-hover: rgba(255,255,255,.14);
+    --nav-on: #a9b4ff; --accent-ink: #a9b4ff; --accent-soft: rgba(120,140,255,.18);
+    --bg: #0d0f17; --panel: rgba(255,255,255,.06); --line: rgba(255,255,255,.1); --line2: rgba(255,255,255,.06); --field: rgba(0,0,0,.25); --field-line: rgba(255,255,255,.14); --hover: rgba(255,255,255,.08);
+    --text: #f0f0f8; --sub: #a4a4ba;
+    --mesh: radial-gradient(at 12% 8%, rgba(110,80,255,.45) 0, transparent 46%), radial-gradient(at 88% 14%, rgba(30,140,255,.35) 0, transparent 44%), radial-gradient(at 62% 96%, rgba(255,60,150,.28) 0, transparent 50%);
+  }
+}
+html[data-theme="glass"] body { background: var(--mesh), var(--bg); background-attachment: fixed; }
+html[data-theme="glass"].material body { background: transparent; }
+html[data-theme="glass"] aside { border-right: 1px solid var(--line); backdrop-filter: blur(24px) saturate(1.5); }
+html[data-theme="glass"] .group, html[data-theme="glass"] .card, html[data-theme="glass"] table.keys, html[data-theme="glass"] .item,
+html[data-theme="glass"] .logo-opt, html[data-theme="glass"] .theme-opt { backdrop-filter: blur(18px) saturate(1.4); }
+
+/* ---------------------------------------------------------------- Matrix：黑底荧光绿 + 代码雨（只有深色） */
+html[data-theme="matrix"] {
+  color-scheme: dark;
+  --bg: #020804; --panel: rgba(4,18,9,.92); --line: #0f2e18; --line2: #0b2213; --text: #c8ffd8; --sub: #4cc46f; --mute: #2f7a46;
+  --field: #031008; --field-line: #14502a; --hover: #082214; --shadow: 0 0 0 1px rgba(0,255,102,.03) inset;
+  --side: #000; --side-ink: #7dffa6; --side-mute: #2f7a46; --side-strong: #d6ffe2; --side-hover: rgba(0,255,102,.07); --side-active: rgba(0,255,102,.12);
+  --side-btn: rgba(0,255,102,.06); --side-btn-line: rgba(0,255,102,.2); --side-btn-hover: rgba(0,255,102,.12);
+  --glow: rgba(0,255,102,.16); --nav-on: #00ff66;
+  --accent: #00ff66; --accent2: #00b84a; --accent-ink: #39ff88; --accent-soft: rgba(0,255,102,.10); --accent-glow: rgba(0,255,102,.35); --accent-line: rgba(0,255,102,.3);
+  --on-accent: #001a08; --knob: #001a08;
+  --font-head: "Cascadia Mono", "SF Mono", Menlo, Consolas, "Courier New", monospace;
+}
+html[data-theme="matrix"] h1 { text-shadow: 0 0 14px rgba(0,255,102,.45); }
+html[data-theme="matrix"] h2, html[data-theme="matrix"] nav a, html[data-theme="matrix"] .brand b, html[data-theme="matrix"] .k,
+html[data-theme="matrix"] table.keys td:first-child { font-family: var(--font-head); }
+html[data-theme="matrix"] .brand b { text-shadow: 0 0 10px rgba(0,255,102,.5); }
+#rain { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: .28; z-index: 0;
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,.25) 0, rgba(0,0,0,.25) 70px, #000 160px); }
+aside > :not(#rain) { position: relative; z-index: 1; }

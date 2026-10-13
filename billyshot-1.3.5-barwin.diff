@@ -1,0 +1,92 @@
+﻿diff --git a/src/i18n.js b/src/i18n.js
+index da671cb..366bd1a 100644
+--- a/src/i18n.js
++++ b/src/i18n.js
+@@ -298,6 +298,8 @@
+     '其他': 'Other',
+     '全屏录制时隐藏控制条': 'Hide the control bar for full-screen recording',
+     '用快捷键或托盘菜单停止录制': 'Stop with the shortcut or the tray menu',
++    '演示时截图包含录制条': 'Include the recording bar in demo stills',
++    '正在录的时候，外部截图可以拍到这条。它仍在选区外面，正常录像里没有。全屏若藏起控制条，静图里也没有。': 'While recording, an external screenshot can include this bar. It stays outside the selection, so a normal recording does not. If full-screen recording hides the bar, the still does not include it either.',
+     '截图、录屏和通知的提示音。点「试听」听一下效果。': 'Sounds for screenshots, recording and notifications. Click Play to preview.',
+     '音量': 'Volume',
+     '截图音效': 'Screenshot sound',
+diff --git a/src/main.js b/src/main.js
+index f223852..28337ba 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -1093,6 +1093,7 @@ ipcMain.handle('settings:set', (_e, patch) => {
+   }
+   if (JSON.stringify(s.hotkeys) !== before) applyHotkeys();
+   if (patch && patch.present && present) present.applySettings();
++  if (patch && patch.record && Object.prototype.hasOwnProperty.call(patch.record, 'demoCaptureBar')) syncDemoBarCapture();
+   return { settings: s, status: hotkeyStatus };
+ });
+ ipcMain.handle('settings:reset', async () => {
+@@ -1102,6 +1103,7 @@ ipcMain.handle('settings:reset', async () => {
+   if (hadLogo !== logoName()) await applyLogo({ system: true });
+   applyAppearance(); applyTheme();
+   if (present) present.applySettings();
++  syncDemoBarCapture();
+   if (applyLanguage() !== before) setTimeout(refreshLanguageUi, 30);
+   return { settings: settings.get(), status: hotkeyStatus };
+ });
+@@ -1276,6 +1278,7 @@ async function startRecording(display, rect, req) {
+       webPreferences: { preload: R('preload.js') },
+     });
+     protect(cur.barWin);
++    syncDemoBarCapture();
+     cur.barWin.setAlwaysOnTop(true, 'screen-saver');
+     if (isMac) cur.barWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true });
+     // 演示层（光圈 / 波纹）跟着录屏出现；摄像头圆窗放进录制区域
+@@ -1471,6 +1474,22 @@ function stopRecording(cancel = false) {
+ }
+ 
+ let doneBar = null; // 保存中 / 已保存的控制条 { win, file }
++function barOutsideRecord(cur) {
++  const p = cur && cur.barPos, a = cur && cur.abs;
++  if (!p || !a) return false;
++  return p.y + p.h <= a.y || p.y >= a.y + a.height || p.x + p.w <= a.x || p.x >= a.x + a.width;
++}
++function syncDemoBarCapture() {
++  // Live barWin can be captured by an external still when the switch is on.
++  // Only if it sits outside the recording rect, so the video crop still misses it.
++  // A full-screen crop that the bar had to overlap stays protected. frameWin and the present layer are untouched.
++  if (!canExcludeFromCapture) return;
++  const show = !!((settings.get().record || {}).demoCaptureBar);
++  const wins = [];
++  if (rec && rec.barWin && !rec.barWin.isDestroyed() && (!show || barOutsideRecord(rec))) wins.push(rec.barWin);
++  if (doneBar && doneBar.win && !doneBar.win.isDestroyed()) wins.push(doneBar.win);
++  for (const win of wins) { try { win.setContentProtection(!show); } catch {} }
++}
+ function closeDoneBar() {
+   const d = doneBar; doneBar = null;
+   if (d && d.win) { try { if (!d.win.isDestroyed()) d.win.destroy(); } catch {} }
+@@ -1503,6 +1522,7 @@ function finishRecording(status, msg) {
+     doneBar = { win: bar, file: null };
+     try { if (!bar.isVisible()) bar.showInactive(); } catch {}
+     sendTo(bar, 'recbar:state', { state: 'finalizing', pct: 0 });
++    syncDemoBarCapture();
+   }
+   saveRecording(r, partial, msg, bar).catch((e) => { reportError(t('录屏收尾出错'), e); if (doneBar && doneBar.win === bar) closeDoneBar(); });
+ }
+diff --git a/src/renderer/settings.html b/src/renderer/settings.html
+index 33a9071..d0a8e7e 100644
+--- a/src/renderer/settings.html
++++ b/src/renderer/settings.html
+@@ -114,6 +114,7 @@
+     <h2>其他</h2>
+     <div class="group">
+       <div class="row"><div class="lbl"><b>全屏录制时隐藏控制条</b><small>用快捷键或托盘菜单停止录制</small></div><label class="sw"><input type="checkbox" data-k="record.hideBarFull"><span></span></label></div>
++      <div class="row"><div class="lbl"><b>演示时截图包含录制条</b><small>正在录的时候，外部截图可以拍到这条。它仍在选区外面，正常录像里没有。全屏若藏起控制条，静图里也没有。</small></div><label class="sw"><input type="checkbox" data-k="record.demoCaptureBar"><span></span></label></div>
+       <div class="row"><div class="lbl"><b>保存位置</b></div><div class="path"><input type="text" readonly data-k="record.saveDir"><button data-pick="record.saveDir">更改</button><button data-open="record.saveDir">打开</button></div></div>
+     </div>
+   </section>
+@@ -129,7 +130,6 @@
+       <div class="row"><div class="lbl"><b>光圈大小</b></div><input type="range" min="32" max="120" step="4" data-k="present.haloSize" data-num><em data-v="present.haloSize"></em></div>
+       <div class="row"><div class="lbl"><b>光圈不透明度</b></div><input type="range" min="0.15" max="0.8" step="0.05" data-k="present.haloOpacity" data-num><em data-v="present.haloOpacity"></em></div>
+       <div class="row"><div class="lbl"><b>点击波纹</b><small>点击时像水波一样荡开，左键和右键颜色不同</small></div><label class="sw"><input type="checkbox" data-k="present.clicks"><span></span></label></div>
+-      <div class="row"><div class="lbl"><b>波纹样式</b></div><select data-k="present.rippleStyle"><option value="water">水波纹</option><option value="single">单圈（旧样式）</option></select></div>
+       <div class="row"><div class="lbl"><b>左键颜色</b></div><div class="swatches" data-color="present.clickLeft"></div></div>
+       <div class="row"><div class="lbl"><b>右键颜色</b></div><div class="swatches" data-color="present.clickRight"></div></div>
+       <div class="row"><div class="lbl"><b>录屏时自动显示</b><small>开始录屏时显示上面开启的光圈 / 波纹，录完自动收起；录制中也可以在控制条上开关</small></div><label class="sw"><input type="checkbox" data-k="present.withRecord"><span></span></label></div>

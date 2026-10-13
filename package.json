@@ -1,0 +1,149 @@
+{
+  "name": "billyshot",
+  "version": "1.3.5",
+  "description": "免费截图录屏工具 BillyShot",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "natives": "node scripts/fetch-natives.js",
+    "dist:win": "node scripts/fetch-natives.js && electron-builder --win --x64 && node scripts/build-uninstall-tool.js",
+    "dist:mac": "node scripts/fetch-natives.js && electron-builder --mac --x64 --arm64 && node scripts/sign-mac.js"
+  },
+  "keywords": [],
+  "author": "Billy Chai",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "gifenc": "^1.0.3"
+  },
+  "dependencies": {
+    "node-screenshots": "^0.2.8",
+    "uiohook-napi": "^1.5.5"
+  },
+  "productName": "BillyShot",
+  "build": {
+    "appId": "com.billyshot.app",
+    "productName": "BillyShot",
+    "copyright": "Free for everyone",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json",
+      "!test/**",
+      "!scripts/**",
+      "!dist/**",
+      "!build/**",
+      "!使用说明.txt",
+      "!README.md"
+    ],
+    "asarUnpack": [
+      "node_modules/node-screenshots*/**",
+      "node_modules/uiohook-napi/**",
+      "assets/logos/*/icon.ico",
+      "assets/logos/*/mac.png"
+    ],
+    "npmRebuild": false,
+    "nodeGypRebuild": false,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "artifactName": "BillyShot-${version}-Windows-${arch}-${os}.${ext}",
+      "files": [
+        "!node_modules/node-screenshots-linux*/**",
+        "!node_modules/node-screenshots-darwin*/**",
+        "!node_modules/uiohook-napi/prebuilds/linux*/**",
+        "!node_modules/uiohook-napi/prebuilds/darwin*/**",
+        "!node_modules/uiohook-napi/prebuilds/win32-arm64/**",
+        "!node_modules/uiohook-napi/src/**",
+        "!node_modules/uiohook-napi/libuiohook/**",
+        "!test/**",
+        "!scripts/**",
+        "!build/**",
+        "!dist/**",
+        "!使用说明.txt",
+        "!README.md"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "installerLanguages": [
+        "en_US",
+        "zh_CN",
+        "zh_TW"
+      ],
+      "multiLanguageInstaller": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "BillyShot",
+      "artifactName": "BillyShot-Setup-${version}.${ext}",
+      "runAfterFinish": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "include": "build/installer.nsh",
+      "installerSidebar": "build/sidebar/side-100.bmp",
+      "uninstallerSidebar": "build/sidebar/side-100.bmp"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "assets/icon-mac.png",
+      "category": "public.app-category.utilities",
+      "identity": null,
+      "artifactName": "BillyShot-${version}-mac-${arch}.${ext}",
+      "extendInfo": {
+        "LSUIElement": true,
+        "NSMicrophoneUsageDescription": "BillyShot 需要麦克风来录制你的声音（可选）。",
+        "NSAccessibilityUsageDescription": "BillyShot 需要辅助功能权限来响应鼠标快捷键和显示点击波纹（可选）。",
+        "NSCameraUsageDescription": "BillyShot 需要摄像头，在录屏或演示时显示你的画面（可选）。",
+        "NSAudioCaptureUsageDescription": "BillyShot 需要录制系统声音（可选）。"
+      },
+      "files": [
+        "!node_modules/node-screenshots-linux*/**",
+        "!node_modules/node-screenshots-win32*/**",
+        "!node_modules/uiohook-napi/prebuilds/linux*/**",
+        "!node_modules/uiohook-napi/prebuilds/win32*/**",
+        "!node_modules/uiohook-napi/src/**",
+        "!node_modules/uiohook-napi/libuiohook/**",
+        "!test/**",
+        "!scripts/**",
+        "!build/**",
+        "!dist/**",
+        "!使用说明.txt",
+        "!README.md"
+      ]
+    },
+    "electronLanguages": [
+      "zh-CN",
+      "zh-TW",
+      "en-US"
+    ],
+    "publish": null
+  }
+}

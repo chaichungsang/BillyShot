@@ -1,0 +1,6 @@
+node_modules/
+dist/
+
+# Mac 签名证书私钥不能进源码
+*.pem
+*.p12

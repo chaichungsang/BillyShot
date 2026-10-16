@@ -1,0 +1,71 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; height: 100%; overflow: hidden; background: transparent;
+  user-select: none; font-family: "PingFang SC", "Microsoft YaHei UI", -apple-system, sans-serif;
+  color: #fff;
+}
+.slot {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: #0c0c0e; border-radius: 0 0 12px 12px;
+}
+.dot {
+  width: 8px; height: 8px; border-radius: 50%; background: #c4c6ff;
+  box-shadow: 0 0 8px rgba(124,128,255,.8);
+}
+body.rec-compact .dot, body.rec-full .dot, body.saving .dot {
+  background: #ff4d6d; box-shadow: 0 0 0 3px rgba(255,77,109,.22), 0 0 8px rgba(255,77,109,.7);
+  animation: blink 1.2s infinite;
+}
+body.paused .dot { animation: none; background: #ffc53d; box-shadow: 0 0 0 3px rgba(255,197,61,.25); }
+body.done .dot { animation: none; background: #34c759; box-shadow: 0 0 0 3px rgba(52,199,89,.25); }
+@keyframes blink { 50% { opacity: .35; } }
+.time { font: 600 12px/1 "SF Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+button {
+  border: 0; background: transparent; color: #fff; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
+}
+.mini { width: 22px; height: 18px; border-radius: 9px; font-size: 11px; }
+.mini:hover, button:hover { background: rgba(255,255,255,.12); }
+.card {
+  position: absolute; left: 8px; right: 8px;
+  background: rgba(22,22,28,.94); border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.1);
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  backdrop-filter: blur(22px) saturate(1.4);
+}
+.group { padding: 8px 14px 2px; font-size: 10px; letter-spacing: .04em; color: #8d8da0; }
+.item {
+  width: 100%; height: 28px; padding: 0 12px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  font-size: 13px; overflow: hidden;
+}
+.item span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.accel { flex: none; font-size: 11px; color: #8d8da0; }
+.item:hover { background: rgba(255,255,255,.08); }
+.item[disabled] { opacity: .35; pointer-events: none; }
+.item.on { color: #c4c6ff; }
+.bar { height: 46px; display: flex; align-items: center; padding: 0 8px 0 12px; gap: 4px; }
+.ctl { display: flex; align-items: center; gap: 2px; }
+.bar button { width: 28px; height: 28px; border-radius: 14px; }
+.bar button svg { width: 16px; height: 16px; }
+#stop { background: linear-gradient(135deg, #ff6a5c, #ff3b6b); }
+.fxb { color: #8e8e93; }
+.fxb.on { color: #c4c6ff; background: rgba(124,128,255,.2); }
+button.off { color: #8e8e93; }
+.div { width: 1px; height: 16px; background: rgba(255,255,255,.12); margin: 0 3px; }
+.meta { font-size: 12px; color: #c9c9d6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.donebtns { display: none; align-items: center; gap: 4px; }
+.donebtns .txt { width: auto; height: 26px; padding: 0 10px; border-radius: 13px; font-size: 12px; font-weight: 600; background: rgba(255,255,255,.08); }
+.donebtns .primary { background: linear-gradient(135deg, #34c759, #22a447); }
+.prog { position: absolute; left: 14px; right: 14px; bottom: 4px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.1); overflow: hidden; display: none; }
+.prog i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, #7c80ff, #c4c6ff); }
+body.saving .prog { display: block; }
+body.saving .prog.indet i { width: 35%; animation: indet 1.1s ease-in-out infinite; }
+@keyframes indet { 0% { left: -35%; } 100% { left: 100%; } }
+body.saving .ctl, body.done .ctl { display: none; }
+body.done .donebtns { display: flex; }
+body.idle-mark #menu, body.idle-mark #rec, body.rec-compact #menu, body.rec-compact #rec { display: none; }
+body.idle-menu #rec, body.rec-full #menu, body.saving #menu, body.done #menu { display: none; }
+body.idle-mark #ctime, body.idle-mark #cstop, body.idle-menu #ctime, body.idle-menu #cstop { display: none; }
+body.rec-full #cstop, body.saving #cstop, body.done #cstop { display: none; }

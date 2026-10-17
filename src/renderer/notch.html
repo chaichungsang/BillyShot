@@ -6,32 +6,44 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
 <link rel="stylesheet" href="notch.css">
 </head>
-<body class="idle-mark">
-  <div id="slot" class="slot hit">
-    <span class="dot" id="dot"></span>
-    <span class="time" id="ctime" hidden>00:00</span>
-    <button id="cstop" class="mini" hidden title="停止并保存">■</button>
+<body>
+  <div id="hit">
+    <div class="ear left"><i class="dot" id="earDot"></i></div>
+    <div class="ear right"><span class="time" id="earTime"></span></div>
   </div>
-  <div id="menu" class="card hit" hidden></div>
-  <div id="rec" class="card bar hit" hidden>
-    <div class="ctl" id="ctl">
-      <button id="fx" class="fxb" title="鼠标光圈 / 点击波纹"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><circle cx="10" cy="10" r="6.5" stroke-dasharray="2.6 2.4"/><path d="M10 9.5l9 3.6-3.9 1.4-1.5 3.9z" fill="currentColor"/></svg></button>
-      <button id="spot" class="fxb" title="聚光灯"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M5.6 18.4l1.6-1.6M16.8 7.2l1.6-1.6"/></svg></button>
-      <button id="cam" class="fxb" title="摄像头"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="6.5" width="12.5" height="11" rx="2.5"/><path d="M15.5 10.5l5-3v9l-5-3z"/></svg></button>
-      <span class="div"></span>
-      <button id="mic" title="麦克风开关" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/></svg></button>
-      <button id="pause" title="暂停 / 继续"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="3.6" height="14" rx="1"/><rect x="13.9" y="5" width="3.6" height="14" rx="1"/></svg></button>
-      <button id="stop" title="停止并保存"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>
-      <button id="cancel" title="放弃录制"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
-    </div>
-    <div class="meta" id="meta"></div>
-    <div class="donebtns" id="donebtns">
-      <button id="dFolder" class="txt primary">打开文件夹</button>
-      <button id="dPlay" class="txt">播放</button>
-      <button id="dClose" class="mini" title="关闭">×</button>
-    </div>
-    <div class="prog indet" id="prog"><i id="progBar"></i></div>
+  <div id="chin" role="timer">
+    <span class="time" id="chinTime"></span>
   </div>
+  <div id="panel" class="sheet">
+    <div class="keys" id="keys"></div>
+    <div class="stop">
+      <div class="stop-copy">
+        <div class="stop-title"><i class="dot"></i><span id="stopTitle"></span></div>
+        <div class="stop-sub" id="stopSub"></div>
+      </div>
+      <button type="button" class="stop-btn" id="stopBtn">
+        <span class="stop-sq" aria-hidden="true"></span><span id="stopWord"></span>
+      </button>
+    </div>
+  </div>
+  <div id="pill">
+    <i class="dot" aria-hidden="true"></i>
+    <span class="time" id="pillTime" role="timer"></span>
+    <button type="button" class="pill-stop" id="pillStop">
+      <span class="pill-sq" aria-hidden="true"></span><span id="pillWord"></span>
+    </button>
+  </div>
+  <div id="mock">
+    <p class="mock-tag">Renderer mock-up — not a Mac capture</p>
+    <p class="mock-sub" id="mockSub"></p>
+    <div class="mock-screen" id="mockScreen">
+      <div class="mock-menu" id="mockMenu"><div>Finder<span>文件</span><span>编辑</span><span>显示</span></div><div>15:20</div></div>
+      <div class="mock-hardware" id="mockHardware"></div>
+      <div class="mock-layer" id="mockLayer"></div>
+      <div class="mock-note" id="mockNote"></div>
+    </div>
+  </div>
+<script src="../notch-logic.js"></script>
 <script src="../i18n.js"></script>
 <script src="notch.js"></script>
 </body>

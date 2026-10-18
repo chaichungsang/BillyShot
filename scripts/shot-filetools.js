@@ -3,7 +3,7 @@
 const { app, BrowserWindow } = require('electron');
 const fs = require('fs');
 const path = require('path');
-const { ringModel } = require('../src/filetools/plan');
+const { ringModel, LEVELS, estimateVideoBytes } = require('../src/filetools/plan');
 const { placeArc } = require('../src/filetools/arc-layout');
 
 const outDir = process.env.BILLYSHOT_SHOT_DIR || '/opt/cursor/artifacts';
@@ -83,17 +83,27 @@ app.whenReady().then(async () => {
     await new Promise((r) => setTimeout(r, 80));
     await shoot(panel, name);
   }
+  const duration = 8;
+  const estimateBytes = estimateVideoBytes(LEVELS.medium.bitrate, duration);
   await showPanel({
     phase: 'running', action: 'video.compress', kind: 'compress-video',
-    names: ['示例-录屏.mov'], level: 'medium', ratio: 0.62, indeterminate: false, estimateBytes: 2516582,
+    names: ['示例-录屏.mov'], level: 'medium', ratio: 0.62, indeterminate: false,
+    duration, estimateBytes, estimateFromDuration: true,
   }, 'preview-progress.png');
+  const progText = await panel.webContents.executeJavaScript('document.body.innerText');
+  if (!progText.includes('约')) throw new Error('determinate panel hid a bitrate estimate: ' + progText);
+  if (!progText.includes('预览生成中')) throw new Error('progress panel has no preview label: ' + progText);
   await showPanel({
     phase: 'queued', action: 'video.compress', kind: 'compress-video', names: ['示例-录屏.mov'],
   }, 'preview-queued.png');
   await showPanel({
     phase: 'running', action: 'video.compress', kind: 'compress-video', indeterminate: true,
     names: ['示例-录屏.mov'], level: 'medium',
+    estimateBytes, estimateFromDuration: true,
   }, 'preview-indeterminate.png');
+  const indText = await panel.webContents.executeJavaScript('document.body.innerText');
+  if (/约|MB|KB/.test(indText)) throw new Error('indeterminate panel still shows a size: ' + indText);
+  if (!indText.includes('预览生成中')) throw new Error('indeterminate panel has no preview label: ' + indText);
   await showPanel({
     phase: 'done', action: 'image.compress', fileName: '示例-截图-compressed.png',
     bytes: 734003, measured: true, revealLabel: '在 Finder 中显示',

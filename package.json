@@ -164,6 +164,8 @@
         "!README.md",
         "!vendor/ffmpeg/linux-*/**",
         "!vendor/ffmpeg/win32-*/**",
+        "!vendor/ffmpeg/darwin-*/**",
+        "vendor/ffmpeg/darwin-${arch}/**/*",
         "!node_modules/@img/sharp-linux*/**",
         "!node_modules/@img/sharp-libvips-linux*/**",
         "!node_modules/@img/sharp-win32*/**",

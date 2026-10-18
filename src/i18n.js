@@ -529,6 +529,7 @@
     '等待中': 'Waiting',
     '原图': 'Original',
     '原片': 'Original',
+    '预览生成中': 'Generating preview',
     '压缩后': 'Compressed',
     '质量': 'Quality',
     '高#q': 'High',

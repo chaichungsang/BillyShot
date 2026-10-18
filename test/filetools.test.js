@@ -17,7 +17,7 @@ const { buildArgs, transcode, killProcessTree } = require('../src/filetools/vide
 const { decodeHeic, HEIC_MESSAGE } = require('../src/filetools/heic');
 const image = require('../src/filetools/image-ops');
 const { makePdf, friendlyPdfError, ENCRYPTED } = require('../src/filetools/pdf-ops');
-const { panelTitle } = require('../src/filetools/panel-title');
+const { panelTitle, visibleEstimateBytes } = require('../src/filetools/panel-title');
 const { noticeForRegisterFailure, registerResult } = require('../src/hotkey-notice');
 const { JobRunner } = require('../src/filetools/jobs');
 const { PDFDocument } = require('pdf-lib');
@@ -349,6 +349,59 @@ test('bundled Windows ffmpeg is LGPL and includes h264_mf', () => {
   assert.match(text, /--enable-mediafoundation/);
   assert.match(text, /h264_mf/);
   assert.equal(fs.existsSync(path.join(__dirname, '..', 'vendor', 'ffmpeg', 'win32-x64', 'avcodec-61.dll')), true);
+});
+
+test('size line stays hidden unless bitrate times duration produced it', () => {
+  const bytes = plan.estimateVideoBytes('3M', 2);
+  assert.ok(bytes > 0);
+  assert.equal(visibleEstimateBytes({ indeterminate: true, estimateBytes: bytes, estimateFromDuration: true }), null);
+  assert.equal(visibleEstimateBytes({ indeterminate: true, estimateBytes: 2516582, estimateFromDuration: true }), null);
+  assert.equal(visibleEstimateBytes({ indeterminate: false, estimateBytes: 2516582 }), null);
+  assert.equal(visibleEstimateBytes({ indeterminate: false, estimateBytes: bytes, estimateFromDuration: false }), null);
+  assert.equal(visibleEstimateBytes({ indeterminate: false, estimateBytes: bytes, estimateFromDuration: true }), bytes);
+  assert.equal(visibleEstimateBytes({ indeterminate: false, estimateBytes: null, estimateFromDuration: true }), null);
+  assert.equal(plan.estimateVideoBytes('3M', null), null);
+  const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'filetools', 'panel.css'), 'utf8');
+  assert.match(css, /\.split \+ \.levels \{ margin-top: 12px; \}/);
+  assert.match(css, /\.levels button\.seg\.on:disabled \{[^}]*background: transparent/);
+  const panel = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'filetools', 'panel.js'), 'utf8');
+  assert.match(panel, /预览生成中/);
+  assert.match(panel, /filetoolsVisibleEstimate/);
+});
+
+test('each Mac package keeps only its own ffmpeg', () => {
+  const { FileMatcher } = require('app-builder-lib/out/fileMatcher');
+  const pkg = require('../package.json');
+  const from = path.resolve(__dirname, '..');
+  function keep(archName, rel, isDir) {
+    const matcher = new FileMatcher(from, path.join(from, 'out-test'), (pattern) => pattern.split('${arch}').join(archName));
+    for (const p of pkg.build.files) matcher.addPattern(p);
+    for (const p of pkg.build.mac.files) matcher.addPattern(p);
+    const filter = matcher.createFilter();
+    return filter(path.join(from, rel), { isDirectory: () => !!isDir });
+  }
+  assert.equal(keep('arm64', 'vendor/ffmpeg/darwin-arm64/ffmpeg'), true);
+  assert.equal(keep('arm64', 'vendor/ffmpeg/darwin-x64/ffmpeg'), false);
+  assert.equal(keep('x64', 'vendor/ffmpeg/darwin-x64/ffmpeg'), true);
+  assert.equal(keep('x64', 'vendor/ffmpeg/darwin-arm64/ffmpeg'), false);
+  assert.equal(keep('arm64', 'vendor/ffmpeg/darwin-arm64/libavcodec.dylib'), true);
+  assert.equal(keep('arm64', 'vendor/ffmpeg/darwin-x64/libavcodec.dylib'), false);
+  assert.equal(keep('x64', 'vendor/ffmpeg/darwin-x64/libavcodec.dylib'), true);
+  assert.equal(keep('arm64', 'vendor/ffmpeg/linux-x64/ffmpeg'), false);
+  assert.equal(keep('arm64', 'vendor/ffmpeg/win32-x64/ffmpeg.exe'), false);
+  assert.equal(keep('arm64', 'vendor/ffmpeg', true), true);
+  assert.equal(keep('arm64', 'vendor/ffmpeg/darwin-arm64', true), true);
+  assert.equal(keep('x64', 'vendor/ffmpeg/darwin-x64', true), true);
+  assert.ok(pkg.build.win.files.includes('!vendor/ffmpeg/darwin-*/**'));
+});
+
+test('mac ffmpeg workflow runs on this branch and rejects gpl encoders', () => {
+  const yml = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'ffmpeg-lgpl.yml'), 'utf8');
+  assert.match(yml, /branches: \[cursor\/file-tools-v1-2b25\]/);
+  assert.match(yml, /h264_videotoolbox/);
+  assert.match(yml, /libx264/);
+  assert.match(yml, /--disable-gpl/);
+  assert.match(yml, /native\/mac\/\*\*/);
 });
 
 test('panel title follows the job action, including queued and done', () => {

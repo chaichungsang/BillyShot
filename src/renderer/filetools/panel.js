@@ -56,6 +56,15 @@ function titleFor(v) {
   if (typeof filetoolsPanelTitle === 'function') return filetoolsPanelTitle(v);
   return '文件工具';
 }
+function sizeLineBytes(v) {
+  if (typeof filetoolsVisibleEstimate === 'function') return filetoolsVisibleEstimate(v);
+  return null;
+}
+function appendEstimate(parent, v) {
+  const n = sizeLineBytes(v);
+  if (n == null) return;
+  parent.appendChild(el('p', 'est', tr('约 {size}', { size: bytes(n) })));
+}
 function isVideoCompress(v) {
   return v.action === 'video.compress' || v.kind === 'compress-video' || v.kind === 'video.compress';
 }
@@ -110,13 +119,17 @@ function renderCompressVideo() {
   const levels = el('div', 'levels');
   const cur = view.level || 'medium';
   [['high', '高#q'], ['medium', '中#q'], ['small', '小#q']].forEach(([id, label]) => {
-    const b = button(label, 'seg' + (id === cur ? ' on' : ''), () => { view.level = id; renderPanel(view); });
+    const b = button(label, 'seg' + (id === cur ? ' on' : ''), () => {
+      view.level = id;
+      view.estimateBytes = null;
+      view.estimateFromDuration = false;
+      send('filetools:estimate', { level: id });
+      renderPanel(view);
+    });
     levels.appendChild(b);
   });
   card.appendChild(levels);
-  const est = el('p', 'est');
-  if (view.estimateBytes) est.textContent = tr('约 {size}', { size: bytes(view.estimateBytes) });
-  card.appendChild(est);
+  appendEstimate(card, view);
   card.appendChild(fileLine());
   body.appendChild(card);
   footButtons('压缩视频', () => send('filetools:run', { action: 'video.compress', options: { level: view.level || 'medium' } }));
@@ -220,11 +233,20 @@ function previewCard() {
   const split = el('div', 'split');
   split.appendChild(el('span', 'tag l', tr(isVideoCompress(view) ? '原片' : '原图')));
   split.appendChild(el('span', 'tag r', tr('压缩后')));
+  if (isVideoCompress(view)) {
+    if (view.poster) {
+      const img = document.createElement('img');
+      img.className = 'poster';
+      img.alt = '';
+      img.src = view.poster;
+      split.appendChild(img);
+    } else {
+      split.appendChild(el('span', 'poster-wait', tr('预览生成中')));
+    }
+  }
   card.appendChild(split);
   if (isVideoCompress(view)) card.appendChild(levelRow(view.phase === 'running'));
-  const est = el('p', 'est');
-  if (view.estimateBytes) est.textContent = tr('约 {size}', { size: bytes(view.estimateBytes) });
-  card.appendChild(est);
+  appendEstimate(card, view);
   card.appendChild(fileLine());
   return card;
 }

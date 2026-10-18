@@ -238,6 +238,12 @@ function createFileTools(deps) {
     return null;
   }
 
+  function durationEstimate(action, options, duration) {
+    const bytes = videoEstimate(action, options, duration);
+    if (!(Number.isFinite(bytes) && bytes > 0)) return { estimateBytes: null, estimateFromDuration: false };
+    return { estimateBytes: bytes, estimateFromDuration: true };
+  }
+
   async function openSetup(msg) {
     const info = await inspect(msg.files || []);
     let disk = '';
@@ -258,7 +264,9 @@ function createFileTools(deps) {
       names: info.files.map(baseName), width: info.width, height: info.height,
       duration: info.duration, format: info.format, quality: 72, level: 'medium', lock: true,
       blocked, disk, phase: 'setup',
-      estimateBytes: msg.kind === 'compress-video' ? videoEstimate('video.compress', { level: 'medium' }, info.duration) : null,
+      ...(msg.kind === 'compress-video'
+        ? durationEstimate('video.compress', { level: 'medium' }, info.duration)
+        : { estimateBytes: null, estimateFromDuration: false }),
     });
     closeArc();
   }
@@ -277,19 +285,25 @@ function createFileTools(deps) {
     if (action === 'pdf.make') files = naturalSort(files);
     const options = msg.options || {};
     if (!once(action + '|' + files.join('|') + '|' + JSON.stringify(options))) return;
+    const duration = msg.duration != null ? msg.duration : (panelView && panelView.duration);
     let job;
     try {
-      const need = videoEstimate(action, options, msg.duration) || 0;
+      const need = videoEstimate(action, options, duration) || 0;
       job = runner.start({ action, inputs: files, options, needBytes: need });
     } catch (e) {
       sendPanel({ phase: 'error', message: e.message, files, names: files.map(baseName) });
       closeArc();
       return;
     }
+    const est = (action === 'video.compress' || action === 'video.mp4')
+      ? durationEstimate(action, options, duration)
+      : { estimateBytes: null, estimateFromDuration: false };
     sendPanel({
       id: job.id, phase: job.state === 'queued' ? 'queued' : 'running',
       indeterminate: job.state !== 'queued',
       files, names: files.map(baseName), kind: action,
+      level: options.level || (panelView && panelView.level) || '',
+      ...est,
     });
     closeArc();
   }
@@ -497,10 +511,21 @@ function createFileTools(deps) {
   });
   ipcMain.on('filetools:estimate', async (_e, msg) => {
     try {
-      const file = panelView && panelView.files && panelView.files[0];
+      if (!panelView) return;
+      if (panelView.action === 'video.compress' || panelView.kind === 'compress-video') {
+        const level = (msg && msg.level) || panelView.level || 'medium';
+        sendPanel(Object.assign({}, panelView, { level }, durationEstimate('video.compress', { level }, panelView.duration)));
+        return;
+      }
+      const file = panelView.files && panelView.files[0];
       if (!file) return;
       const n = await image.estimateCompress(file, msg && msg.quality);
-      if (panelView) sendPanel(Object.assign({}, panelView, { estimateBytes: n }));
+      const computed = Number.isFinite(n) && n > 0;
+      if (panelView) sendPanel(Object.assign({}, panelView, {
+        estimateBytes: computed ? n : null,
+        estimateFromDuration: false,
+        estimateComputed: computed,
+      }));
     } catch { /* 估不出来就不写数字 */ }
   });
 

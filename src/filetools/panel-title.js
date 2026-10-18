@@ -2,7 +2,8 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.filetoolsPanelTitle = api.panelTitle;
+  root.filetoolsPanelTitle = api.panelTitle;
+  root.filetoolsVisibleEstimate = api.visibleEstimateBytes;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   const TITLES = {
     'image.convert': '转格式',
@@ -22,5 +23,13 @@
     const key = (job && (job.action || job.kind)) || '';
     return TITLES[key] || '文件工具';
   }
-  return { panelTitle, TITLES };
+  // 进度条还在空转时不写大小。写出来的估计必须来自码率 × 时长，不能沿用上一次的数字。
+  function visibleEstimateBytes(view) {
+    if (!view || view.indeterminate) return null;
+    if (view.estimateFromDuration !== true) return null;
+    const n = Number(view.estimateBytes);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return n;
+  }
+  return { panelTitle, TITLES, visibleEstimateBytes };
 });

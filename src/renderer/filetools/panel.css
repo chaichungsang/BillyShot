@@ -27,14 +27,17 @@ body.shot { background: #100f0e; }
   linear-gradient(#242220, #242220) right / 50% 100% no-repeat;
   position: relative; box-shadow: inset 0 0 0 1px rgba(212, 168, 75, .2); }
 .split::after { content: ''; position: absolute; left: 50%; top: 10px; bottom: 10px; width: 1px; background: var(--ft-gold); }
-.tag { position: absolute; top: 8px; font-size: 10px; color: var(--ft-gold-2); background: rgba(22, 21, 20, .8); padding: 2px 6px; border-radius: 6px; }
+.tag { position: absolute; top: 8px; z-index: 1; font-size: 10px; color: var(--ft-gold-2); background: rgba(22, 21, 20, .8); padding: 2px 6px; border-radius: 6px; }
 .tag.l { left: 8px; } .tag.r { right: 8px; }
+.split .poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+.poster-wait { position: absolute; left: 12px; right: 12px; top: 50%; transform: translateY(-50%); text-align: center; color: #8A847A; font-size: 12px; pointer-events: none; }
 .row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 .row label { font-size: 12px; color: var(--ft-mute); min-width: 36px; }
 .row input[type=range] { flex: 1; accent-color: var(--ft-gold); }
 .row em { font-style: normal; width: 28px; text-align: right; color: var(--ft-gold-2); font-variant-numeric: tabular-nums; }
 .note { margin: 8px 0 0; color: var(--ft-mute); font-size: 11.5px; }
 .est { margin: 6px 0 0; font-size: 12px; color: var(--ft-ink); }
+.split + .levels { margin-top: 12px; }
 .levels { display: flex; gap: 8px; }
 .panel button { appearance: none; -webkit-appearance: none; font: inherit; }
 .panel button.ghost { height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid #3A3733; background: transparent; color: #E8E2D6; cursor: pointer; }
@@ -42,7 +45,8 @@ body.shot { background: #100f0e; }
 .panel button.primary { height: 28px; padding: 0 14px; border-radius: 8px; border: 0; background: #D4A84B; color: #161514; font-weight: 650; cursor: pointer; }
 .levels button.seg { height: 28px; padding: 0 14px; border-radius: 8px; border: 1px solid #3A3733; background: transparent; color: #E8E2D6; cursor: pointer; }
 .levels button.seg.on { background: #D4A84B; color: #161514; border-color: transparent; font-weight: 650; }
-.levels button:disabled { opacity: .45; cursor: default; }
+.levels button.seg:disabled,
+.levels button.seg.on:disabled { background: transparent; color: #E8E2D6; border: 1px solid #3A3733; opacity: .45; cursor: default; font-weight: 600; }
 .foot { display: flex; align-items: center; gap: 10px; padding: 12px 18px 16px; }
 .track { flex: 1; height: 6px; border-radius: 99px; background: #2a2825; overflow: hidden; position: relative; }
 .track .bar { height: 100%; width: 0; background: linear-gradient(90deg, var(--ft-gold), var(--ft-gold-2)); border-radius: 99px; }

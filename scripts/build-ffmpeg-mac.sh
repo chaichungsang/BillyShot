@@ -28,9 +28,12 @@ make distclean >/dev/null 2>&1 || true
 HOST="$(uname -m)"
 CROSS=""
 CC="clang"
+X86ASM=""
 if [ "$ARCH" != "$HOST" ]; then
   CROSS="--enable-cross-compile"
   CC="clang -arch $ARCH"
+  # arm64 上交叉编 x86_64 时，本机 nasm 经常编不出对的目标码。关掉 x86asm，仍是同一套 LGPL 配置。
+  if [ "$ARCH" = "x86_64" ]; then X86ASM="--disable-x86asm"; fi
 fi
 ./configure \
   --prefix="$PREFIX" \
@@ -41,6 +44,7 @@ fi
   --disable-programs --enable-ffmpeg \
   --enable-swscale --enable-swresample --enable-avcodec --enable-avformat --enable-avfilter --enable-avutil \
   --enable-videotoolbox \
+  $X86ASM \
   --enable-protocol='file,pipe' \
   --enable-demuxer='mov,matroska,gif,image2,avi,asf,aac,mp3,ogg,wav,webm' \
   --enable-muxer='mp4,gif,image2,ipod,mov' \
@@ -52,7 +56,12 @@ fi
   --extra-ldflags='-Wl,-rpath,@loader_path' --enable-rpath
 make -j"$(sysctl -n hw.ncpu)"
 make install
-OUT="$ROOT/darwin-$ARCH"
+case "$ARCH" in
+  x86_64) FOLDER="darwin-x64" ;;
+  arm64) FOLDER="darwin-arm64" ;;
+  *) echo "unsupported arch $ARCH" >&2; exit 2 ;;
+esac
+OUT="$ROOT/$FOLDER"
 rm -rf "$OUT"
 mkdir -p "$OUT"
 cp -a "$PREFIX/bin/ffmpeg" "$OUT/"
@@ -73,7 +82,9 @@ for dep in $ffdeps; do
 done
 install_name_tool -add_rpath @loader_path "$OUT/ffmpeg" || true
 echo "Verify:"
-"$OUT/ffmpeg" -hide_banner -buildconf
-"$OUT/ffmpeg" -hide_banner -encoders
+RUN=""
+if [ "$ARCH" != "$HOST" ] && [ "$ARCH" = "x86_64" ]; then RUN="arch -x86_64"; fi
+$RUN "$OUT/ffmpeg" -hide_banner -buildconf
+$RUN "$OUT/ffmpeg" -hide_banner -encoders
 echo "MAC_FFMPEG_READY $OUT"
-echo "Copy into vendor/ffmpeg/darwin-$ARCH/ (each Mac build ships only that arch)."
+echo "Copy into vendor/ffmpeg/$FOLDER/ (each Mac build ships only that arch)."

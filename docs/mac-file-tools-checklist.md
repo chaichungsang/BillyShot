@@ -4,13 +4,14 @@
 
 Billy 要做的是实测，不是编译。不要在 `~/Projects/BillyShot` 里编任何东西。
 
-还缺两份只能在 Mac 上产生的二进制。没有它们，对应的功能在 Mac 上还不能测。产生它们的命令在文末，目录是 `/tmp/billyshot-ffmpeg-mac` 和 `/tmp/billyshot-shift-drag`。需要的话我可以等你点头再跑。仓库里已经有 Windows x64 的 LGPL ffmpeg（`vendor/ffmpeg/win32-x64`，带 `h264_mf`）。
+Mac 用的两份二进制已经在仓库里，都还没签名：
 
-打包和签名（二进制齐了之后）：
+- `vendor/ffmpeg/darwin-arm64` 和 `vendor/ffmpeg/darwin-x64`。ffmpeg 7.1.1，tag `n7.1.1`，提交 `db69d06eeeab4f46da15030a80d539efb4503ca8`。标志、runner 和 sha256 在各自的 `BUILD.txt`。两边的 `ffmpeg -encoders` 都有 `h264_videotoolbox`，没有 `libx264`、`libx265`、`libxvid`。配置带 `--disable-gpl`。x64 是在 macos-14 上交叉编译的（`--disable-x86asm`），因为 macos-13 已经停了。
+- `native/mac/ShiftDrag` 是通用二进制（arm64 + x86_64）。校验在 `native/mac/ShiftDrag.BUILD.txt`。
 
-1. Mac ffmpeg 放进 `vendor/ffmpeg/darwin-arm64` 和 `vendor/ffmpeg/darwin-x64`。每个架构的安装包只带自己那一份。
-2. `native/mac/ShiftDrag` 是 Shift 拖的默认程序。`scripts/build-mac-helper.sh` 在 Mac 上编它。应用不再用 osascript / JXA 当默认路径。托盘拖放和快捷键是退路。
-3. 用现有的 `scripts/sign-mac.js` 签整个 `.app`（证书还是 `BILLYSHOT_SIGN_DIR` 里的那对）。不要改签名脚本，也不要给新二进制单独做 ad-hoc 签名。脚本会扫包里每一个 Mach-O，包括 `ShiftDrag` 和 ffmpeg 旁边的 dylib。有漏签的会失败。
+它们由 `.github/workflows/ffmpeg-lgpl.yml` 在 push 到 `cursor/file-tools-v1-2b25` 时编出来。打进 `.app` 之后由现有的 `scripts/sign-mac.js` 签名（证书还是 `BILLYSHOT_SIGN_DIR` 里的那对）。不要改签名脚本，也不要给新二进制单独做 ad-hoc 签名。脚本会扫包里每一个 Mach-O，包括 `ShiftDrag` 和 ffmpeg 旁边的 dylib。有漏签的会失败。
+
+每个 Mac 架构的安装包只带自己的 ffmpeg：`mac.files` 先排除 `vendor/ffmpeg/darwin-*`，再按 `${arch}` 放回 `darwin-arm64` 或 `darwin-x64`。Windows 包排除全部 darwin ffmpeg。
 
 待 Billy Mac 实测：
 
@@ -28,6 +29,7 @@ Billy 要做的是实测，不是编译。不要在 `~/Projects/BillyShot` 里�
 - 完成通知：系统通知能点开文件；通知被关掉时，预览面板给出完成状态（金色圆盘上的描边勾、文件名、只有实测到才写出大小）和「在 Finder 中显示」。托盘图标闪一次金色。
 - 设置 → 关于 里能看到 LGPL ffmpeg 和 sharp / libvips（LGPL-3.0-or-later）的说明。
 - 合成 PDF：没有透明通道的图嵌成 JPEG。加了密码的 PDF 要出现「这个 PDF 加了密码，打不开」，原文件不动。
+- 压缩面板：进度还不能估算时不出现大小。能估算时，`约` 只来自码率 × 时长。处理过程中 高/中/小 是禁用的幽灵按钮。预览框和这排按钮之间是 12px。还没有海报帧时，预览里写「预览生成中」。
 
 Windows（待 Billy Windows 实测）：
 
@@ -37,33 +39,3 @@ Windows（待 Billy Windows 实测）：
 - 入口只有快捷键小窗（系统标题栏，一排键，不画弧）和托盘「文件 ▸ 文件工具…」。没有「发送到」。发送到留到 v1.1。
 - 没有 HEIF 图像扩展时，HEIC 要出现明确的错误，原文件不动。
 - sharp 用官方预编译的 `@img/sharp-win32-x64`（`npmRebuild: false`），不要用在 Linux 上重编的那份。
-
-## 只能在 Mac 上产生的二进制
-
-不要在 `~/Projects/BillyShot` 里执行。
-
-ffmpeg（VideoToolbox，无 x264，无 GPL，无 nonfree）：
-
-```sh
-mkdir -p /tmp/billyshot-ffmpeg-mac
-# 仓库可以是 /tmp/billyshot-src，不要用 ~/Projects/BillyShot
-bash /tmp/billyshot-src/scripts/build-ffmpeg-mac.sh arm64 /tmp/billyshot-ffmpeg-mac
-bash /tmp/billyshot-src/scripts/build-ffmpeg-mac.sh x86_64 /tmp/billyshot-ffmpeg-mac
-# 核对
-/tmp/billyshot-ffmpeg-mac/darwin-arm64/ffmpeg -buildconf
-/tmp/billyshot-ffmpeg-mac/darwin-arm64/ffmpeg -encoders
-```
-
-源码是 ffmpeg 7.1.1，tag `n7.1.1`，提交 `db69d06eeeab4f46da15030a80d539efb4503ca8`。编完把 `darwin-arm64` 和 `darwin-x64` 拷进 `vendor/ffmpeg/`。每个 Mac 安装包只带自己的架构。
-
-Shift 拖 helper：
-
-```sh
-mkdir -p /tmp/billyshot-shift-drag
-swiftc -O -framework Cocoa -o /tmp/billyshot-shift-drag/ShiftDrag /tmp/billyshot-src/native/mac/ShiftDrag.swift
-cp /tmp/billyshot-shift-drag/ShiftDrag /tmp/billyshot-src/native/mac/ShiftDrag
-```
-
-打进 `.app` 之后由 `scripts/sign-mac.js` 和其他 Mach-O 一起签名。
-
-GitHub Actions 工作流 `.github/workflows/ffmpeg-lgpl.yml` 可以在 macos-14 和 windows 上编同样的东西，并上传 artifact。它不会自动提交回仓库。

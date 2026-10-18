@@ -1,0 +1,7 @@
+ShiftDrag universal (arm64 + x86_64)
+unsigned: yes
+runner: 14.8.9 arm64 macos14
+sha256:
+09af6ca57189fa23131ea828c154a97166865353196674a79a8925b1b8272750  /Users/runner/work/_temp/billyshot-shift-drag/ShiftDrag
+lipo:
+Architectures in the fat file: /Users/runner/work/_temp/billyshot-shift-drag/ShiftDrag are: x86_64 arm64 

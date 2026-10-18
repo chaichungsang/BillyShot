@@ -395,6 +395,32 @@ test('each Mac package keeps only its own ffmpeg', () => {
   assert.ok(pkg.build.win.files.includes('!vendor/ffmpeg/darwin-*/**'));
 });
 
+test('committed Mac ffmpeg and ShiftDrag match their architectures', () => {
+  function header(rel) {
+    const buf = fs.readFileSync(path.join(__dirname, '..', rel));
+    return { magic: buf.slice(0, 4).toString('hex'), cpu: buf.readInt32LE(4), text: buf.toString('latin1') };
+  }
+  const arm = header('vendor/ffmpeg/darwin-arm64/ffmpeg');
+  assert.equal(arm.magic, 'cffaedfe');
+  assert.equal(arm.cpu, 0x0100000c);
+  assert.match(arm.text, /--disable-gpl/);
+  assert.equal(arm.text.includes('--enable-gpl'), false);
+  assert.equal(arm.text.includes('--enable-libx264'), false);
+  assert.match(arm.text, /h264_videotoolbox/);
+  const x64 = header('vendor/ffmpeg/darwin-x64/ffmpeg');
+  assert.equal(x64.magic, 'cffaedfe');
+  assert.equal(x64.cpu, 0x01000007);
+  assert.match(x64.text, /--disable-gpl/);
+  assert.match(x64.text, /--disable-x86asm/);
+  assert.equal(x64.text.includes('--enable-gpl'), false);
+  assert.equal(x64.text.includes('--enable-libx264'), false);
+  assert.match(x64.text, /h264_videotoolbox/);
+  assert.equal(fs.readlinkSync(path.join(__dirname, '..', 'vendor/ffmpeg/darwin-arm64/libavcodec.dylib')), 'libavcodec.61.dylib');
+  const shift = header('native/mac/ShiftDrag');
+  assert.equal(shift.magic, 'cafebabe');
+  assert.match(shift.text, /NSApplication/);
+});
+
 test('mac ffmpeg workflow runs on this branch and rejects gpl encoders', () => {
   const yml = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'ffmpeg-lgpl.yml'), 'utf8');
   assert.match(yml, /branches: \[cursor\/file-tools-v1-2b25\]/);

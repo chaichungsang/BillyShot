@@ -9,15 +9,11 @@ function emit(obj) {
 }
 
 function screenTop() {
-  let top = 0;
+  // 主屏幕是 screens[0]。不要用最高的那块，否则副屏更高时 y 会翻错。
   const screens = $.NSScreen.screens;
-  const n = screens.count;
-  for (let i = 0; i < n; i++) {
-    const f = screens.objectAtIndex(i).frame;
-    const t = f.origin.y + f.size.height;
-    if (t > top) top = t;
-  }
-  return top;
+  if (!screens || screens.count < 1) return 0;
+  const f = screens.objectAtIndex(0).frame;
+  return f.origin.y + f.size.height;
 }
 
 function flip(p) {

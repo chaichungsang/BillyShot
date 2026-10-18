@@ -1,7 +1,9 @@
 #!/bin/sh
-# 可选。只在 Mac 上编 Shift 拖的原生小工具。编不了也不影响：应用会退回 osascript + native/mac/shift-drag.jxa.js。
-# 不要单独 ad-hoc 签名。Billy 用现有的 scripts/sign-mac.js 签整个 .app，它会把包里的 Mach-O 一起签掉。
+# Shift 拖的默认路径。在 Mac 上编译，输出放进仓库的 native/mac/ShiftDrag，打进 .app。
+# 不要在 ~/Projects/BillyShot 里编。建议的目录是 /tmp/billyshot-shift-drag，编完再把二进制拷回仓库。
+# 不要单独 ad-hoc 签名。scripts/sign-mac.js 签整个 .app 时会把这个 Mach-O 和其他二进制一起签掉。
+# osascript / JXA 不是默认路径。
 set -eu
 cd "$(dirname "$0")/.."
 swiftc -O -framework Cocoa -o native/mac/ShiftDrag native/mac/ShiftDrag.swift
-echo "Built native/mac/ShiftDrag. Put it in the .app before scripts/sign-mac.js."
+echo "Built native/mac/ShiftDrag. electron-builder packs native/**, and scripts/sign-mac.js signs it."

@@ -23,6 +23,7 @@ function onCancel(fn) {
 function stop() {
   if (cancelled) return;
   cancelled = true;
+  // 先同步杀掉 ffmpeg，再退出。杀进程不能推迟：worker 一退出，后面的定时器就没了，ffmpeg 会变成孤儿。
   try { killActive(); } catch {}
   discardPartial(partial);
   send({ type: 'cancelled' });
@@ -34,17 +35,6 @@ async function perform(job) {
   const fd = fs.openSync(partial, 'wx');
   fs.closeSync(fd);
   const progress = (p) => { if (!cancelled) send({ type: 'progress', ...p }); };
-  if (job.action === 'test.hold') {
-    fs.writeFileSync(partial, 'partial');
-    send({ type: 'progress', ratio: 0.1, indeterminate: true });
-    await new Promise((resolve) => {
-      const t = setInterval(() => { if (cancelled) { clearInterval(t); resolve(); } }, 40);
-      onCancel(() => { cancelled = true; });
-    });
-    discardPartial(partial);
-    send({ type: 'cancelled' });
-    return;
-  }
   if (job.action === 'image.convert') await image.convert(job.inputs[0], partial, job.options || {});
   else if (job.action === 'image.compress') await image.compress(job.inputs[0], partial, job.options || {});
   else if (job.action === 'image.resize') await image.resize(job.inputs[0], partial, job.options || {});

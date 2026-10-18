@@ -5,6 +5,8 @@ const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const isMac = api.platform === 'darwin';
 document.body.classList.add(api.platform);
 $$('.mod').forEach((m) => (m.textContent = isMac ? '⌘' : 'Ctrl+'));
+const licence = document.getElementById('licenceNotice');
+if (licence) licence.textContent = tx('文件工具的视频处理使用 LGPL ffmpeg（动态链接，没有静态打进本程序）。图片处理使用 sharp / libvips（LGPL-3.0-or-later）。');
 
 let S = null, STATUS = {};
 const ACTIONS = [

@@ -1,0 +1,59 @@
+# Builds the LGPL ffmpeg binaries BillyShot ships, plus the Mac ShiftDrag helper.
+# Mac VideoToolbox cannot be linked from Linux. This job is the off-Mac path.
+# Artifacts are uploaded; they are not committed automatically.
+name: ffmpeg-lgpl
+on:
+  workflow_dispatch:
+jobs:
+  mac-ffmpeg:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            folder: darwin-arm64
+          - arch: x86_64
+            folder: darwin-x64
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ffmpeg ${{ matrix.arch }}
+        run: bash scripts/build-ffmpeg-mac.sh ${{ matrix.arch }} "$RUNNER_TEMP/billyshot-ffmpeg-mac"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-${{ matrix.folder }}
+          path: ${{ runner.temp }}/billyshot-ffmpeg-mac/darwin-${{ matrix.arch }}
+  mac-helper:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ShiftDrag
+        run: |
+          mkdir -p "$RUNNER_TEMP/billyshot-shift-drag"
+          swiftc -O -framework Cocoa -o "$RUNNER_TEMP/billyshot-shift-drag/ShiftDrag" native/mac/ShiftDrag.swift
+          swiftc -O -target x86_64-apple-macosx12.0 -framework Cocoa -o "$RUNNER_TEMP/billyshot-shift-drag/ShiftDrag-x64" native/mac/ShiftDrag.swift
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shiftdrag
+          path: ${{ runner.temp }}/billyshot-shift-drag
+  win-ffmpeg:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            make
+            nasm
+            pkgconf
+      - name: Build ffmpeg with h264_mf
+        shell: msys2 {0}
+        run: |
+          mkdir -p /tmp/billyshot-ffmpeg-win
+          bash scripts/build-ffmpeg-mingw.sh /tmp/billyshot-ffmpeg-win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-win32-x64
+          path: /tmp/billyshot-ffmpeg-win/vendor-win32-x64

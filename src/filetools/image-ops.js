@@ -88,6 +88,19 @@ async function estimateCompress(input, quality) {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// 合成 PDF：没有透明通道时用 JPEG（不需要无损）。有透明通道才嵌 PNG。
+async function rasterForPdf(input) {
+  const ext = path.extname(input).toLowerCase();
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bsft-'));
+  try {
+    if (ext === '.jpg' || ext === '.jpeg') return { kind: 'jpg', bytes: fs.readFileSync(input) };
+    const src = await readable(input, tmp);
+    const meta = await sharp()(src.file).metadata();
+    if (meta.hasAlpha) return { kind: 'png', bytes: await pipeline(src.file).png().toBuffer() };
+    return { kind: 'jpg', bytes: await pipeline(src.file).jpeg({ quality: 85, mozjpeg: true }).toBuffer() };
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 async function pngBuffer(input) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bsft-'));
   try {
@@ -105,4 +118,4 @@ async function meta(input) {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
-module.exports = { convert, compress, resize, estimateCompress, pngBuffer, meta };
+module.exports = { convert, compress, resize, estimateCompress, pngBuffer, rasterForPdf, meta };

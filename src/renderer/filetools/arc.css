@@ -32,12 +32,13 @@ body.shot { background: #100f0e; }
   background: #2a2825; color: var(--ft-gold-2); font: 700 10px/16px -apple-system, sans-serif; text-align: center; }
 .key .glyph { width: 18px; height: 18px; }
 .key .glyph svg { width: 18px; height: 18px; display: block; }
-.key .cap { position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%);
+.key .cap { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%);
   font: 600 11px/1.2 -apple-system, "PingFang SC", sans-serif; color: var(--ft-ink); white-space: nowrap; pointer-events: none; }
+.key.dashed .cap { top: calc(100% + 16px); }
 .key.on:not(.grey) .face { background: var(--ft-hover); box-shadow: 0 0 0 1.5px var(--ft-gold), 0 0 0 5px rgba(212, 168, 75, .28); }
 .key.on:not(.grey) .num { background: var(--ft-gold-2); color: var(--ft-graphite); }
 .key.grey .face, .key.grey .cap, .key.grey .num { opacity: .38; }
-.key.dashed::after { content: ''; position: absolute; inset: -7px; border-radius: 50%; border: 2px dashed var(--ft-gold-2); pointer-events: none; }
+.key.grey .glyph svg, .key.grey .glyph svg * { stroke: #8A847A; }
 .key.pop:not(.grey) .face { animation: ft-pop .14s ease both; }
 .key.grey.pop .face { animation: ft-grey .14s ease both; }
 @keyframes ft-pop { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
@@ -46,9 +47,9 @@ body.shot { background: #100f0e; }
 .col, .pills { position: absolute; z-index: 6; display: flex; gap: 6px; }
 .col { flex-direction: column; align-items: stretch; }
 .pills { flex-direction: row; }
-.sub { height: 26px; padding: 0 12px; border: 0; border-radius: 13px; background: var(--ft-graphite-2); color: var(--ft-ink);
+.sub { height: 28px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--ft-graphite-2); color: var(--ft-ink);
   box-shadow: 0 0 0 .5px rgba(255, 255, 255, .1) inset, 0 6px 16px rgba(0, 0, 0, .45);
-  font: 600 11.5px/26px -apple-system, "PingFang SC", sans-serif; white-space: nowrap; cursor: pointer; text-align: center; }
+  font: 600 11.5px/28px -apple-system, "PingFang SC", sans-serif; white-space: nowrap; cursor: pointer; text-align: center; }
 .sub.on, .sub:hover:not(.grey) { background: var(--ft-gold); color: var(--ft-graphite); }
 .sub.grey { opacity: .38; cursor: default; }
 .tip { position: absolute; z-index: 8; max-width: 230px; padding: 8px 10px; border-radius: 10px; background: var(--ft-graphite);

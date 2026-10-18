@@ -1,13 +1,35 @@
-# 文件工具用到的 LGPL ffmpeg
+# 文件工具用到的许可
 
-BillyShot 的视频动作（转 MP4、压缩视频、剪头尾、转 GIF）只调用仓库里的 ffmpeg，不调用 PATH 上的系统 ffmpeg（系统包经常是带 libx264 的 GPL 构建）。
+BillyShot 本体是 MIT。文件工具额外带了两份 LGPL 库，都是动态链接，没有静态打进主程序。
+
+## ffmpeg
+
+视频动作（转 MP4、压缩视频、剪头尾、转 GIF）只调用仓库里的 ffmpeg，不调用 PATH 上的系统 ffmpeg（系统包经常是带 libx264 的 GPL 构建）。
 
 - 许可：GNU LGPL 2.1 或更高。文本在 `vendor/ffmpeg/COPYING.LGPLv2.1`。
-- 链接：共享库（`.dylib` / `.dll` / `.so`），rpath 用 `$ORIGIN`，运行时从 ffmpeg 自己旁边找库。这是动态链接，不是把 ffmpeg 静态打进 BillyShot。
-- 构建：`--disable-gpl --disable-nonfree --disable-everything`，再只打开文件工具要用的解复用、解码、编码和滤镜。没有 libx264、libx265、libxvid，也没有 nonfree 编码器。
+- 链接：共享库（`.dylib` / `.dll` / `.so`），运行时从 ffmpeg 自己旁边找库。这是动态链接。
+- 构建：`--disable-gpl --disable-nonfree --disable-everything`，再只打开文件工具要用的解复用、解码、编码和滤镜。没有 `--enable-libx264`、libx265、libxvid，也没有 nonfree 编码器。
+- 源码：ffmpeg 7.1.1，tag `n7.1.1`，提交 `db69d06eeeab4f46da15030a80d539efb4503ca8`。
 - H.264：Mac 用 `h264_videotoolbox`（Apple Silicon 用 `-q:v`，Intel 用 `-b:v`，都带 `-allow_sw 1`）。Windows 用 `h264_mf`（CBR）。两边都没有硬件编码器时，退到 LGPL 自带的 `mpeg4`。应用拒绝 `libx264` / `libx265` / `libxvid`。
-- Linux 上这份用于测试的成品是 ffmpeg 7.1.1，编码器只有 mpeg4、gif、aac、mjpeg。配方在 `scripts/build-ffmpeg-lgpl.sh`。Mac / Windows 的二进制要在对应系统上编，编完放进 `vendor/ffmpeg/darwin-*` 和 `vendor/ffmpeg/win32-x64`。
-- 图片走 sharp（libvips），不走 ffmpeg。HEIC 不走 libheif：Mac 用 `sips`，Windows 试 WIC（`native/win/heic.ps1`），没有扩展就给出明确的错误，不静默失败。
-- PDF 走 pdf-lib（MIT）。
+- Linux 成品在 `vendor/ffmpeg/linux-x64`，配方在 `scripts/build-ffmpeg-lgpl.sh`。
+- Windows x64 成品在 `vendor/ffmpeg/win32-x64`（mingw-w64 交叉编译，带 `h264_mf`）。标志和校验记录在 `vendor/ffmpeg/win32-x64/BUILD.txt`，脚本是 `scripts/build-ffmpeg-mingw.sh`。
+- Mac 的 VideoToolbox 链接不了非 Mac 的系统。脚本是 `scripts/build-ffmpeg-mac.sh`，必须在 macOS 上、在 `/tmp/billyshot-ffmpeg-mac` 里跑，不要在 `~/Projects/BillyShot` 里跑。每个架构的包只带自己的 ffmpeg。
 
-替换或升级 ffmpeg 时，用 `ffmpeg -version` 确认配置行里有 `--disable-gpl`，并用 `ffmpeg -encoders` 确认没有 `libx264`。
+替换或升级 ffmpeg 时，用 `ffmpeg -buildconf` 确认有 `--disable-gpl`，并用 `ffmpeg -encoders` 确认有 `h264_videotoolbox` 或 `h264_mf`，且没有 `libx264`。
+
+## sharp / libvips
+
+图片动作走 sharp，不走 ffmpeg。
+
+- `sharp` 自己是 Apache-2.0。
+- 它动态链接的 libvips（`@img/sharp-libvips-*`）是 **LGPL-3.0-or-later**。
+- `package.json` 里 `npmRebuild` 是 `false`。打包不会在打包机上重编 sharp，用的是 npm 上的官方预编译包。`scripts/fetch-natives.js` 会把 Windows x64、Mac x64、Mac arm64 的预编译包装进 `node_modules`。
+- HEIC 不走 libheif：Mac 用 `sips`，Windows 试 WIC（`native/win/heic.ps1`），没有扩展就给出明确的错误，不静默失败。
+
+## PDF
+
+PDF 走 pdf-lib（MIT）。
+
+## 应用里的说明
+
+设置 → 关于 里有一段许可说明：视频用 LGPL ffmpeg（动态链接），图片用 sharp / libvips（LGPL-3.0-or-later）。

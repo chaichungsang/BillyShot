@@ -9,7 +9,8 @@
 | ffmpeg 7.1.1 Linux x64（LGPL，共享库） | 4.82 MB（5,026,736 字节） | 2.04 MB（2,138,517） | 1.63 MB（1,708,328） | 本仓库 `vendor/ffmpeg/linux-x64` 实测 |
 | sharp / libvips Linux x64 | 18.7 MB | 8.03 MB（8,033,202） | 6.44 MB（6,444,492） | 本机 `node_modules/@img/sharp-libvips-linux-x64` 实测 |
 | pdf-lib 1.17.1，只要 cjs 的 .js | 0.84 MB（842,340） | 0.14 MB（141,357） | — | 实测。sourcemap、`dist/`、`es/` 不打进安装包 |
-| ffmpeg Mac / Windows（同一套最小配置 + VideoToolbox 或 Media Foundation） | 约 5–12 MB | 约 2–5 MB | 约 2–4 MB | 估算。这边编不了 VideoToolbox / Media Foundation，所以还没有这两份二进制 |
+| ffmpeg 7.1.1 Windows x64（LGPL，共享库，含 h264_mf） | 4.70 MB（4,922,368 字节） | 见 BUILD.txt | — | 本仓库 `vendor/ffmpeg/win32-x64` 实测。mingw-w64 交叉编译 |
+| ffmpeg Mac（同一套最小配置 + VideoToolbox） | 约 5–12 MB | 约 2–5 MB | 约 2–4 MB | 还没有二进制。VideoToolbox 不能在非 Mac 上链接。命令在 `scripts/build-ffmpeg-mac.sh` |
 | sharp Mac arm64 / Mac x64 / Windows x64 | 约 19–22 MB | 约 8.4 / 9.2 / 8.6 MB | 约 6.2 / 7.2 / 6.7 MB | 估算，按 sharp 0.35 官方预编译包的公开体积 |
 
 加总（压缩后，粗算）：

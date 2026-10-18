@@ -92,7 +92,8 @@ for (const t of targets) {
   if (leafSha1) args.push('--pem-file', cert, '--pem-file', key, '--code-requirements-file', drFile);
   args.push(app);
   run(args);
-  // 核对每个 Mach-O 的签名都有效；用证书签时不能有任何一个还是 ad-hoc
+  // 核对每个 Mach-O 的签名都有效；用证书签时不能有任何一个还是 ad-hoc。
+  // native/mac/ShiftDrag 打进包里之后也在这张表里，和别的二进制同一套证书。
   const machos = listMachO(app);
   for (const f of machos) {
     run(['verify', f]);

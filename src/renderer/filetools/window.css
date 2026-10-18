@@ -30,7 +30,8 @@ button.gold { background: var(--ft-gold); color: var(--ft-graphite); border-colo
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .actions button { min-width: 72px; }
 .actions button small { display: block; color: var(--ft-mute); font-size: 10px; }
-.hint { margin: 12px 0 0; color: var(--ft-gold-2); font-size: 12px; }
+.hint { margin: 12px 0 0; color: #8A847A; font-size: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hint kbd { color: #E8E2D6; background: #1c1b1a; border: 1px solid #3A3733; border-radius: 6px; padding: 2px 7px; font: 600 12px/1.4 -apple-system, "Segoe UI", sans-serif; }
 .recent { margin-top: 14px; }
 .recent h3 { margin: 0 0 6px; font-size: 11px; letter-spacing: .06em; color: var(--ft-mute); font-weight: 650; }
 .recent li { list-style: none; display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-top: 1px solid #2a2825; font-size: 12px; }

@@ -33,8 +33,12 @@ function button(label, cls, on, disabled) {
 }
 
 function renderPanel(next) {
-  view = Object.assign({}, view, next);
-  $('title').textContent = tr(view.title || titleFor(view));
+  const incoming = next || {};
+  if (!incoming.action && incoming.kind && view && view.action && incoming.kind !== view.kind && incoming.kind !== view.action) {
+    view = Object.assign({}, view, incoming);
+    delete view.action;
+  } else view = Object.assign({}, view, incoming);
+  $('title').textContent = tr(titleFor(view));
   $('body').innerHTML = '';
   $('foot').innerHTML = '';
   if (view.phase === 'done') return renderDone();
@@ -49,12 +53,14 @@ function renderPanel(next) {
 }
 
 function titleFor(v) {
-  if (v.kind === 'compress-image') return '压缩图片';
-  if (v.kind === 'compress-video') return '压缩视频';
-  if (v.kind === 'trim') return '剪头尾';
-  if (v.kind === 'resize') return '改尺寸';
-  if (v.phase === 'done') return '文件工具';
+  if (typeof filetoolsPanelTitle === 'function') return filetoolsPanelTitle(v);
   return '文件工具';
+}
+function isVideoCompress(v) {
+  return v.action === 'video.compress' || v.kind === 'compress-video' || v.kind === 'video.compress';
+}
+function isImageCompress(v) {
+  return v.action === 'image.compress' || v.kind === 'compress-image' || v.kind === 'image.compress';
 }
 
 function fileLine() {
@@ -81,7 +87,7 @@ function renderCompressImage() {
   if (view.format === 'png') card.appendChild(el('p', 'note', tr('PNG 用有损量化，可能轻微变色')));
   const est = el('p', 'est');
   est.id = 'est';
-  if (view.estimateBytes) est.textContent = tr('预计约 {size}', { size: bytes(view.estimateBytes) });
+  if (view.estimateBytes) est.textContent = tr('约 {size}', { size: bytes(view.estimateBytes) });
   card.appendChild(est);
   card.appendChild(fileLine());
   body.appendChild(card);
@@ -91,8 +97,8 @@ function renderCompressImage() {
   btns.style.marginLeft = 'auto';
   btns.style.display = 'flex';
   btns.style.gap = '8px';
-  btns.appendChild(button('取消', '', () => send('filetools:close-panel')));
-  btns.appendChild(button('压缩图片', 'gold', () => send('filetools:run', { action: 'image.compress', options: { quality: Number(range.value) || 72 } }), view.blocked));
+  btns.appendChild(button('取消', 'ghost', () => send('filetools:close-panel')));
+  btns.appendChild(button('压缩图片', 'primary', () => send('filetools:run', { action: 'image.compress', options: { quality: Number(range.value) || 72 } }), view.blocked));
   foot.appendChild(btns);
   if (view.disk) body.appendChild(el('p', 'err', tr(view.disk)));
 }
@@ -104,12 +110,12 @@ function renderCompressVideo() {
   const levels = el('div', 'levels');
   const cur = view.level || 'medium';
   [['high', '高#q'], ['medium', '中#q'], ['small', '小#q']].forEach(([id, label]) => {
-    const b = button(label, id === cur ? 'on' : '', () => { view.level = id; renderPanel(view); });
+    const b = button(label, 'seg' + (id === cur ? ' on' : ''), () => { view.level = id; renderPanel(view); });
     levels.appendChild(b);
   });
   card.appendChild(levels);
   const est = el('p', 'est');
-  if (view.estimateBytes) est.textContent = tr('预计约 {size}', { size: bytes(view.estimateBytes) });
+  if (view.estimateBytes) est.textContent = tr('约 {size}', { size: bytes(view.estimateBytes) });
   card.appendChild(est);
   card.appendChild(fileLine());
   body.appendChild(card);
@@ -191,14 +197,41 @@ function footButtons(label, on) {
   btns.style.marginLeft = 'auto';
   btns.style.display = 'flex';
   btns.style.gap = '8px';
-  btns.appendChild(button('取消', '', () => send('filetools:close-panel')));
-  btns.appendChild(button(label, 'gold', on, view.blocked));
+  btns.appendChild(button('取消', 'ghost', () => send('filetools:close-panel')));
+  btns.appendChild(button(label, 'primary', on, view.blocked));
   foot.appendChild(btns);
 }
 
+function levelRow(disabled) {
+  const levels = el('div', 'levels');
+  const cur = view.level || 'medium';
+  [['high', '高#q'], ['medium', '中#q'], ['small', '小#q']].forEach(([id, label]) => {
+    const b = button(label, 'seg' + (id === cur ? ' on' : ''), () => {
+      if (disabled) return;
+      view.level = id;
+      renderPanel(view);
+    }, disabled);
+    levels.appendChild(b);
+  });
+  return levels;
+}
+function previewCard() {
+  const card = el('div', 'card');
+  const split = el('div', 'split');
+  split.appendChild(el('span', 'tag l', tr(isVideoCompress(view) ? '原片' : '原图')));
+  split.appendChild(el('span', 'tag r', tr('压缩后')));
+  card.appendChild(split);
+  if (isVideoCompress(view)) card.appendChild(levelRow(view.phase === 'running'));
+  const est = el('p', 'est');
+  if (view.estimateBytes) est.textContent = tr('约 {size}', { size: bytes(view.estimateBytes) });
+  card.appendChild(est);
+  card.appendChild(fileLine());
+  return card;
+}
 function renderRunning() {
   const body = $('body');
-  body.appendChild(fileLine());
+  if (isVideoCompress(view) || isImageCompress(view)) body.appendChild(previewCard());
+  else body.appendChild(fileLine());
   const foot = $('foot');
   if (view.indeterminate) {
     foot.appendChild(el('div', 'status', tr('处理中…')));
@@ -215,7 +248,7 @@ function renderRunning() {
     foot.appendChild(track);
     foot.appendChild(el('div', 'pct', pct));
   }
-  foot.appendChild(button('取消', '', () => send('filetools:cancel')));
+  foot.appendChild(button('取消', 'ghost', () => send('filetools:cancel')));
 }
 
 function renderQueued() {
@@ -229,25 +262,27 @@ function renderQueued() {
   const foot = $('foot');
   const track = el('div', 'track dashed');
   foot.appendChild(track);
-  foot.appendChild(button('等待中', '', () => {}, true));
-  foot.appendChild(button('取消', '', () => send('filetools:cancel')));
+  foot.appendChild(button('等待中', 'ghost', () => {}, true));
+  foot.appendChild(button('取消', 'ghost', () => send('filetools:cancel')));
 }
 
 function renderDone() {
   const body = $('body');
   const box = el('div', 'done');
-  box.appendChild(el('div', 'check', '✓'));
+  const check = el('div', 'check');
+  check.innerHTML = '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#161514" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 9.5 17 19 7.5"/></svg>';
+  box.appendChild(check);
   box.appendChild(el('h2', '', tr('完成')));
   box.appendChild(el('p', '', view.fileName || ''));
-  if (view.bytes != null && Number.isFinite(Number(view.bytes))) box.appendChild(el('p', '', bytes(view.bytes)));
+  if (view.measured && view.bytes != null && Number.isFinite(Number(view.bytes))) box.appendChild(el('p', '', bytes(view.bytes)));
   body.appendChild(box);
   const foot = $('foot');
-  foot.appendChild(button(view.revealLabel || '在 Finder 中显示', 'gold', () => send('filetools:reveal', { file: view.file })));
+  foot.appendChild(button(view.revealLabel || '在 Finder 中显示', 'primary', () => send('filetools:reveal', { file: view.file })));
 }
 
 function renderError() {
   $('body').appendChild(el('p', 'err', tr(view.message || '没有完成')));
-  $('foot').appendChild(button('关闭#ft', '', () => send('filetools:close-panel')));
+  $('foot').appendChild(button('关闭#ft', 'ghost', () => send('filetools:close-panel')));
 }
 
 $('close').addEventListener('click', () => send('filetools:close-panel'));

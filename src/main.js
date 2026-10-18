@@ -13,6 +13,7 @@ const i18n = require('./i18n');
 const t = i18n.t;
 const { createPresent } = require('./present');
 const { createFileTools } = require('./filetools/bridge');
+const { noticeForRegisterFailure } = require('./hotkey-notice');
 const { finalizeMp4 } = require('./mp4fix');
 const os = require('os');
 
@@ -588,9 +589,14 @@ function checkHotkeyConflicts(attempt = 0) {
     }
   }
   if (settingsWin && !settingsWin.isDestroyed()) settingsWin.webContents.send('settings:changed');
-  // 演示模式 / 聚光灯是新加的快捷键：被占用时只在设置页显示红点，不在每次启动时弹通知
-  const rest = failedHotkeys().filter((a) => a !== 'presentMode' && a !== 'spotlight');
-  if (rest.length) notify(t('有快捷键被其他软件占用'), t('{list} 不可用，请在 设置 → 快捷键 修改', { list: rest.map((a) => t('{name}（{key}）', { name: HOTKEY_NAMES[a] ? t(HOTKEY_NAMES[a]) : a, key: settings.get().hotkeys[a].keyboard })).join(t('、')) }));
+  // register 返回 false 或抛错时，每个「动作 + 这组键」只提醒一次，并指向设置。同一组键下次启动不再弹。
+  const names = {};
+  for (const a of Object.keys(HOTKEY_NAMES)) names[a] = t(HOTKEY_NAMES[a]);
+  const note = noticeForRegisterFailure(hotkeyStatus, settings.get().hotkeys, (settings.get().general || {}).hotkeyFailNotified || {}, names);
+  if (note.notify) {
+    settings.set({ general: { hotkeyFailNotified: note.notified } });
+    notify(t(note.title), t('{list} 没能注册。请到 设置 → 快捷键 换一个。', { list: note.list }), () => openSettings('hotkeys'));
+  }
 }
 
 // ---------------------------------------------------------------- 截图覆盖层

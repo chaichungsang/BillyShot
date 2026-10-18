@@ -10,6 +10,7 @@ const { ffmpegBin } = require('./ffmpeg-bin');
 const image = require('./image-ops');
 const { isHeic } = require('./heic');
 const { decide } = require('./shift-drag-policy');
+const { panelTitle } = require('./panel-title');
 const { ringPng } = require('./tray-ring');
 
 function baseName(file) { return path.basename(file || ''); }
@@ -26,9 +27,10 @@ function contentFrame(placement, area, column) {
   });
   if (column && placement.angles.length) {
     const p = point(placement.angles[placement.angles.length - 1], placement.radius);
-    maxY = Math.max(maxY, p.y + 210);
-    minX = Math.min(minX, p.x - 80);
-    maxX = Math.max(maxX, p.x + 80);
+    // 列在「改尺寸」标签基线下面，右边还要给提示留 12px。
+    maxY = Math.max(maxY, p.y + 250);
+    minX = Math.min(minX, p.x - 90);
+    maxX = Math.max(maxX, p.x + 280);
   }
   const width = Math.ceil(maxX - minX + pad * 2);
   const height = Math.ceil(maxY - minY + pad * 2);
@@ -55,6 +57,8 @@ function createFileTools(deps) {
   let panelView = null;
   let anchor = 'tray';
   let watcher = null;
+  let watchWanted = false;
+  let watchBackoff = 800;
   let lastProbe = { ok: true, permission: 'none' };
   let trayBase = null;
   let trayTimer = null;
@@ -178,6 +182,12 @@ function createFileTools(deps) {
   }
 
   function sendPanel(view) {
+    const kindAction = { 'compress-image': 'image.compress', 'compress-video': 'video.compress', trim: 'video.trim', resize: 'image.resize' };
+    let action = view.action;
+    if (!action && view.kind && kindAction[view.kind]) action = kindAction[view.kind];
+    else if (!action && typeof view.kind === 'string' && view.kind.includes('.')) action = view.kind;
+    view = Object.assign({}, view, action ? { action } : {});
+    view.title = panelTitle(view);
     panelView = view;
     const win = ensurePanel();
     const push = () => { try { win.webContents.send('filetools:panel', view); } catch {} };
@@ -203,7 +213,9 @@ function createFileTools(deps) {
 
   function sendTools(extra) {
     const win = ensureTools();
-    const payload = Object.assign({ platform: process.platform, recent: recent.slice(0, 8) }, extra || {});
+    let hotkey = '';
+    try { hotkey = ((settings.get().hotkeys || {}).fileTools || {}).keyboard || ''; } catch {}
+    const payload = Object.assign({ platform: process.platform, recent: recent.slice(0, 8), hotkey }, extra || {});
     const push = () => { try { win.webContents.send('filetools:window', payload); } catch {} };
     if (win.webContents.isLoading()) win.webContents.once('did-finish-load', push);
     else push();
@@ -324,8 +336,9 @@ function createFileTools(deps) {
     flashTray();
     const panelOpen = panelWin && !panelWin.isDestroyed() && panelWin.isVisible();
     const showDone = () => sendPanel({
-      phase: 'done', file, fileName: baseName(file),
+      phase: 'done', action: job.action, file, fileName: baseName(file),
       bytes: Number.isFinite(bytes) ? bytes : null,
+      measured: Number.isFinite(bytes),
       revealLabel: revealLabel(), files: job.inputs,
     });
     let notified = false;
@@ -394,16 +407,32 @@ function createFileTools(deps) {
     return p.replace(/app\.asar(?=$|\/|\\)/, 'app.asar.unpacked');
   }
 
+  function scheduleWatch() {
+    const wait = watchBackoff;
+    watchBackoff = Math.min(watchBackoff * 2, 15000);
+    setTimeout(() => { if (watchWanted && !watcher) startWatch(); }, wait);
+  }
+
   function startWatch() {
-    if (!isMac || watcher) return;
+    if (!isMac || watcher || !watchWanted) return;
     const root = outsideAsar(path.join(R('..'), 'native', 'mac'));
     const bin = path.join(root, 'ShiftDrag');
-    const jxa = path.join(root, 'shift-drag.jxa.js');
-    const cmd = fs.existsSync(bin) ? bin : 'osascript';
-    const args = fs.existsSync(bin) ? [] : ['-l', 'JavaScript', jxa];
+    // 默认只跑编译好的 Swift helper。没有它时不退回 osascript；托盘拖放和快捷键仍然可用。
+    if (!fs.existsSync(bin)) {
+      log('shift-drag helper missing');
+      lastProbe = { ok: false, permission: 'none' };
+      return;
+    }
     try {
-      watcher = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-    } catch (e) { log('shift-drag spawn', e.message); lastProbe = { ok: false }; return; }
+      watcher = spawn(bin, [], { stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (e) {
+      log('shift-drag spawn', e.message);
+      watcher = null;
+      lastProbe = { ok: false };
+      scheduleWatch();
+      return;
+    }
+    watchBackoff = 800;
     let buf = '';
     watcher.stdout.on('data', (chunk) => {
       buf += chunk.toString();
@@ -416,10 +445,13 @@ function createFileTools(deps) {
         try { msg = JSON.parse(line); } catch { continue; }
         if (msg.type === 'ready') lastProbe = { ok: msg.ok !== false, permission: msg.permission || 'none', needsPermission: !!msg.needsPermission };
         else if (msg.type === 'shift-drag' || msg.type === 'move') showCatcher('shift', { x: msg.x, y: msg.y });
-        else if (msg.type === 'shift-up') closeArc();
+        else if (msg.type === 'up' || msg.type === 'shift-up') closeArc();
       }
     });
-    watcher.on('exit', () => { watcher = null; });
+    watcher.on('exit', () => {
+      watcher = null;
+      if (watchWanted) scheduleWatch();
+    });
   }
 
   function syncShiftDrag() {
@@ -427,8 +459,13 @@ function createFileTools(deps) {
     const ft = (settings.get().fileTools) || {};
     const choice = decide(ft, lastProbe);
     // v1 不弹权限页（07 只是备用）。策略函数仍保留「暂不」，这里只在确定不需要权限时启动。
-    if (choice.action === 'start' && !choice.prompt) startWatch();
-    else stopWatch();
+    if (choice.action === 'start' && !choice.prompt) {
+      watchWanted = true;
+      startWatch();
+    } else {
+      watchWanted = false;
+      stopWatch();
+    }
   }
 
   ipcMain.on('filetools:run', (_e, msg) => startFrom(msg || {}));

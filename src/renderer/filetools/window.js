@@ -15,8 +15,28 @@ function send(ch, extra) {
 function pathsFrom(list) {
   return [...list].map((f) => (window.api && api.pathForFile ? api.pathForFile(f) : '')).filter(Boolean);
 }
+function macChip(acc) {
+  const map = { Control: '⌃', Ctrl: '⌃', Alt: '⌥', Option: '⌥', Shift: '⇧', Command: '⌘', Cmd: '⌘', Meta: '⌘' };
+  return String(acc || 'Control+Alt+F').split('+').map((p) => map[p] || p).join('');
+}
+function chipText(payload) {
+  const plat = (payload && (payload.platform || (payload.shot === 'win' ? 'win32' : payload.shot === 'mac' ? 'darwin' : '')))
+    || (document.body.classList.contains('win') ? 'win32' : 'darwin');
+  const acc = payload && payload.hotkey;
+  if (plat === 'win32') return acc || 'Ctrl+Shift+Alt+F';
+  return macChip(acc || 'Control+Alt+F');
+}
+function paintHint(payload) {
+  const hint = document.getElementById('hintText');
+  const chip = document.getElementById('chip');
+  if (hint) hint.textContent = tr('拖不到菜单栏图标时用快捷键');
+  if (chip) chip.textContent = chipText(payload || {});
+}
+paintHint(null);
+
 function renderWindow(payload) {
   if (!payload) return;
+  paintHint(payload);
   if (payload.platform === 'darwin' || payload.shot === 'mac') document.body.classList.add('mac');
   if (payload.platform === 'win32' || payload.shot === 'win') document.body.classList.add('win');
   if (payload.files) files = payload.files;

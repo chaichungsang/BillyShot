@@ -72,27 +72,32 @@ app.whenReady().then(async () => {
   await shoot(arc, 'ring-recording.png');
   arc.destroy();
 
-  const panel = await open(path.join(root, 'filepanel.html'), { width: 500, height: 520, x: 40, y: 40 });
+  const panel = await open(path.join(root, 'filepanel.html'), { width: 500, height: 640, x: 40, y: 40 });
   await panel.webContents.executeJavaScript('document.body.classList.add("shot")');
   panel.show();
-  const base = { names: ['示例-截图.png'], format: 'png', quality: 72, ratio: 0.62 };
-  await panel.webContents.executeJavaScript('renderPanel(' + JSON.stringify({ ...base, phase: 'running', kind: 'compress-image', ratio: 0.62, indeterminate: false }) + ')');
-  await new Promise((r) => setTimeout(r, 150));
-  await shoot(panel, 'preview-progress.png');
-
-  await panel.webContents.executeJavaScript('renderPanel(' + JSON.stringify({ ...base, phase: 'queued', kind: 'compress-image' }) + ')');
-  await new Promise((r) => setTimeout(r, 120));
-  await shoot(panel, 'preview-queued.png');
-
-  await panel.webContents.executeJavaScript('renderPanel(' + JSON.stringify({ ...base, phase: 'running', indeterminate: true, names: ['示例-录屏.mov'] }) + ')');
-  await new Promise((r) => setTimeout(r, 120));
-  await shoot(panel, 'preview-indeterminate.png');
-
-  await panel.webContents.executeJavaScript('renderPanel(' + JSON.stringify({
-    phase: 'done', fileName: '示例-截图-compressed.png', bytes: 734003, revealLabel: '在 Finder 中显示',
-  }) + ')');
-  await new Promise((r) => setTimeout(r, 120));
-  await shoot(panel, 'done-state.png');
+  async function showPanel(view, name) {
+    await panel.webContents.executeJavaScript('renderPanel(' + JSON.stringify(view) + ')');
+    await new Promise((r) => setTimeout(r, 80));
+    const h = await panel.webContents.executeJavaScript('document.getElementById("panel").offsetHeight');
+    panel.setContentSize(500, Math.max(120, h));
+    await new Promise((r) => setTimeout(r, 80));
+    await shoot(panel, name);
+  }
+  await showPanel({
+    phase: 'running', action: 'video.compress', kind: 'compress-video',
+    names: ['示例-录屏.mov'], level: 'medium', ratio: 0.62, indeterminate: false, estimateBytes: 2516582,
+  }, 'preview-progress.png');
+  await showPanel({
+    phase: 'queued', action: 'video.compress', kind: 'compress-video', names: ['示例-录屏.mov'],
+  }, 'preview-queued.png');
+  await showPanel({
+    phase: 'running', action: 'video.compress', kind: 'compress-video', indeterminate: true,
+    names: ['示例-录屏.mov'], level: 'medium',
+  }, 'preview-indeterminate.png');
+  await showPanel({
+    phase: 'done', action: 'image.compress', fileName: '示例-截图-compressed.png',
+    bytes: 734003, measured: true, revealLabel: '在 Finder 中显示',
+  }, 'done-state.png');
   panel.destroy();
 
   const tools = await open(path.join(root, 'filetools.html'), { width: 400, height: 360, x: 40, y: 40 });

@@ -31,8 +31,8 @@ function lowerPriority(pid) {
   }
 }
 
-function spawnWorker() {
-  const script = path.join(__dirname, 'run-job.js');
+function spawnWorker(script) {
+  script = script || path.join(__dirname, 'run-job.js');
   if (process.versions && process.versions.electron) {
     try {
       const { utilityProcess } = require('electron');
@@ -63,6 +63,7 @@ function spawnWorker() {
 class JobRunner {
   constructor(hooks = {}) {
     this.hooks = hooks;
+    this.workerScript = hooks.workerScript || null;
     this.jobs = new Map();
     this.queue = new FileJobQueue({
       isRecording: () => !!this._recording,
@@ -110,14 +111,15 @@ class JobRunner {
       discardPartial(job.partial);
       if (this.hooks.onUpdate) this.hooks.onUpdate(job, { state: 'cancelled' });
     } else if (where === 'running' && job.worker) {
+      job.cancelRequested = true;
       try { job.worker.send({ type: 'cancel' }); } catch {}
-      setTimeout(() => { if (job.state === 'running') job.worker.kill(); }, 700);
+      setTimeout(() => { if (job.state === 'running' && job.worker) job.worker.kill(); }, 700);
     }
     return where;
   }
   _execute(job) {
     return new Promise((resolve) => {
-      const worker = spawnWorker();
+      const worker = spawnWorker(this.workerScript);
       job.worker = worker;
       job.state = 'running';
       if (this.hooks.onUpdate) this.hooks.onUpdate(job, { state: 'running' });
@@ -143,7 +145,10 @@ class JobRunner {
         else if (msg.type === 'estimate') finish({ state: 'estimate', bytes: msg.bytes });
       });
       worker.onExit(() => {
-        if (!settled) finish({ state: job.state === 'cancelled' ? 'cancelled' : 'error', message: '任务进程已退出' });
+        if (!settled) {
+          const cancelled = job.cancelRequested || job.state === 'cancelled';
+          finish({ state: cancelled ? 'cancelled' : 'error', message: cancelled ? '' : '任务进程已退出' });
+        }
       });
       const { worker: _w, ...payload } = job;
       worker.send(payload);
@@ -157,4 +162,4 @@ class JobRunner {
   }
 }
 
-module.exports = { JobRunner, freeBytes, killTree, lowerPriority };
+module.exports = { JobRunner, freeBytes, killTree, lowerPriority, spawnWorker };

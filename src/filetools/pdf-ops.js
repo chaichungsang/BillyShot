@@ -2,7 +2,26 @@
 const fs = require('fs');
 const { PDFDocument } = require('pdf-lib');
 const { naturalSort, kindOf } = require('./plan');
-const { pngBuffer } = require('./image-ops');
+const { rasterForPdf } = require('./image-ops');
+
+const ENCRYPTED = '这个 PDF 加了密码，打不开。文件没有被修改。';
+
+function friendlyPdfError(err) {
+  const msg = String((err && err.message) || err || '');
+  if (/encrypt|password/i.test(msg)) return Object.assign(new Error(ENCRYPTED), { code: 'EPDF_ENCRYPTED' });
+  return err;
+}
+
+function tight(bytes) {
+  // Buffer.slice 不复制，pdf-lib 会从整块池的开头读，JPEG 的 SOI 就不在 0。
+  const u8 = bytes instanceof Uint8Array ? bytes : Uint8Array.from(bytes);
+  return Uint8Array.prototype.slice.call(u8);
+}
+
+async function loadPdf(bytes) {
+  try { return await PDFDocument.load(bytes); }
+  catch (err) { throw friendlyPdfError(err); }
+}
 
 async function makePdf(inputs, dest) {
   const ordered = naturalSort(inputs);
@@ -10,12 +29,13 @@ async function makePdf(inputs, dest) {
   for (const file of ordered) {
     const kind = kindOf(file);
     if (kind === 'pdf') {
-      const src = await PDFDocument.load(fs.readFileSync(file));
+      const src = await loadPdf(fs.readFileSync(file));
       const pages = await doc.copyPages(src, src.getPageIndices());
       pages.forEach((p) => doc.addPage(p));
     } else if (kind === 'image') {
-      const png = await pngBuffer(file);
-      const img = await doc.embedPng(png);
+      const raster = await rasterForPdf(file);
+      const bytes = tight(raster.bytes);
+      const img = raster.kind === 'jpg' ? await doc.embedJpg(bytes) : await doc.embedPng(bytes);
       const page = doc.addPage([img.width, img.height]);
       page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
     } else {
@@ -27,4 +47,4 @@ async function makePdf(inputs, dest) {
   return { pages: doc.getPageCount(), order: ordered.map((f) => require('path').basename(f)) };
 }
 
-module.exports = { makePdf };
+module.exports = { makePdf, loadPdf, friendlyPdfError, ENCRYPTED };

@@ -1,16 +1,28 @@
 // 视频只调用 LGPL ffmpeg。H.264 用系统硬件编码器；没有就退到 LGPL 的 mpeg4，从不用 libx264。
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const { ffmpegBin, listEncoders } = require('./ffmpeg-bin');
 const { encodePlan, codecArgs, LEVELS, scaleFilter, FORBIDDEN_ENCODERS, parseProgress } = require('./plan');
 
 let encoderCache = null;
 let activeChild = null;
 
+// Windows 上 worker 退出很快，400ms 后再 SIGKILL 根本来不及，ffmpeg 会变成孤儿。
+// 所以在 worker 退出之前同步杀掉整棵进程树：Windows 用 taskkill /T /F，其他系统直接 SIGKILL。
+function killProcessTree(pid, platform = process.platform, spawnSyncImpl = spawnSync) {
+  if (!pid) return { killed: false };
+  if (platform === 'win32') {
+    spawnSyncImpl('taskkill', ['/pid', String(pid), '/t', '/f'], { stdio: 'ignore' });
+    return { killed: true, how: 'taskkill' };
+  }
+  try { process.kill(pid, 'SIGKILL'); } catch {}
+  return { killed: true, how: 'SIGKILL' };
+}
+
 function killActive() {
   const child = activeChild;
-  if (!child || child.killed) return;
-  try { child.kill('SIGTERM'); } catch {}
-  setTimeout(() => { try { child.kill('SIGKILL'); } catch {} }, 400);
+  activeChild = null;
+  if (!child || !child.pid) return { killed: false };
+  return killProcessTree(child.pid);
 }
 function encoders() {
   if (encoderCache) return encoderCache;
@@ -57,7 +69,8 @@ function buildArgs({ action, input, output, options, encoder, platform, arch, du
     const args = ['-y', '-hide_banner', '-nostats', '-progress', 'pipe:1', '-i', input, '-ss', String(start)];
     if (end != null) args.push('-to', String(end));
     else if (span != null) args.push('-t', String(span));
-    args.push('-filter_complex', vf, '-loop', '0', output);
+    // 半成品是 *.gif.part。不写 -f 的话 ffmpeg 认不出封装，会报 Invalid argument。
+    args.push('-filter_complex', vf, '-loop', '0', '-f', 'gif', output);
     assertNoGpl(args);
     return { args, indeterminate: span == null && end == null && duration == null };
   }
@@ -70,7 +83,7 @@ function buildArgs({ action, input, output, options, encoder, platform, arch, du
   }
   args.push('-map', '0:v:0', '-map', '0:a:0?');
   if (vf) args.push('-vf', vf);
-  args.push(...vargs, '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', output);
+  args.push(...vargs, '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', '-f', 'mp4', output);
   assertNoGpl(args);
   return { args, indeterminate: !duration };
 }
@@ -89,12 +102,7 @@ function spawnFfmpeg(bin, args, { duration, onProgress, isCancelled }) {
     const timer = setInterval(() => {
       if (isCancelled && isCancelled()) kill();
     }, 120);
-    const kill = () => {
-      try {
-        if (process.platform === 'win32') spawn('taskkill', ['/pid', String(child.pid), '/t', '/f'], { stdio: 'ignore' });
-        else child.kill('SIGTERM');
-      } catch { try { child.kill('SIGTERM'); } catch {} }
-    };
+    const kill = () => { killProcessTree(child.pid); };
     child.stderr.on('data', (b) => { stderr += b.toString(); });
     child.stdout.on('data', (b) => {
       buf += b.toString();
@@ -147,4 +155,4 @@ async function transcode(spec, hooks) {
   throw last || Object.assign(new Error('encode failed'), { code: 'EFFMPEG' });
 }
 
-module.exports = { transcode, buildArgs, durationSeconds, encoders, killActive };
+module.exports = { transcode, buildArgs, durationSeconds, encoders, killActive, killProcessTree };

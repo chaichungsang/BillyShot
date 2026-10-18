@@ -13,10 +13,12 @@ const { nextTo } = require('../src/filetools/paths');
 const plan = require('../src/filetools/plan');
 const { FileJobQueue } = require('../src/filetools/queue');
 const { decide, afterPrompt } = require('../src/filetools/shift-drag-policy');
-const { buildArgs, transcode } = require('../src/filetools/video-ops');
+const { buildArgs, transcode, killProcessTree } = require('../src/filetools/video-ops');
 const { decodeHeic, HEIC_MESSAGE } = require('../src/filetools/heic');
 const image = require('../src/filetools/image-ops');
-const { makePdf } = require('../src/filetools/pdf-ops');
+const { makePdf, friendlyPdfError, ENCRYPTED } = require('../src/filetools/pdf-ops');
+const { panelTitle } = require('../src/filetools/panel-title');
+const { noticeForRegisterFailure, registerResult } = require('../src/hotkey-notice');
 const { JobRunner } = require('../src/filetools/jobs');
 const { PDFDocument } = require('pdf-lib');
 
@@ -125,6 +127,15 @@ test('GIF refuses a span over 15s and refuses an unknown span', () => {
   assert.equal(built.args[built.args.indexOf('-to') + 1], '10');
   assert.equal(built.args.includes('-t'), false);
   assert.equal(built.args.includes('15'), false);
+  assert.equal(built.args[built.args.length - 3], '-f');
+  assert.equal(built.args[built.args.length - 2], 'gif');
+  const mp4 = buildArgs({
+    action: 'video.mp4', input: 'a.mov', output: 'a.mp4.part', options: {},
+    encoder: 'mpeg4', platform: 'linux', duration: 2,
+  });
+  assert.equal(mp4.args[mp4.args.length - 3], '-f');
+  assert.equal(mp4.args[mp4.args.length - 2], 'mp4');
+  assert.equal(mp4.args[mp4.args.length - 1], 'a.mp4.part');
 });
 
 test('encoders stay LGPL: no libx264, VideoToolbox quality vs bitrate, Media Foundation CBR', () => {
@@ -225,14 +236,15 @@ test('Make PDF mixes images and PDF pages in natural filename order', async () =
   const widths = doc.getPages().map((p) => Math.round(p.getWidth()));
   assert.deepEqual(widths, [220, 100, 300]);
   assert.equal(made.pages, 3);
+  assert.equal(fs.readFileSync(out).includes(Buffer.from('/DCTDecode')), true);
 });
 
 test('cancel kills the worker and deletes the partial', async () => {
   const dir = fs.mkdtempSync(path.join(root, 'cancel-'));
   const png = path.join(dir, 'hold.png');
   await samplePng(png, 8, 8, 'white');
-  const runner = new JobRunner();
-  const job = runner.start({ action: 'test.hold', inputs: [png], options: {} });
+  const runner = new JobRunner({ workerScript: path.join(__dirname, 'hold-worker.js') });
+  const job = runner.start({ action: 'image.compress', inputs: [png], options: {} });
   await waitFor(() => job.worker && job.worker.pid() && fs.existsSync(job.partial));
   const pid = job.worker.pid();
   assert.equal(runner.cancel(job.id), 'running');
@@ -245,9 +257,9 @@ test('a second job waits, and nothing runs while recording', async () => {
   const dir = fs.mkdtempSync(path.join(root, 'queue-'));
   const png = path.join(dir, 'q.png');
   await samplePng(png, 8, 8, 'white');
-  const runner = new JobRunner();
+  const runner = new JobRunner({ workerScript: path.join(__dirname, 'hold-worker.js') });
   runner.setRecording(true);
-  const job = runner.start({ action: 'test.hold', inputs: [png], options: {} });
+  const job = runner.start({ action: 'image.compress', inputs: [png], options: {} });
   assert.equal(job.state, 'queued');
   await new Promise((r) => setTimeout(r, 80));
   assert.equal(fs.existsSync(job.partial), false);
@@ -292,11 +304,12 @@ test('video actions through the LGPL ffmpeg, including a short GIF', { timeout: 
   assert.equal(fs.existsSync(tooLong), false);
 });
 
-test('Windows default shortcut avoids AltGr and stays customizable', () => {
+test('Windows default shortcut avoids AltGr and editor Ctrl+Shift+F', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'settings.js'), 'utf8');
   assert.match(src, /Control\+Alt\+F/);
-  assert.match(src, /Ctrl\+Shift\+F/);
+  assert.match(src, /Ctrl\+Shift\+Alt\+F/);
   assert.match(src, /AltGr/);
+  assert.equal(src.includes("fileTools: { keyboard: isMac ? 'Control+Alt+F' : 'Ctrl+Shift+F'"), false);
 });
 
 test('progress numbers stay empty when duration is unknown', () => {
@@ -308,4 +321,176 @@ test('progress numbers stay empty when duration is unknown', () => {
   assert.equal(unknown.ratio, null);
   assert.equal(plan.estimateVideoBytes('3M', null), null);
   assert.equal(plan.estimateVideoBytes('3M', 2) > 0, true);
+});
+
+test('x64 sharp prebuilds stay official binaries with npmRebuild false', () => {
+  const pkg = require('../package.json');
+  assert.equal(pkg.build.npmRebuild, false);
+  const winDir = path.join(__dirname, '..', 'node_modules', '@img', 'sharp-win32-x64', 'lib');
+  const winName = fs.readdirSync(winDir).find((f) => f.endsWith('.node'));
+  const winBuf = fs.readFileSync(path.join(winDir, winName));
+  assert.equal(winBuf.slice(0, 2).toString(), 'MZ');
+  const pe = winBuf.readUInt32LE(0x3c);
+  assert.equal(winBuf.readUInt16LE(pe + 4), 0x8664);
+  assert.equal(fs.existsSync(path.join(winDir, 'libvips-42.dll')), true);
+  const macDir = path.join(__dirname, '..', 'node_modules', '@img', 'sharp-darwin-x64', 'lib');
+  const macName = fs.readdirSync(macDir).find((f) => f.endsWith('.node'));
+  const macBuf = fs.readFileSync(path.join(macDir, macName));
+  assert.equal(macBuf.slice(0, 4).toString('hex'), 'cffaedfe');
+  assert.equal(macBuf.readInt32LE(4), 0x01000007);
+});
+
+test('bundled Windows ffmpeg is LGPL and includes h264_mf', () => {
+  const exe = path.join(__dirname, '..', 'vendor', 'ffmpeg', 'win32-x64', 'ffmpeg.exe');
+  const text = fs.readFileSync(exe).toString('latin1');
+  assert.match(text, /--disable-gpl/);
+  assert.equal(text.includes('--enable-gpl'), false);
+  assert.equal(text.includes('--enable-libx264'), false);
+  assert.match(text, /--enable-mediafoundation/);
+  assert.match(text, /h264_mf/);
+  assert.equal(fs.existsSync(path.join(__dirname, '..', 'vendor', 'ffmpeg', 'win32-x64', 'avcodec-61.dll')), true);
+});
+
+test('panel title follows the job action, including queued and done', () => {
+  assert.equal(panelTitle({ action: 'video.compress', kind: 'compress-image', phase: 'running' }), '压缩视频');
+  assert.equal(panelTitle({ action: 'video.compress', phase: 'queued' }), '压缩视频');
+  assert.equal(panelTitle({ action: 'video.trim', phase: 'done' }), '剪头尾');
+  assert.equal(panelTitle({ kind: 'compress-image' }), '压缩图片');
+  assert.equal(panelTitle({ action: 'image.resize' }), '改尺寸');
+});
+
+test('shortcut register failure is noticed once per key', () => {
+  assert.equal(registerResult(false), 'fail');
+  assert.equal(registerResult(true), 'ok');
+  assert.equal(registerResult(() => { throw new Error('busy'); }), 'fail');
+  const names = { fileTools: '文件工具' };
+  const status = { fileTools: { keyboard: registerResult(false) } };
+  const hotkeys = { fileTools: { keyboard: 'Ctrl+Shift+Alt+F' } };
+  const once = noticeForRegisterFailure(status, hotkeys, {}, names);
+  assert.equal(once.notify, true);
+  assert.match(once.body, /设置 → 快捷键/);
+  assert.match(once.body, /Ctrl\+Shift\+Alt\+F/);
+  const again = noticeForRegisterFailure(status, hotkeys, once.notified, names);
+  assert.equal(again.notify, false);
+  const changed = noticeForRegisterFailure(
+    { fileTools: { keyboard: registerResult(() => { throw new Error('no'); }) } },
+    { fileTools: { keyboard: 'Ctrl+Alt+9' } },
+    once.notified,
+    names,
+  );
+  assert.equal(changed.notify, true);
+  const ok = noticeForRegisterFailure({ fileTools: { keyboard: 'ok' } }, hotkeys, {}, names);
+  assert.equal(ok.notify, false);
+});
+
+test('Windows cancel uses taskkill /T /F before the worker can exit', () => {
+  const calls = [];
+  const result = killProcessTree(4242, 'win32', (cmd, args) => { calls.push([cmd, args]); return { status: 0 }; });
+  assert.equal(result.how, 'taskkill');
+  assert.deepEqual(calls, [['taskkill', ['/pid', '4242', '/t', '/f']]]);
+  const worker = fs.readFileSync(path.join(__dirname, '..', 'src', 'filetools', 'run-job.js'), 'utf8');
+  assert.equal(worker.includes('test.hold'), false);
+  const killAt = worker.indexOf('killActive()');
+  const exitAt = worker.indexOf('process.exit(0)');
+  assert.ok(killAt >= 0 && exitAt > killAt);
+  const video = fs.readFileSync(path.join(__dirname, '..', 'src', 'filetools', 'video-ops.js'), 'utf8');
+  assert.equal(/setTimeout\(\(\) => \{ try \{ child\.kill\('SIGKILL'\)/.test(video), false);
+  assert.match(video, /taskkill/);
+});
+
+test('shift-drag helper is the default, and y uses the primary screen', () => {
+  const bridge = fs.readFileSync(path.join(__dirname, '..', 'src', 'filetools', 'bridge.js'), 'utf8');
+  assert.equal(bridge.includes("'osascript'"), false);
+  assert.match(bridge, /ShiftDrag/);
+  assert.match(bridge, /msg\.type === 'up'/);
+  const swift = fs.readFileSync(path.join(__dirname, '..', 'native', 'mac', 'ShiftDrag.swift'), 'utf8');
+  assert.match(swift, /NSApplication/);
+  assert.match(swift, /screens\.first/);
+  assert.equal(/map \{ \$0\.frame\.maxY \}/.test(swift), false);
+});
+
+test('opaque images become JPEG in a PDF, and encrypted PDFs get a clear error', async () => {
+  const dir = fs.mkdtempSync(path.join(root, 'pdf2-'));
+  const jpg = path.join(dir, 'photo.jpg');
+  await require('sharp')({ create: { width: 20, height: 10, channels: 3, background: 'red' } }).jpeg().toFile(jpg);
+  const alpha = path.join(dir, 'alpha.png');
+  await require('sharp')({ create: { width: 12, height: 12, channels: 4, background: { r: 0, g: 0, b: 255, alpha: 0.4 } } }).png().toFile(alpha);
+  const jpgPdf = path.join(dir, 'jpg.pdf');
+  await makePdf([jpg], jpgPdf);
+  assert.equal(fs.readFileSync(jpgPdf).includes(Buffer.from('/DCTDecode')), true);
+  const alphaPdf = path.join(dir, 'alpha.pdf');
+  await makePdf([alpha], alphaPdf);
+  assert.equal(fs.readFileSync(alphaPdf).includes(Buffer.from('/DCTDecode')), false);
+  const locked = path.join(dir, 'locked.pdf');
+  const plain = await PDFDocument.create();
+  plain.addPage([80, 40]);
+  const raw = Buffer.from(await plain.save()).toString('latin1').replace('/Root', '/Encrypt 1 0 R /Root');
+  fs.writeFileSync(locked, raw, 'latin1');
+  await assert.rejects(() => makePdf([locked], path.join(dir, 'nope.pdf')), (e) => e.code === 'EPDF_ENCRYPTED' && e.message === ENCRYPTED);
+  const mapped = friendlyPdfError(new Error('Input document to `PDFDocument.load` is encrypted.'));
+  assert.equal(mapped.code, 'EPDF_ENCRYPTED');
+});
+
+function bundledFfmpegPids() {
+  const bin = process.env.BILLYSHOT_FFMPEG;
+  const r = spawnSync('ps', ['-eo', 'pid,args'], { encoding: 'utf8' });
+  return r.stdout.split('\n').filter((line) => line.includes(bin)).map((line) => Number(line.trim().split(/\s+/)[0])).filter((n) => n > 0);
+}
+
+async function h264Clip(file, size, seconds) {
+  const made = spawnSync('/usr/bin/ffmpeg', [
+    '-y', '-f', 'lavfi', '-i', `testsrc=size=${size}:rate=12:duration=${seconds}`,
+    '-pix_fmt', 'yuv420p', '-c:v', 'libx264', file,
+  ], { encoding: 'utf8' });
+  assert.equal(made.status, 0, made.stderr && made.stderr.slice(-400));
+}
+
+test('JobRunner video actions use the bundled ffmpeg and a .part output', { timeout: 120000 }, async () => {
+  const dir = fs.mkdtempSync(path.join(root, 'e2e-'));
+  const src = path.join(dir, 'in.mp4');
+  await h264Clip(src, '160x120', 1);
+  const runner = new JobRunner();
+  const specs = [
+    { action: 'video.mp4', options: {} },
+    { action: 'video.compress', options: { level: 'small' } },
+    { action: 'video.trim', options: { start: 0, end: 0.4 } },
+    { action: 'video.gif', options: { start: 0, end: 0.4 } },
+  ];
+  for (const spec of specs) {
+    const job = runner.start({ action: spec.action, inputs: [src], options: spec.options });
+    assert.ok(job.partial.endsWith('.part'));
+    await waitFor(() => job.state === 'done' || job.state === 'error', 90000);
+    assert.equal(job.state, 'done', job.message || spec.action);
+    assert.equal(fs.existsSync(job.finalPath), true);
+    assert.equal(fs.existsSync(job.partial), false);
+    const buf = fs.readFileSync(job.finalPath);
+    if (spec.action === 'video.gif') assert.equal(buf.slice(0, 3).toString(), 'GIF');
+    else assert.equal(buf.slice(0, 64).includes(Buffer.from('ftyp')), true);
+  }
+  runner.dispose();
+});
+
+test('cancelling a real ffmpeg job kills it and deletes the partial', { timeout: 60000 }, async () => {
+  const dir = fs.mkdtempSync(path.join(root, 'e2e-cancel-'));
+  const src = path.join(dir, 'long.mp4');
+  await h264Clip(src, '640x360', 6);
+  const before = new Set(bundledFfmpegPids());
+  let asked = false;
+  const runner = new JobRunner({
+    onUpdate(job, info) {
+      if (!asked && info && info.progress && info.progress.ratio != null) {
+        asked = true;
+        runner.cancel(job.id);
+      }
+    },
+  });
+  const job = runner.start({ action: 'video.compress', inputs: [src], options: { level: 'high' } });
+  await waitFor(() => job.state === 'cancelled' || job.state === 'done' || job.state === 'error', 45000);
+  assert.equal(job.state, 'cancelled', job.message || '');
+  assert.equal(fs.existsSync(job.partial), false);
+  assert.equal(fs.existsSync(job.finalPath), false);
+  await new Promise((r) => setTimeout(r, 300));
+  const leftover = bundledFfmpegPids().filter((pid) => !before.has(pid) && alive(pid));
+  assert.deepEqual(leftover, []);
+  runner.dispose();
 });

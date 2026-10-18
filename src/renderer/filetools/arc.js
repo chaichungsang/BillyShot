@@ -10,7 +10,7 @@ const GLYPH = {
   'video.mp4': '<svg viewBox="0 0 18 18" fill="none" stroke="#E8C97A" stroke-width="1.6"><rect x="2.5" y="4" width="9" height="10" rx="1.5"/><path d="M11.5 7.5 15.5 5.5v7l-4-2"/></svg>',
   'video.compress': '<svg viewBox="0 0 18 18" fill="none" stroke="#E8C97A" stroke-width="1.6" stroke-linecap="round"><path d="M4 5h10M4 13h10M7 5l2 3 2-3M7 13l2-3 2 3"/></svg>',
   'video.trim': '<svg viewBox="0 0 18 18" fill="none" stroke="#E8C97A" stroke-width="1.6" stroke-linecap="round"><path d="M6 3v12M12 3v12M3 6h3M12 6h3M3 12h3M12 12h3"/></svg>',
-  'video.gif': '<svg viewBox="0 0 18 18" fill="none" stroke="#E8C97A" stroke-width="1.6"><text x="2" y="13" fill="#E8C97A" stroke="none" font-size="9" font-family="-apple-system,sans-serif" font-weight="700">GIF</text></svg>',
+  'video.gif': '<svg viewBox="0 0 18 18" fill="none" stroke="#E8C97A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="13" height="10" rx="1.4"/><path d="M6 4v10M12 4v10M2.5 7.2h3.5M12 7.2h3.5M2.5 10.8h3.5M12 10.8h3.5"/></svg>',
   'pdf.make': '<svg viewBox="0 0 18 18" fill="none" stroke="#E8C97A" stroke-width="1.6"><path d="M5 2.5h5l3 3V15.5H5z"/><path d="M10 2.5V6h3"/></svg>',
 };
 
@@ -23,13 +23,17 @@ function polar(angle, r) {
   return { x: Math.cos(a) * r, y: Math.sin(a) * r };
 }
 
-function showTip(x, y, title, detail) {
+function fillTip(title, detail) {
   const tip = $('tip');
-  if (!title && !detail) { tip.hidden = true; return; }
   tip.innerHTML = '';
   if (title) { const b = document.createElement('b'); b.textContent = tr(title); tip.appendChild(b); }
   if (detail) { const s = document.createElement('span'); s.textContent = tr(detail); tip.appendChild(s); }
   tip.hidden = false;
+  return tip;
+}
+function showTip(x, y, title, detail) {
+  if (!title && !detail) { $('tip').hidden = true; return; }
+  const tip = fillTip(title, detail);
   tip.style.left = Math.max(8, x + 18) + 'px';
   tip.style.top = Math.max(8, y - 8) + 'px';
 }
@@ -85,7 +89,7 @@ function renderArc(payload) {
       const ring = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       ring.setAttribute('class', 'dash');
       ring.setAttribute('viewBox', '0 0 76 76');
-      ring.innerHTML = '<circle cx="38" cy="38" r="35" fill="none" stroke="#E8C97A" stroke-width="1.7" stroke-dasharray="2.2 3.2"/>';
+      ring.innerHTML = '<circle cx="38" cy="38" r="37" fill="none" stroke="#E8C97A" stroke-width="1.6" stroke-dasharray="2.2 3.2"/>';
       btn.appendChild(ring);
     }
     btn.addEventListener('mouseenter', () => focusKey(i, true));
@@ -140,8 +144,9 @@ function renderExtra() {
   if (k.action === 'image.resize' && (k.pills || k.custom)) {
     const col = document.createElement('div');
     col.className = 'col';
-    col.style.left = (rect.x - 46) + 'px';
-    col.style.top = (rect.y + 46) + 'px';
+    col.style.left = rect.x + 'px';
+    col.style.top = '0px';
+    col.style.transform = 'translateX(-50%)';
     const items = [...(k.pills || [])];
     if (k.custom) items.push(k.custom);
     items.forEach((p) => {
@@ -161,6 +166,12 @@ function renderExtra() {
       col.appendChild(b);
     });
     host.appendChild(col);
+    const cap = btn.querySelector('.cap');
+    const stage = $('stage').getBoundingClientRect();
+    const capBox = cap.getBoundingClientRect();
+    const fontSize = parseFloat(getComputedStyle(cap).fontSize) || 11;
+    const baseline = (capBox.top - stage.top) + fontSize * 0.8;
+    col.style.top = (baseline + 10) + 'px';
   } else if (k.action === 'image.convert' && k.pills && k.pills.length) {
     const row = document.createElement('div');
     row.className = 'pills';
@@ -183,8 +194,12 @@ function renderExtra() {
 
 function showPresetTipAt(el, p) {
   if (!p.reason) { hideTip(); return; }
-  const r = el.getBoundingClientRect();
-  showTip(r.right, r.top, p.reason, '');
+  const tip = fillTip(p.reason, '');
+  const col = el.closest('.col').getBoundingClientRect();
+  const row = el.getBoundingClientRect();
+  const stage = $('stage').getBoundingClientRect();
+  tip.style.left = (col.right - stage.left + 12) + 'px';
+  tip.style.top = Math.max(8, row.top - stage.top + (row.height - tip.offsetHeight) / 2) + 'px';
 }
 
 function showPresetTip(id) {

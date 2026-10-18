@@ -45,13 +45,14 @@ jobs:
           echo "$INFO"
           echo "$INFO" | grep -q 'Non-fat file'
           echo "$INFO" | grep -q "architecture: $ARCH"
+          # macOS bash 3.2 treats an empty array as unbound under set -u, so don't use one.
           if [ "$ARCH" = "x86_64" ] && [ "$(uname -m)" != "x86_64" ]; then
-            PREFIX=(arch -x86_64)
+            CONF="$(arch -x86_64 "$OUT/ffmpeg" -hide_banner -buildconf)"
+            ENC="$(arch -x86_64 "$OUT/ffmpeg" -hide_banner -encoders)"
           else
-            PREFIX=()
+            CONF="$("$OUT/ffmpeg" -hide_banner -buildconf)"
+            ENC="$("$OUT/ffmpeg" -hide_banner -encoders)"
           fi
-          CONF="$("${PREFIX[@]}" "$OUT/ffmpeg" -hide_banner -buildconf)"
-          ENC="$("${PREFIX[@]}" "$OUT/ffmpeg" -hide_banner -encoders)"
           printf '%s\n' "$CONF"
           printf '%s\n' "$ENC"
           printf '%s\n' "$CONF" | grep -q -- '--disable-gpl'

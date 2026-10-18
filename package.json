@@ -5,6 +5,7 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
+    "test": "node --test test/filetools.test.js",
     "natives": "node scripts/fetch-natives.js",
     "dist:win": "node scripts/fetch-natives.js && electron-builder --win --x64 && node scripts/build-uninstall-tool.js",
     "dist:mac": "node scripts/fetch-natives.js && electron-builder --mac --x64 --arm64 && node scripts/sign-mac.js"
@@ -23,6 +24,8 @@
   },
   "dependencies": {
     "node-screenshots": "^0.2.8",
+    "pdf-lib": "^1.17.1",
+    "sharp": "^0.35.5",
     "uiohook-napi": "^1.5.5"
   },
   "productName": "BillyShot",
@@ -37,7 +40,14 @@
     "files": [
       "src/**/*",
       "assets/**/*",
+      "vendor/ffmpeg/**/*",
+      "native/**/*",
       "package.json",
+      "!**/*.map",
+      "!node_modules/pdf-lib/dist/**",
+      "!node_modules/pdf-lib/src/**",
+      "!node_modules/pdf-lib/es/**",
+      "!node_modules/@img/sharp-wasm32/**",
       "!test/**",
       "!scripts/**",
       "!dist/**",
@@ -48,6 +58,10 @@
     "asarUnpack": [
       "node_modules/node-screenshots*/**",
       "node_modules/uiohook-napi/**",
+      "vendor/ffmpeg/**",
+      "node_modules/sharp/**",
+      "node_modules/@img/**",
+      "native/**",
       "assets/logos/*/icon.ico",
       "assets/logos/*/mac.png"
     ],
@@ -83,7 +97,14 @@
         "!build/**",
         "!dist/**",
         "!使用说明.txt",
-        "!README.md"
+        "!README.md",
+        "!vendor/ffmpeg/linux-*/**",
+        "!vendor/ffmpeg/darwin-*/**",
+        "!node_modules/@img/sharp-linux*/**",
+        "!node_modules/@img/sharp-libvips-linux*/**",
+        "!node_modules/@img/sharp-darwin*/**",
+        "!node_modules/@img/sharp-libvips-darwin*/**",
+        "!node_modules/@img/sharp-wasm32/**"
       ]
     },
     "nsis": {
@@ -140,7 +161,14 @@
         "!build/**",
         "!dist/**",
         "!使用说明.txt",
-        "!README.md"
+        "!README.md",
+        "!vendor/ffmpeg/linux-*/**",
+        "!vendor/ffmpeg/win32-*/**",
+        "!node_modules/@img/sharp-linux*/**",
+        "!node_modules/@img/sharp-libvips-linux*/**",
+        "!node_modules/@img/sharp-win32*/**",
+        "!node_modules/@img/sharp-libvips-win32*/**",
+        "!node_modules/@img/sharp-wasm32/**"
       ]
     },
     "electronLanguages": [

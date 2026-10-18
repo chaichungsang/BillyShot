@@ -12,6 +12,7 @@ const clip = require('./clip');
 const i18n = require('./i18n');
 const t = i18n.t;
 const { createPresent } = require('./present');
+const { createFileTools } = require('./filetools/bridge');
 const { finalizeMp4 } = require('./mp4fix');
 const os = require('os');
 
@@ -48,6 +49,7 @@ let settingsWin = null;
 let hotkeyStatus = {};
 const pins = new Set();
 let rec = null; // 录制状态
+let fileTools = null;
 let present = null; // 演示层 + 摄像头圆窗（present.js）
 const liveNotifications = new Set();
 
@@ -272,6 +274,7 @@ function rebuildOverlayWin() {
 // 切换语言后刷新已经打开的界面：托盘菜单、截图层（预加载的）、设置窗口
 function refreshLanguageUi() {
   if (tray) buildTrayMenu();
+  if (fileTools) fileTools.refreshLanguage();
   if (!rebuildOverlayWin() && overlayWin) {
     // 正在截图：截图结束后再重建
     const wait = () => { if (overlayBusy) setTimeout(wait, 500); else rebuildOverlayWin(); };
@@ -500,6 +503,8 @@ function buildTrayMenu() {
         { label: t('历史'), click: () => openSettings('history') },
         { label: t('截图夹'), click: () => shell.openPath(ensureDir(settings.get().capture.saveDir)) },
         { label: t('录屏夹'), click: () => shell.openPath(ensureDir(settings.get().record.saveDir)) },
+        { type: 'separator' },
+        { label: t('文件工具…'), click: () => fileTools && fileTools.openWindow() },
       ],
     },
     { label: t('设置…'), click: () => openSettings('general') },
@@ -539,6 +544,7 @@ function applyHotkeys() {
       case 'pinClipboard': return pinClipboard();
       case 'presentMode': return present && present.setDemo(!present.isDemo());
       case 'spotlight': return present && present.setSpot(!present.isSpot());
+      case 'fileTools': return fileTools && fileTools.openWindow();
     }
   });
   if (hadEsc && overlayBusy) holdEsc();
@@ -550,7 +556,7 @@ function applyHotkeys() {
 }
 
 // 快捷键被其他软件（微信 / QQ / 钉钉…）占用：每次启动都检查，先重试，再自动换备用键并提示
-const HOTKEY_NAMES = { capture: '截图', captureFull: '全屏截图', recordRegion: '区域录屏', recordFull: '全屏录屏', pinClipboard: '贴图', presentMode: '演示模式', spotlight: '聚光灯' };
+const HOTKEY_NAMES = { capture: '截图', captureFull: '全屏截图', recordRegion: '区域录屏', recordFull: '全屏录屏', pinClipboard: '贴图', presentMode: '演示模式', spotlight: '聚光灯', fileTools: '文件工具' };
 const CAPTURE_ALTS = isMac ? ['Control+Shift+A', 'Command+Shift+X', 'F1'] : ['Ctrl+Alt+A', 'Ctrl+Shift+A', 'Alt+Q', 'F1'];
 function failedHotkeys() { return Object.keys(hotkeyStatus).filter((a) => (hotkeyStatus[a] || {}).keyboard === 'fail'); }
 function checkHotkeyConflicts(attempt = 0) {
@@ -1118,6 +1124,7 @@ ipcMain.handle('settings:set', (_e, patch) => {
     setLaunchAtLogin(!!patch.general.launchAtLogin);
   }
   if (JSON.stringify(s.hotkeys) !== before) applyHotkeys();
+  if (patch && patch.fileTools && fileTools) fileTools.syncShiftDrag();
   if (patch && patch.present && present) present.applySettings();
   if (patch && patch.record && Object.prototype.hasOwnProperty.call(patch.record, 'demoCaptureBar')) syncDemoBarCapture();
   return { settings: s, status: hotkeyStatus };
@@ -1126,6 +1133,7 @@ ipcMain.handle('settings:reset', async () => {
   const hadLogo = logoName();
   const before = i18n.getLang();
   settings.reset(); setLaunchAtLogin(false); applyHotkeys();
+  if (fileTools) fileTools.syncShiftDrag();
   if (hadLogo !== logoName()) await applyLogo({ system: true });
   applyAppearance(); applyTheme();
   if (present) present.applySettings();
@@ -1246,16 +1254,17 @@ async function startRecording(display, rect, req) {
   // 先同步占位，防止快速连按开出两个录制
   rec = { starting: true, display, stopping: false, extraWarn: [], camDone: true };
   const cur = rec;
+  if (fileTools) fileTools.setRecording(true);
   closeDoneBar();
   buildTrayMenu();
   try {
-    if (!(await ensureScreenPerm())) { rec = null; buildTrayMenu(); return; }
+    if (!(await ensureScreenPerm())) { rec = null; if (fileTools) fileTools.setRecording(false); buildTrayMenu(); return; }
     const r = settings.get().record;
     const format = req.format === 'gif' ? 'gif' : 'mp4';
     const sourceId = await getScreenSourceId(display);
     if (rec !== cur) return;
     if (!sourceId) throw new Error(t('找不到屏幕源'));
-    if (cur.stopping) { rec = null; buildTrayMenu(); return; }
+    if (cur.stopping) { rec = null; if (fileTools) fileTools.setRecording(false); buildTrayMenu(); return; }
     const b = display.bounds;
     // 录制区域至少 32×32
     rect = { ...rect, w: Math.max(32, Math.round(rect.w)), h: Math.max(32, Math.round(rect.h)), x: Math.round(rect.x), y: Math.round(rect.y) };
@@ -1524,6 +1533,7 @@ function closeDoneBar() {
 function finishRecording(status, msg) {
   if (!rec) return;
   const r = rec; rec = null;
+  if (fileTools) fileTools.setRecording(false);
   try { if (r.fd) fs.closeSync(r.fd); } catch {}
   r.fd = null;
   for (const w of [r.frameWin, r.recWin]) { try { if (w && !w.isDestroyed()) w.destroy(); } catch {} }
@@ -1736,7 +1746,13 @@ app.whenReady().then(() => {
     settingsChanged: () => { if (settingsWin && !settingsWin.isDestroyed()) settingsWin.webContents.send('settings:changed'); },
     onCamError: (msg) => { if (rec) { addRecWarn(msg); } syncBarFx(); },
   });
+  fileTools = createFileTools({
+    BrowserWindow, ipcMain, screen, shell, dialog, Notification, nativeImage, app, settings, t, isMac, isWin, log, R,
+    getTray: () => tray, trayIcon,
+  });
   createTray();
+  fileTools.attachTray(tray);
+  fileTools.syncShiftDrag();
   // Mac：用户在系统设置里打开「辅助功能」后自动生效（鼠标快捷键、点击波纹），不用重开
   hotkeys.setAxGrantedHandler(() => {
     log('accessibility granted');
@@ -1780,5 +1796,5 @@ app.whenReady().then(() => {
 
 app.on('second-instance', () => openSettings('general'));
 app.on('window-all-closed', (e) => { /* 常驻托盘，不退出 */ });
-app.on('before-quit', () => { app.isQuitting = true; try { if (present) present.dispose(); } catch {} });
+app.on('before-quit', () => { app.isQuitting = true; try { if (present) present.dispose(); } catch {} try { if (fileTools) fileTools.dispose(); } catch {} });
 app.on('will-quit', () => hotkeys.dispose());

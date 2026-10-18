@@ -15,6 +15,7 @@ const ACTIONS = [
   ['pinClipboard', tx('贴图（钉住剪贴板图片）')],
   ['presentMode', tx('演示模式（鼠标光圈 / 点击波纹）开关')],
   ['spotlight', tx('聚光灯 开关')],
+  ['fileTools', tx('文件工具')],
 ];
 
 function get(path) { return path.split('.').reduce((o, k) => (o ? o[k] : undefined), S); }

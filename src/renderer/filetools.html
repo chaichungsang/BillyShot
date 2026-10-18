@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<title>文件工具</title>
+<link rel="stylesheet" href="filetools/window.css">
+</head>
+<body>
+<div class="winbar"><b>BillyShot 文件工具</b><span>□</span></div>
+<div class="chrome"><i class="r"></i><i class="y"></i><i class="g"></i><b>文件工具</b></div>
+<div class="pad">
+  <div class="drop" id="drop">
+    <strong>把文件拖到这里</strong>
+    <span>图片 · 录屏 · PDF · 全在本机处理，不上网</span>
+    <button type="button" class="gold pick" id="pick">选择文件…</button>
+  </div>
+  <div class="sub" id="picked" hidden></div>
+  <div class="actions" id="actions"></div>
+  <p class="hint">拖不到菜单栏图标时用快捷键</p>
+  <div class="recent"><h3>最近完成</h3><ul id="recent"></ul></div>
+</div>
+<script src="../i18n.js"></script>
+<script src="filetools/window.js"></script>
+</body>
+</html>

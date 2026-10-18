@@ -1,0 +1,42 @@
+/* 快捷键小窗。Windows 用系统标题栏，这里只画内容；Mac 用这层自己的顶栏。 */
+:root {
+  --ft-graphite: #161514;
+  --ft-graphite-2: #1c1b1a;
+  --ft-gold: #d4a84b;
+  --ft-gold-2: #e8c97a;
+  --ft-ink: #f2eee6;
+  --ft-mute: #8c877e;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--ft-graphite); color: var(--ft-ink);
+  font: 13px/1.45 -apple-system, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif; }
+body.mac { border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 1px rgba(212, 168, 75, .28); }
+body.shot { background: #100f0e; }
+.chrome { height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 12px; -webkit-app-region: drag; }
+.chrome i { width: 10px; height: 10px; border-radius: 50%; background: #3a3834; }
+.chrome i.r { background: #ff5f57; } .chrome i.y { background: #febc2e; } .chrome i.g { background: #28c840; }
+.chrome b { font-size: 13px; font-weight: 650; }
+body.win .chrome { display: none; }
+body.mac .chrome i { visibility: hidden; }
+.pad { padding: 8px 16px 14px; }
+.drop { border: 1.5px dashed rgba(232, 201, 122, .55); border-radius: 12px; min-height: 132px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 4px; background: rgba(212, 168, 75, .04); }
+.drop strong { font-size: 14px; }
+.drop span { color: var(--ft-mute); font-size: 12px; }
+.drop.hot { background: rgba(212, 168, 75, .12); }
+.pick { margin-top: 10px; }
+button { font: inherit; border-radius: 9px; border: 1px solid #3a3834; background: #221f1c; color: var(--ft-ink); padding: 6px 12px; cursor: pointer; }
+button.gold { background: var(--ft-gold); color: var(--ft-graphite); border-color: transparent; font-weight: 650; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.actions button { min-width: 72px; }
+.actions button small { display: block; color: var(--ft-mute); font-size: 10px; }
+.hint { margin: 12px 0 0; color: var(--ft-gold-2); font-size: 12px; }
+.recent { margin-top: 14px; }
+.recent h3 { margin: 0 0 6px; font-size: 11px; letter-spacing: .06em; color: var(--ft-mute); font-weight: 650; }
+.recent li { list-style: none; display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-top: 1px solid #2a2825; font-size: 12px; }
+.recent ul { margin: 0; padding: 0; }
+.recent button { padding: 2px 8px; font-size: 11px; }
+.sub { margin-top: 8px; color: var(--ft-mute); font-size: 12px; }
+.winbar { display: none; height: 32px; align-items: center; padding: 0 10px; background: #1c1b1a; font-size: 12px; }
+body.shot.win .winbar { display: flex; }
+body.shot.win .winbar span { margin-left: auto; color: var(--ft-mute); }

@@ -1,0 +1,137 @@
+# Builds the LGPL ffmpeg binaries BillyShot ships, plus the Mac ShiftDrag helper.
+# Mac VideoToolbox cannot be linked from Linux. Push on this branch starts the Mac runners;
+# workflow_dispatch alone never fires for a workflow that only exists on a PR branch.
+# macos-13 is retired, so darwin-x64 is cross-compiled on macos-14 and checked under Rosetta.
+# Artifacts are uploaded unsigned. sign-mac.js signs them inside the .app later.
+name: ffmpeg-lgpl
+on:
+  workflow_dispatch:
+  push:
+    branches: [cursor/file-tools-v1-2b25]
+    paths:
+      - .github/workflows/ffmpeg-lgpl.yml
+      - scripts/build-ffmpeg-mac.sh
+      - scripts/build-ffmpeg-mingw.sh
+      - scripts/build-ffmpeg-lgpl.sh
+      - native/mac/**
+jobs:
+  mac-ffmpeg:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            folder: darwin-arm64
+          - arch: x86_64
+            folder: darwin-x64
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rosetta for the x86_64 cross build
+        if: matrix.arch == 'x86_64'
+        run: |
+          if ! arch -x86_64 /usr/bin/true 2>/dev/null; then
+            softwareupdate --install-rosetta --agree-to-license
+          fi
+      - name: Build ffmpeg ${{ matrix.arch }}
+        run: bash scripts/build-ffmpeg-mac.sh ${{ matrix.arch }} "$RUNNER_TEMP/billyshot-ffmpeg-mac"
+      - name: Fail unless VideoToolbox is present and GPL encoders are absent
+        run: |
+          set -eu
+          ARCH="${{ matrix.arch }}"
+          OUT="$RUNNER_TEMP/billyshot-ffmpeg-mac/${{ matrix.folder }}"
+          if [ ! -x "$OUT/ffmpeg" ]; then echo "missing $OUT/ffmpeg" >&2; exit 1; fi
+          INFO="$(lipo -info "$OUT/ffmpeg")"
+          echo "$INFO"
+          echo "$INFO" | grep -q 'Non-fat file'
+          echo "$INFO" | grep -q "architecture: $ARCH"
+          # macOS bash 3.2 treats an empty array as unbound under set -u, so don't use one.
+          if [ "$ARCH" = "x86_64" ] && [ "$(uname -m)" != "x86_64" ]; then
+            CONF="$(arch -x86_64 "$OUT/ffmpeg" -hide_banner -buildconf)"
+            ENC="$(arch -x86_64 "$OUT/ffmpeg" -hide_banner -encoders)"
+          else
+            CONF="$("$OUT/ffmpeg" -hide_banner -buildconf)"
+            ENC="$("$OUT/ffmpeg" -hide_banner -encoders)"
+          fi
+          printf '%s\n' "$CONF"
+          printf '%s\n' "$ENC"
+          printf '%s\n' "$CONF" | grep -q -- '--disable-gpl'
+          if printf '%s\n' "$CONF" | grep -q -- '--enable-gpl'; then echo 'gpl enabled' >&2; exit 1; fi
+          if printf '%s\n' "$CONF" | grep -q -- '--enable-nonfree'; then echo 'nonfree enabled' >&2; exit 1; fi
+          if printf '%s\n' "$CONF" | grep -q -- '--enable-libx264'; then echo 'libx264 enabled' >&2; exit 1; fi
+          printf '%s\n' "$ENC" | grep -q 'h264_videotoolbox'
+          if printf '%s\n' "$ENC" | grep -E '(^|[[:space:]])libx264|(^|[[:space:]])libx265|(^|[[:space:]])libxvid'; then
+            echo 'forbidden encoder present' >&2
+            exit 1
+          fi
+          {
+            echo "ffmpeg 7.1.1"
+            echo "tag: n7.1.1"
+            echo "commit: db69d06eeeab4f46da15030a80d539efb4503ca8"
+            echo "arch: $ARCH"
+            echo "folder: ${{ matrix.folder }}"
+            echo "runner: $(sw_vers -productVersion) $(uname -m) ${ImageOS:-unknown} ${RUNNER_OS:-unknown}"
+            echo "unsigned: yes"
+            echo "flags:"
+            printf '%s\n' "$CONF"
+            echo "sha256:"
+            shasum -a 256 "$OUT"/ffmpeg "$OUT"/*.dylib
+          } > "$OUT/BUILD.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-${{ matrix.folder }}
+          path: ${{ runner.temp }}/billyshot-ffmpeg-mac/${{ matrix.folder }}
+  mac-helper:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build universal ShiftDrag
+        run: |
+          set -eu
+          OUT="$RUNNER_TEMP/billyshot-shift-drag"
+          mkdir -p "$OUT"
+          swiftc -O -target arm64-apple-macosx12.0 -framework Cocoa -o "$OUT/ShiftDrag-arm64" native/mac/ShiftDrag.swift
+          swiftc -O -target x86_64-apple-macosx12.0 -framework Cocoa -o "$OUT/ShiftDrag-x64" native/mac/ShiftDrag.swift
+          lipo -create -output "$OUT/ShiftDrag" "$OUT/ShiftDrag-arm64" "$OUT/ShiftDrag-x64"
+          INFO="$(lipo -info "$OUT/ShiftDrag")"
+          echo "$INFO"
+          echo "$INFO" | grep -q 'arm64'
+          echo "$INFO" | grep -q 'x86_64'
+          {
+            echo "ShiftDrag universal (arm64 + x86_64)"
+            echo "unsigned: yes"
+            echo "runner: $(sw_vers -productVersion) $(uname -m) ${ImageOS:-unknown}"
+            echo "sha256:"
+            shasum -a 256 "$OUT/ShiftDrag"
+            echo "lipo:"
+            echo "$INFO"
+          } > "$OUT/BUILD.txt"
+          rm -f "$OUT/ShiftDrag-arm64" "$OUT/ShiftDrag-x64"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shiftdrag
+          path: ${{ runner.temp }}/billyshot-shift-drag
+  win-ffmpeg:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            make
+            nasm
+            pkgconf
+      - name: Build ffmpeg with h264_mf
+        shell: msys2 {0}
+        run: |
+          mkdir -p /tmp/billyshot-ffmpeg-win
+          bash scripts/build-ffmpeg-mingw.sh /tmp/billyshot-ffmpeg-win
+          mkdir -p "$GITHUB_WORKSPACE/ffmpeg-win-out"
+          cp -a /tmp/billyshot-ffmpeg-win/vendor-win32-x64/. "$GITHUB_WORKSPACE/ffmpeg-win-out/"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-win32-x64
+          path: ffmpeg-win-out

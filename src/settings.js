@@ -20,6 +20,9 @@ function defaults() {
       // 演示模式 / 聚光灯默认不占用快捷键（不影响没用这个功能的人），需要的话在 设置 → 快捷键 里设置
       presentMode: { keyboard: '', mouse: '' },
       spotlight: { keyboard: '', mouse: '' },
+      // Mac 用 Control+Alt+F（⌃⌥F）。Windows 不用 Ctrl+Alt（那是 AltGr，会和欧洲键盘打字冲突），
+      // 也不用 Ctrl+Shift+F（编辑器常用）。默认 Ctrl+Shift+Alt+F。两边都能在设置里改。
+      fileTools: { keyboard: isMac ? 'Control+Alt+F' : 'Ctrl+Shift+Alt+F', mouse: '' },
     },
     // 演示录屏（1.3.0）：鼠标光圈 / 点击波纹 / 聚光灯 / 摄像头圆窗，默认全部关闭
     present: {
@@ -83,6 +86,13 @@ function defaults() {
       appearance: 'system',   // 深浅色：system（跟随系统）| light | dark
       axAskedVer: '',         // macOS：这个版本已经弹过一次「辅助功能」系统授权框（每个版本最多一次）
       macMoveAsk: true,       // macOS：不在「应用程序」文件夹运行时，启动时建议移过去
+      hotkeyFailNotified: {}, // 注册失败的「动作+快捷键」只提醒一次，同一组键下次启动不再弹
+    },
+    // Shift 拖的开关。暂不 / 已问过只在策略模块里用，v1 不弹权限页。
+    fileTools: {
+      shiftDrag: true,
+      shiftDragAsked: false,
+      shiftDragDeclined: false,
     },
   };
 }
@@ -121,9 +131,13 @@ class Settings {
   }
   reset() {
     const g = this.data.general || {};
+    const ft = this.data.fileTools || {};
     this.data = defaults(); this.data.general.firstRun = false;
-    // 「恢复默认」不重新弹 Mac 的授权框 / 移动提示
+    // 「恢复默认」不重新弹 Mac 的授权框 / 移动提示，也不把「暂不」忘掉
     this.data.general.axAskedVer = g.axAskedVer || ''; this.data.general.macMoveAsk = g.macMoveAsk !== false;
+    this.data.general.hotkeyFailNotified = g.hotkeyFailNotified || {};
+    this.data.fileTools.shiftDragAsked = !!ft.shiftDragAsked;
+    this.data.fileTools.shiftDragDeclined = !!ft.shiftDragDeclined;
     this.save(); return this.data;
   }
   save() {

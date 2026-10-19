@@ -1,0 +1,56 @@
+ffmpeg 7.1.1
+tag: n7.1.1
+commit: db69d06eeeab4f46da15030a80d539efb4503ca8
+arch: x86_64
+folder: darwin-x64
+runner: 14.8.9 arm64 macos14 macOS
+unsigned: yes
+flags:
+
+  configuration:
+    --prefix=/Users/runner/work/_temp/billyshot-ffmpeg-mac/prefix-x86_64
+    --enable-cross-compile
+    --arch=x86_64
+    --target-os=darwin
+    --cc='clang -arch x86_64'
+    --disable-gpl
+    --disable-nonfree
+    --disable-static
+    --enable-shared
+    --disable-everything
+    --disable-doc
+    --disable-debug
+    --disable-avdevice
+    --disable-network
+    --disable-autodetect
+    --enable-small
+    --disable-programs
+    --enable-ffmpeg
+    --enable-swscale
+    --enable-swresample
+    --enable-avcodec
+    --enable-avformat
+    --enable-avfilter
+    --enable-avutil
+    --enable-videotoolbox
+    --disable-x86asm
+    --enable-protocol='file,pipe'
+    --enable-demuxer='mov,matroska,gif,image2,avi,asf,aac,mp3,ogg,wav,webm'
+    --enable-muxer='mp4,gif,image2,ipod,mov'
+    --enable-decoder='h264,hevc,vp8,vp9,av1,mpeg4,mjpeg,png,gif,aac,mp3,opus,pcm_s16le,pcm_s16be'
+    --enable-encoder='mpeg4,aac,gif,png,mjpeg,h264_videotoolbox'
+    --enable-parser='h264,hevc,vp8,vp9,av1,mpeg4video,aac,mpegaudio,opus,png,gif,mjpeg'
+    --enable-bsf='aac_adtstoasc,h264_mp4toannexb,hevc_mp4toannexb,null'
+    --enable-filter='scale,fps,palettegen,paletteuse,format,trim,setpts,aresample,aformat,split,anull,null'
+    --extra-ldflags='-Wl,-rpath,@loader_path'
+    --enable-rpath
+layout: the compatibility dylib is the file. The unversioned name is a symlink to it. The fully versioned filename is not referenced after install_name_tool, so it is not stored.
+encoders: h264_videotoolbox present. libx264, libx265, and libxvid absent.
+sha256:
+2c8791bcdaa02c1886babb4a183b99d01151133a17a244bf9478c4cd15e7bc4c  ffmpeg
+28465468deab123ebb4b8c1d8d6a52005bcaef3efe28b1eb1453922a3fa3a0ad  libavcodec.61.dylib
+6129b9a20e621978f19cc82cfd37e957aea91480407d8364b9c20a4f851ce9d2  libavfilter.10.dylib
+18db7b19f3824ad6336e09c130767f27b82f04ead3707e7223415fbf1d1048e5  libavformat.61.dylib
+b501a670c7c2cf5eb66dd7cdaaded4b7aa1ae0b73ba6f2e6e9a93f88af17ec3e  libavutil.59.dylib
+8a3e6e6bc885a4d5e332b17a216a89781761e252ef19e0c972dbc5cf599a2965  libswresample.5.dylib
+f0a3788818f6116ac07399659dd45411352c7ad5818d1fd8ff3c62949656980e  libswscale.8.dylib

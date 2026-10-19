@@ -1,0 +1,65 @@
+/* 动作弧的样式只放在这个文件里。01 / 02 以后改外观，动这里就行，别的窗口不用跟着改。 */
+:root {
+  --ft-graphite: #161514;
+  --ft-graphite-2: #1c1b1a;
+  --ft-hover: #2a2722;
+  --ft-gold: #d4a84b;
+  --ft-gold-2: #e8c97a;
+  --ft-ink: #e7e2d8;
+  --ft-mute: #8c877e;
+  --ft-key: 60px;
+  --ft-hub: 64px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
+  font: 12px/1.35 -apple-system, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
+  color: var(--ft-ink); user-select: none; }
+body.shot { background: #100f0e; }
+.stage { position: relative; width: 100%; height: 100%; }
+.spokes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.hub { position: absolute; z-index: 4; width: var(--ft-hub); height: var(--ft-hub); margin: calc(var(--ft-hub) / -2) 0 0 calc(var(--ft-hub) / -2);
+  border-radius: 50%; background: var(--ft-graphite);
+  box-shadow: 0 0 0 1px rgba(212, 168, 75, .45), 0 10px 24px rgba(0, 0, 0, .5);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; text-align: center; }
+.hub b { font-size: 12px; letter-spacing: .04em; color: var(--ft-gold-2); font-weight: 700; }
+.hub small { font-size: 9px; color: var(--ft-mute); max-width: 56px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.key { position: absolute; z-index: 5; width: var(--ft-key); height: var(--ft-key); margin: calc(var(--ft-key) / -2) 0 0 calc(var(--ft-key) / -2);
+  border: 0; padding: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
+.key .face { width: 100%; height: 100%; border-radius: 50%; background: var(--ft-graphite-2);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .06) inset, 0 8px 18px rgba(0, 0, 0, .45);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; position: relative; }
+.key .num { position: absolute; left: -2px; top: -2px; width: 16px; height: 16px; border-radius: 50%;
+  background: #2a2825; color: var(--ft-gold-2); font: 700 10px/16px -apple-system, sans-serif; text-align: center; }
+.key .glyph { width: 18px; height: 18px; }
+.key .glyph svg { width: 18px; height: 18px; display: block; }
+.key .cap { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%);
+  font: 600 11px/1.2 -apple-system, "PingFang SC", sans-serif; color: var(--ft-ink); white-space: nowrap; pointer-events: none; }
+.key.dashed .cap { top: calc(100% + 16px); }
+.key.on:not(.grey) .face { background: var(--ft-hover); box-shadow: 0 0 0 1.5px var(--ft-gold), 0 0 0 5px rgba(212, 168, 75, .28); }
+.key.on:not(.grey) .num { background: var(--ft-gold-2); color: var(--ft-graphite); }
+.key.grey .face, .key.grey .cap, .key.grey .num { opacity: .38; }
+.key.grey .glyph svg, .key.grey .glyph svg * { stroke: #8A847A; }
+.key.pop:not(.grey) .face { animation: ft-pop .14s ease both; }
+.key.grey.pop .face { animation: ft-grey .14s ease both; }
+@keyframes ft-pop { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes ft-grey { from { opacity: 0; } to { opacity: .38; } }
+.key .dash { position: absolute; inset: -8px; width: calc(100% + 16px); height: calc(100% + 16px); pointer-events: none; overflow: visible; }
+.col, .pills { position: absolute; z-index: 6; display: flex; gap: 6px; }
+.col { flex-direction: column; align-items: stretch; }
+.pills { flex-direction: row; }
+.sub { height: 28px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--ft-graphite-2); color: var(--ft-ink);
+  box-shadow: 0 0 0 .5px rgba(255, 255, 255, .1) inset, 0 6px 16px rgba(0, 0, 0, .45);
+  font: 600 11.5px/28px -apple-system, "PingFang SC", sans-serif; white-space: nowrap; cursor: pointer; text-align: center; }
+.sub.on, .sub:hover:not(.grey) { background: var(--ft-gold); color: var(--ft-graphite); }
+.sub.grey { opacity: .38; cursor: default; }
+.tip { position: absolute; z-index: 8; max-width: 230px; padding: 8px 10px; border-radius: 10px; background: var(--ft-graphite);
+  box-shadow: 0 0 0 1px rgba(212, 168, 75, .45), 0 10px 24px rgba(0, 0, 0, .45); pointer-events: none; }
+.tip b { display: block; font-size: 12px; font-weight: 650; color: var(--ft-ink); }
+.tip span { display: block; margin-top: 3px; font-size: 10.5px; color: var(--ft-mute); line-height: 1.45; }
+.warn { position: absolute; left: 16px; right: 16px; bottom: 12px; z-index: 7; padding: 8px 10px; border-radius: 10px;
+  background: var(--ft-graphite); color: var(--ft-gold-2); box-shadow: 0 0 0 1px rgba(212, 168, 75, .35); font-size: 11px; line-height: 1.45; }
+@media (prefers-reduced-motion: reduce) {
+  .key.pop:not(.grey) .face { animation: ft-fade .12s ease both; }
+  .key.grey.pop .face { animation: ft-grey .12s ease both; }
+  @keyframes ft-fade { from { opacity: 0; } to { opacity: 1; } }
+}

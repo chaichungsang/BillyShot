@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>BillyShot Notch</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+<link rel="stylesheet" href="notch.css">
+</head>
+<body>
+  <div id="hit">
+    <div class="ear left"><i class="dot" id="earDot"></i></div>
+    <div class="ear right"><span class="time" id="earTime"></span></div>
+  </div>
+  <div id="chin" role="timer">
+    <span class="time" id="chinTime"></span>
+  </div>
+  <div id="panel" class="sheet">
+    <div class="keys" id="keys"></div>
+    <div class="stop">
+      <div class="stop-copy">
+        <div class="stop-title"><i class="dot"></i><span id="stopTitle"></span></div>
+        <div class="stop-sub" id="stopSub"></div>
+      </div>
+      <button type="button" class="stop-btn" id="stopBtn">
+        <span class="stop-sq" aria-hidden="true"></span><span id="stopWord"></span>
+      </button>
+    </div>
+  </div>
+  <div id="pill">
+    <i class="dot" aria-hidden="true"></i>
+    <span class="time" id="pillTime" role="timer"></span>
+    <button type="button" class="pill-stop" id="pillStop">
+      <span class="pill-sq" aria-hidden="true"></span><span id="pillWord"></span>
+    </button>
+  </div>
+  <div id="mock">
+    <p class="mock-tag">Renderer mock-up — not a Mac capture</p>
+    <p class="mock-sub" id="mockSub"></p>
+    <div class="mock-screen" id="mockScreen">
+      <div class="mock-menu" id="mockMenu"><div>Finder<span>文件</span><span>编辑</span><span>显示</span></div><div>15:20</div></div>
+      <div class="mock-hardware" id="mockHardware"></div>
+      <div class="mock-layer" id="mockLayer"></div>
+      <div class="mock-note" id="mockNote"></div>
+    </div>
+  </div>
+<script src="../notch-logic.js"></script>
+<script src="../i18n.js"></script>
+<script src="notch.js"></script>
+</body>
+</html>

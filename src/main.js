@@ -15,6 +15,8 @@ const { createPresent } = require('./present');
 const { createFileTools } = require('./filetools/bridge');
 const { noticeForRegisterFailure } = require('./hotkey-notice');
 const { finalizeMp4 } = require('./mp4fix');
+const { createNotch } = require('./notch');
+const { menuAndHover, trayLabel } = require('./notch-logic');
 const os = require('os');
 
 const isMac = process.platform === 'darwin';
@@ -42,6 +44,7 @@ if (isWin) app.setAppUserModelId('com.billyshot.app');
 let settings;
 let tray = null;
 let trayMenu = null;
+let notch = null;
 let overlayWin = null;
 let overlayReady = null;
 let overlayBusy = false;
@@ -274,8 +277,9 @@ function rebuildOverlayWin() {
 }
 // 切换语言后刷新已经打开的界面：托盘菜单、截图层（预加载的）、设置窗口
 function refreshLanguageUi() {
-  if (tray) buildTrayMenu();
+  if (tray || notch) buildTrayMenu();
   if (fileTools) fileTools.refreshLanguage();
+  if (notch && !rec) notch.reload();
   if (!rebuildOverlayWin() && overlayWin) {
     // 正在截图：截图结束后再重建
     const wait = () => { if (overlayBusy) setTimeout(wait, 500); else rebuildOverlayWin(); };
@@ -478,15 +482,18 @@ function setPresentClicks(on) {
   else if (!settings.get().present.halo) present.setDemo(false);
   else present.applySettings();
 }
+function runNotchCmd(id) {
+  if (notch) notch.collapse();
+  if (id === 'shot') return startCapture('shot');
+  if (id === 'record') return startCapture('record');
+  if (id === 'recordFull') return startFullRecording();
+  if (id === 'stop') return stopRecording();
+}
 function buildTrayMenu() {
-  if (!tray) return;
   const recording = !!rec;
+  const { menu, hover } = menuAndHover({ recording, label: t, accel: accelLabel });
   const tpl = [
-    { label: `${t('截图')}\t${accelLabel('capture')}`, click: () => startCapture('shot') },
-    recording
-      ? { label: t('■ 停止录制'), click: () => stopRecording() }
-      : { label: `${t('录制区域')}\t${accelLabel('recordRegion')}`, click: () => startCapture('record') },
-    { label: `${t('录制全屏')}\t${accelLabel('recordFull')}`, enabled: !recording, click: () => startFullRecording() },
+    ...menu.map((it) => ({ label: trayLabel(it), enabled: it.enabled !== false, click: () => runNotchCmd(it.id) })),
     {
       label: t('演示'),
       submenu: [
@@ -512,9 +519,12 @@ function buildTrayMenu() {
     { label: t('退出'), click: () => { app.isQuitting = true; app.quit(); } },
   ];
   lastTrayTpl = tpl;
-  trayMenu = Menu.buildFromTemplate(tpl);
-  tray.setContextMenu(trayMenu);
-  tray.setToolTip(recording ? t('BillyShot — 录制中') : t('BillyShot 截图录屏'));
+  if (tray && !tray.isDestroyed()) {
+    trayMenu = Menu.buildFromTemplate(tpl);
+    tray.setContextMenu(trayMenu);
+    tray.setToolTip(recording ? t('BillyShot — 录制中') : t('BillyShot 截图录屏'));
+  }
+  if (notch) notch.sync(hover);
 }
 function createTray() {
   tray = new Tray(trayIcon());
@@ -803,6 +813,7 @@ async function macStartupChecks() {
 async function startCapture(mode = 'shot') {
   if (overlayBusy) return;
   if (mode === 'record' && rec) return stopRecording();
+  if (notch) notch.collapse();
   closeDoneBar(); // 上一次录屏的「已保存」控制条：开始截图就收起，不挡住框选
   overlayBusy = true;
   try {
@@ -971,6 +982,7 @@ ipcMain.on('overlay:record', async (_e, req) => {
 
 // 全屏截图直接进剪贴板
 async function captureFullToClipboard() {
+  if (notch) notch.collapse();
   closeDoneBar();
   try {
     if (!(await ensureScreenPerm())) return;
@@ -1265,12 +1277,19 @@ async function startRecording(display, rect, req) {
   buildTrayMenu();
   try {
     if (!(await ensureScreenPerm())) { rec = null; if (fileTools) fileTools.setRecording(false); buildTrayMenu(); return; }
+    // Ears / pill go up before the capture stream exists, so they are on screen within 1s
+    // and already excluded from it. updateRec fills in the real full-screen flag below.
+    if (isMac && notch && !cur.stopping) {
+      const b0 = display.bounds;
+      const fullGuess = !!(rect && (rect.full || (rect.w >= b0.width - 2 && rect.h >= b0.height - 2)));
+      notch.beginRec({ display, full: fullGuess, quality: (settings.get().record || {}).quality });
+    }
     const r = settings.get().record;
     const format = req.format === 'gif' ? 'gif' : 'mp4';
     const sourceId = await getScreenSourceId(display);
     if (rec !== cur) return;
     if (!sourceId) throw new Error(t('找不到屏幕源'));
-    if (cur.stopping) { rec = null; if (fileTools) fileTools.setRecording(false); buildTrayMenu(); return; }
+    if (cur.stopping) { rec = null; if (fileTools) fileTools.setRecording(false); if (notch) notch.endRec(); buildTrayMenu(); return; }
     const b = display.bounds;
     // 录制区域至少 32×32
     rect = { ...rect, w: Math.max(32, Math.round(rect.w)), h: Math.max(32, Math.round(rect.h)), x: Math.round(rect.x), y: Math.round(rect.y) };
@@ -1287,6 +1306,7 @@ async function startRecording(display, rect, req) {
     // 录制区域边框（画在区域外侧，不进入画面）
     const full = !!rect.full || (rect.w >= b.width - 2 && rect.h >= b.height - 2);
     cur.full = full;
+    if (isMac && notch) notch.updateRec({ full, quality: r.quality, display });
     const pad = 4;
     cur.frameWin = new BrowserWindow({
       x: abs.x - pad, y: abs.y - pad, width: abs.width + pad * 2, height: abs.height + pad * 2,
@@ -1303,7 +1323,9 @@ async function startRecording(display, rect, req) {
     cur.frameWin.loadFile(R('renderer', 'recframe.html'), { query: { full: full ? '1' : '0', countdown: String(r.countdown || 0), tick: snd.countdown ? '1' : '0', vol: String((snd.volume ?? 70) / 100) } });
     cur.frameWin.once('ready-to-show', () => { if (rec === cur && cur.frameWin && !cur.frameWin.isDestroyed()) cur.frameWin.showInactive(); });
 
-    // 控制条
+    // Mac 录制状态在刘海或胶囊上。控制条仍创建，录的时候藏着，停止后拿出来走原来的保存 / 预览。
+    // Windows（notch 为空）照旧马上显示控制条。
+    const macHud = isMac && !!notch;
     const barW = 430, barH = 46;
     const wa = display.workArea || b; // 工作区 = 屏幕去掉任务栏
     let bx = Math.round(abs.x + abs.width / 2 - barW / 2), by = abs.y + abs.height + pad + 8;
@@ -1346,11 +1368,13 @@ async function startRecording(display, rect, req) {
         cur.camDone = true; syncBarFx(); maybeGo();
       }).catch((e) => { log('camera for recording failed', e); if (rec === cur) { cur.camDone = true; maybeGo(); } });
     }
-    cur.barWin.loadFile(R('renderer', 'recbar.html'), { query: { format, mic: req.mic ? '1' : '0', sys: req.systemAudio ? '1' : '0', cam: req.camera ? '1' : '0', fx: present.recFx() ? '1' : '0', spot: present.isSpot() ? '1' : '0' } });
-    cur.barWin.webContents.once('did-finish-load', () => syncBarFx());
-    const hideBar = full && r.hideBarFull;
-    cur.barWin.once('ready-to-show', () => { if (rec === cur && cur.barWin && !cur.barWin.isDestroyed() && !hideBar) cur.barWin.showInactive(); });
-    if (hideBar) notify(t('正在录制全屏'), accelLabel('recordFull') ? t('再按 {k} 停止录制', { k: accelLabel('recordFull') }) : t('用托盘菜单停止录制'));
+    if (cur.barWin) {
+      cur.barWin.loadFile(R('renderer', 'recbar.html'), { query: { format, mic: req.mic ? '1' : '0', sys: req.systemAudio ? '1' : '0', cam: req.camera ? '1' : '0', fx: present.recFx() ? '1' : '0', spot: present.isSpot() ? '1' : '0' } });
+      cur.barWin.webContents.once('did-finish-load', () => syncBarFx());
+      const hideBar = (full && r.hideBarFull) || macHud;
+      cur.barWin.once('ready-to-show', () => { if (rec === cur && cur.barWin && !cur.barWin.isDestroyed() && !hideBar) cur.barWin.showInactive(); });
+      if (full && r.hideBarFull && !macHud) notify(t('正在录制全屏'), accelLabel('recordFull') ? t('再按 {k} 停止录制', { k: accelLabel('recordFull') }) : t('用托盘菜单停止录制'));
+    } else syncBarFx();
 
     // 隐藏的录制窗口（负责采集与编码）
     cur.recWin = new BrowserWindow({
@@ -1385,6 +1409,10 @@ async function startRecording(display, rect, req) {
 
 function recSender(e) { return rec && rec.recWin && !rec.recWin.isDestroyed() && e.sender === rec.recWin.webContents; }
 function sendTo(win, ch, ...args) { try { if (win && !win.isDestroyed()) win.webContents.send(ch, ...args); } catch {} }
+function sessionBar(r) {
+  // Save / pause / mic live on the recording bar. The notch only shows the timer.
+  return r && r.barWin && !r.barWin.isDestroyed() ? r.barWin : null;
+}
 
 ipcMain.on('rec:started', (e, info) => {
   if (!recSender(e)) return;
@@ -1397,7 +1425,8 @@ ipcMain.on('rec:started', (e, info) => {
   sendTo(rec.frameWin, 'frame:recording');
   // 全屏录制时边框本来就隐藏，直接关掉以免老系统把它录成黑块
   if (rec.full && rec.frameWin && !rec.frameWin.isDestroyed()) { rec.frameWin.destroy(); rec.frameWin = null; }
-  { const w = [...((info && info.warnings) || []), ...rec.extraWarn]; sendTo(rec.barWin, 'recbar:state', { state: 'recording', warnings: w, info: info && { ...info, warnings: w } }); }
+  if (isMac && notch) notch.updateRec({ full: !!rec.full, quality: (settings.get().record || {}).quality, display: rec.display });
+  { const w = [...((info && info.warnings) || []), ...rec.extraWarn]; sendTo(sessionBar(rec), 'recbar:state', { state: 'recording', warnings: w, info: info && { ...info, warnings: w } }); }
   log('recording started', info);
 });
 function writeRecBytes(buf) {
@@ -1431,7 +1460,8 @@ ipcMain.on('rec:progress', (e, p) => {
   }
   if (p && p.warnings) rec.recWarn = p.warnings; // 录制进程自己的提示（麦克风 / 系统声音），合并显示时要保留
   if (p && rec.extraWarn.length) p = { ...p, warnings: [...(p.warnings || []), ...rec.extraWarn] };
-  sendTo(rec.barWin, 'recbar:state', p);
+  if (p && typeof p.elapsed === 'number' && isMac && notch && rec && !rec.stopping) notch.setElapsed(p.elapsed);
+  sendTo(sessionBar(rec), 'recbar:state', p);
 });
 // 录制中的附加提示（摄像头打不开、区域太小…）显示在控制条上
 function addRecWarn(msg) {
@@ -1441,11 +1471,11 @@ function addRecWarn(msg) {
 }
 function sendBarWarn(r) {
   if (!r || r.stopping) return; // 正在保存 / 生成 GIF 时不改控制条状态
-  sendTo(r.barWin, 'recbar:state', { state: r.startedAt ? (r.paused ? 'paused' : 'recording') : 'ready', warnings: [...(r.recWarn || []), ...r.extraWarn] });
+  sendTo(sessionBar(r), 'recbar:state', { state: r.startedAt ? (r.paused ? 'paused' : 'recording') : 'ready', warnings: [...(r.recWarn || []), ...r.extraWarn] });
 }
 function syncBarFx() {
   if (!rec || !present) return;
-  sendTo(rec.barWin, 'recbar:fx', { cam: present.camOn(), spot: present.isSpot(), fx: present.recFx() });
+  sendTo(sessionBar(rec), 'recbar:fx', { cam: present.camOn(), spot: present.isSpot(), fx: present.recFx() });
 }
 function presentState() { return present ? { demo: present.isDemo(), spot: present.isSpot(), cam: present.camOn() } : { demo: false, spot: false, cam: false }; }
 function toggleCamera(on) {
@@ -1461,7 +1491,11 @@ ipcMain.on('rec:done', (e, info) => { if (recSender(e)) finishRecording(info && 
 ipcMain.on('rec:error', (e, msg) => { if (recSender(e)) finishRecording('error', msg); });
 ipcMain.on('recbar:action', (e, action) => {
   if (!rec) return;
-  if (e && e.sender && !(rec.barWin && !rec.barWin.isDestroyed() && e.sender === rec.barWin.webContents)) return;
+  if (e && e.sender) {
+    const fromBar = rec.barWin && !rec.barWin.isDestroyed() && e.sender === rec.barWin.webContents;
+    const fromNotch = !!(notch && notch.owns(e.sender));
+    if (!fromBar && !fromNotch) return;
+  }
   if (action === 'stop') return stopRecording();
   if (action === 'cancel') return stopRecording(true);
   if (action === 'pause' || action === 'resume') {
@@ -1474,6 +1508,7 @@ ipcMain.on('recbar:action', (e, action) => {
   if (action === 'fx-on' || action === 'fx-off') present.setRecFx(action === 'fx-on');
 });
 ipcMain.on('recbar:drag', (e, dx, dy) => {
+  if (notch && notch.owns(e.sender)) return;
   const w = [rec && rec.barWin, doneBar && doneBar.win].find((x) => x && !x.isDestroyed() && x.webContents === e.sender);
   if (!w) return;
   const [x, y] = w.getPosition(); w.setPosition(Math.round(x + dx), Math.round(y + dy));
@@ -1505,8 +1540,13 @@ function stopRecording(cancel = false) {
   if (!rec || rec.stopping) return;
   rec.stopping = true;
   rec.cancelled = cancel;
+  // Ears and the pill go away at the click. The bar (hidden on Mac during the take) comes back for the existing save / preview.
+  if (isMac && notch) notch.endRec();
   if (rec.starting) return; // startRecording 会自己收尾
-  sendTo(rec.barWin, 'recbar:state', { state: rec.format === 'gif' && !cancel ? 'encoding' : 'stopping' });
+  if (isMac && notch && rec.barWin && !rec.barWin.isDestroyed()) {
+    try { if (!rec.barWin.isVisible()) rec.barWin.showInactive(); } catch {}
+  }
+  sendTo(sessionBar(rec), 'recbar:state', { state: rec.format === 'gif' && !cancel ? 'encoding' : 'stopping' });
   sendTo(rec.recWin, 'rec:stop', cancel);
   // 停止以后不再采集画面：马上收起光圈 / 聚光灯 / 摄像头（GIF 编码可能要好一会儿）
   try { if (present) present.setRecording(null); } catch (e) { log('present end failed', e); }
@@ -1529,12 +1569,13 @@ function syncDemoBarCapture() {
   const show = !!((settings.get().record || {}).demoCaptureBar);
   const wins = [];
   if (rec && rec.barWin && !rec.barWin.isDestroyed() && (!show || barOutsideRecord(rec))) wins.push(rec.barWin);
-  if (doneBar && doneBar.win && !doneBar.win.isDestroyed()) wins.push(doneBar.win);
+  if (doneBar && doneBar.win && !doneBar.notch && !doneBar.win.isDestroyed()) wins.push(doneBar.win);
   for (const win of wins) { try { win.setContentProtection(!show); } catch {} }
 }
 function closeDoneBar() {
   const d = doneBar; doneBar = null;
-  if (d && d.win) { try { if (!d.win.isDestroyed()) d.win.destroy(); } catch {} }
+  if (!d || !d.win) return;
+  try { if (!d.win.isDestroyed()) d.win.destroy(); } catch {}
 }
 function finishRecording(status, msg) {
   if (!rec) return;
@@ -1548,6 +1589,7 @@ function finishRecording(status, msg) {
   log('record finish', { status, msg, file: r.file, bytes: r.bytes, cancelled: r.cancelled, writeErr: r.writeErr && r.writeErr.message });
   const partial = status === 'error' && !r.cancelled && r.bytes > 0 && !r.writeErr && r.format !== 'gif';
   const keep = partial || (status === 'ok' && !r.cancelled && r.bytes > 0 && !r.writeErr);
+  if (isMac && notch) notch.endRec();
   const bar = r.barWin && !r.barWin.isDestroyed() ? r.barWin : null;
   if (!keep) {
     try { if (bar) bar.destroy(); } catch {}
@@ -1666,6 +1708,8 @@ function setupTestHooks() {
       if (cmd.cmd === 'clipboard') { const png = await clip.readImagePng(); if (png) { fs.writeFileSync('/tmp/billyshot-clip.png', png); console.log('CLIP', JSON.stringify(nativeImage.createFromBuffer(png).getSize())); } else console.log('CLIP none'); }
       if (cmd.cmd === 'double') { startFullRecording(); setTimeout(() => startFullRecording(), cmd.gap || 30); }
       if (cmd.cmd === 'recAction') ipcMain.emit('recbar:action', {}, cmd.action);
+      if (cmd.cmd === 'notchTime' && notch) { notch.debugElapsed(Number(cmd.ms) || 0); console.log('NOTCHTIME', Number(cmd.ms) || 0); }
+      if (cmd.cmd === 'notchState') console.log('NOTCHSTATE', JSON.stringify(notch ? notch.debugState() : null));
       if (cmd.cmd === 'setSettings') { settings.set(cmd.patch); if (cmd.patch && cmd.patch.present && present) present.applySettings(); console.log('SETTINGS OK'); }
       if (cmd.cmd === 'windows') console.log('WINDOWS', BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed()).length);
       if (cmd.cmd === 'status') console.log('STATUS', JSON.stringify({ hotkeyStatus, rec: !!rec, pins: pins.size, overlayVisible: !!(overlayWin && overlayWin.isVisible()), busy: overlayBusy, escHeld, keysHeld, overlayScale: overlayWin && overlayWin.createdScale, overlayBounds: overlayWin && overlayWin.getBounds(), barPos: rec && rec.barPos, workArea: rec && rec.display && rec.display.workArea }));
@@ -1746,6 +1790,7 @@ app.whenReady().then(() => {
     onChange: () => { buildTrayMenu(); syncBarFx(); if (settingsWin && !settingsWin.isDestroyed()) settingsWin.webContents.send('settings:present', presentState()); },
     // 演示层出现后，录屏控制条要在它上面（聚光灯不把它压暗）
     raiseOthers: () => {
+      if (notch) notch.moveTop();
       if (!rec) return;
       for (const w of [rec.frameWin, rec.barWin]) { if (w && !w.isDestroyed() && w.isVisible()) { try { w.moveTop(); } catch {} } }
     },
@@ -1756,6 +1801,16 @@ app.whenReady().then(() => {
     BrowserWindow, ipcMain, screen, shell, dialog, Notification, nativeImage, app, settings, t, isMac, isWin, log, R,
     getTray: () => tray, trayIcon,
   });
+  // The tray stays on every platform. The notch is Mac-only and never replaces it.
+  if (isMac && !process.env.BILLYSHOT_NO_NOTCH) {
+    try {
+      notch = createNotch({
+        screen, BrowserWindow, log, R, protect, onCmd: runNotchCmd,
+        timerPreference: () => ((settings.get().notch || {}).timer || ''),
+      });
+    } catch (e) { log('notch failed', e); notch = null; }
+  }
+  if (notch) log('notch', notch.geom);
   createTray();
   fileTools.attachTray(tray);
   fileTools.syncShiftDrag();

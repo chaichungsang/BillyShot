@@ -178,6 +178,7 @@
       "zh-TW",
       "en-US"
     ],
-    "publish": null
+    "publish": null,
+    "afterPack": "scripts/after-pack-mac-ffmpeg.js"
   }
 }

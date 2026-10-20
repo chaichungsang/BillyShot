@@ -22,3 +22,12 @@ configure:
 Verified with wine: ffmpeg -buildconf contains --disable-gpl and --enable-mediafoundation.
 ffmpeg -encoders lists h264_mf, mpeg4, gif, aac, mjpeg. It does not list libx264.
 DLLs sit next to ffmpeg.exe. Nothing is statically linked into BillyShot.
+
+sha256 (files in this folder):
+  bdbd4928e546dad0661c0b8c6331870e5411f21ca27859141b6fee210afee44a  avcodec-61.dll
+  dbfeb1e1daaac4054ff49585918e66c758a1ecec4c24de16ed774f2886b4e35a  avfilter-10.dll
+  2346e8d682ebcea20d2a6d93adfa7df2871cd4b72edaa73529d8a82d9cedc6d2  avformat-61.dll
+  e4d15443ed4061c9c39decfca6464787b68a0601f57a5f480d3f47de6dd96951  avutil-59.dll
+  ce58321c4cbea4be0b8fb2069b3629c1d526f5781bc3ee555e0fe3c20fa4ef4b  ffmpeg.exe
+  124806a29296f469ebc3520ccc5a95432fcd8af7e13bf42957154c405c2991cf  swresample-5.dll
+  647a70f12a1868b4c67db9367e68bcb3c749809aea7adddbf5c1a3c728166c9c  swscale-8.dll

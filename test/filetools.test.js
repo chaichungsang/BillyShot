@@ -573,3 +573,162 @@ test('cancelling a real ffmpeg job kills it and deletes the partial', { timeout:
   assert.deepEqual(leftover, []);
   runner.dispose();
 });
+
+// ---- 1.4.1：冷启动后第一次 Shift 拖 ----
+function fakeElectron() {
+  const wins = [];
+  const handlers = {};
+  class FakeWin {
+    constructor(opts) {
+      this.opts = opts; this.visible = false; this.bounds = null; this.sent = []; this.destroyed = false; this.file = '';
+      const self = this;
+      this.webContents = {
+        isLoading: () => false,
+        once: (_ev, fn) => fn(),
+        on: () => {},
+        send: (ch, payload) => self.sent.push({ ch, payload }),
+      };
+      wins.push(this);
+    }
+    setAlwaysOnTop(on, level) { this.level = on ? level : null; } setVisibleOnAllWorkspaces() {} setMenu() {}
+    loadFile(f) { this.file = String(f); }
+    on() {}
+    isDestroyed() { return this.destroyed; }
+    isVisible() { return this.visible; }
+    showInactive() { this.visible = true; }
+    show() { this.visible = true; }
+    hide() { this.visible = false; }
+    focus() {}
+    setBounds(b) { this.bounds = b; }
+  }
+  const deps = {
+    BrowserWindow: FakeWin,
+    ipcMain: { on: (ch, fn) => { handlers[ch] = fn; } },
+    screen: {
+      getCursorScreenPoint: () => ({ x: 600, y: 500 }),
+      getDisplayNearestPoint: () => ({ workArea: { x: 0, y: 28, width: 1496, height: 877 } }),
+    },
+    shell: { showItemInFolder() {} }, dialog: {}, Notification: null, nativeImage: null,
+    app: { isQuitting: false },
+    settings: { get: () => ({ fileTools: { shiftDrag: true }, hotkeys: {} }) },
+    t: (s) => s, isMac: true, isWin: false, log: () => {},
+    R: (...p) => path.join(__dirname, '..', 'src', ...p),
+    getTray: () => null, trayIcon: () => null,
+  };
+  const arcWin = () => wins.find((w) => w.file.endsWith('arc.html'));
+  return { deps, handlers, wins, arcWin };
+}
+
+test('first Shift-drag after a cold start shows the arc and accepts the drop', { timeout: 20000 }, async () => {
+  const { createFileTools } = require('../src/filetools/bridge');
+  const { deps, handlers, arcWin } = fakeElectron();
+  const ft = createFileTools(deps);
+  try {
+    const png = path.join(root, 'cold-start.png');
+    await samplePng(png, 40, 30, 'teal');
+    assert.equal(arcWin(), undefined, 'no arc window before the first drag');
+
+    // helper：Shift 拖开始、移动
+    ft.helperMessage({ type: 'shift-drag', x: 590, y: 495 });
+    ft.helperMessage({ type: 'move', x: 600, y: 500 });
+    const win = arcWin();
+    assert.ok(win && win.visible, 'catcher window is shown at the cursor');
+    // macOS 只把拖放交给层级低于拖放图标（500）的窗口；screen-saver 是 1000，拖放会穿过去。
+    assert.notEqual(win.level, 'screen-saver');
+    assert.ok(['floating', 'torn-off-menu', 'modal-panel', 'main-menu', 'status', 'pop-up-menu'].includes(win.level), 'arc window level stays below the drag level: ' + win.level);
+    const caught = win.sent.filter((m) => m.ch === 'filetools:catch');
+    assert.ok(caught.length >= 1, 'renderer is told to draw the hit-testable catch ring');
+    const last = caught[caught.length - 1].payload;
+    assert.equal(win.bounds.x + last.hubx, 600);
+    assert.equal(win.bounds.y + last.huby, 500);
+
+    // helper 的 up 比 drop 先到：窗口不能马上收起
+    ft.helperMessage({ type: 'up', x: 600, y: 500 });
+    assert.equal(win.visible, true, 'mouse-up does not hide the catcher before the drop arrives');
+    await new Promise((r) => setTimeout(r, 150));
+    assert.equal(win.visible, true);
+
+    // 渲染端在没有弧的状态下也把 drop 交给主进程
+    handlers['filetools:drop']({}, { files: [png], dx: 0, dy: 0 });
+    const arc = await waitFor(() => win.sent.find((m) => m.ch === 'filetools:arc'), 10000);
+    assert.equal(arc.payload.model.keys[0].action, 'image.convert');
+    assert.equal(arc.payload.model.keys[0].label, '转格式');
+    assert.ok(arc.payload.model.keys[0].pills.some((p) => p.format === 'jpg'));
+    assert.deepEqual(arc.payload.files, [png]);
+    // 宽限期过了也不会把画好的弧收掉
+    await new Promise((r) => setTimeout(r, 900));
+    assert.equal(win.visible, true, 'the drawn arc stays open after the grace period');
+  } finally { ft.dispose(); }
+});
+
+test('Shift-drag released without a drop closes the catcher after a short grace', async () => {
+  const { createFileTools } = require('../src/filetools/bridge');
+  const { deps, arcWin } = fakeElectron();
+  const ft = createFileTools(deps);
+  try {
+    ft.helperMessage({ type: 'shift-drag', x: 600, y: 500 });
+    ft.helperMessage({ type: 'up', x: 600, y: 500 });
+    assert.equal(arcWin().visible, true);
+    await waitFor(() => !arcWin().visible, 3000);
+    ft.helperMessage({ type: 'shift-drag', x: 600, y: 500 });
+    ft.helperMessage({ type: 'shift-up' });
+    assert.equal(arcWin().visible, false, 'letting go of Shift mid-drag closes at once');
+  } finally { ft.dispose(); }
+});
+
+test('arc renderer forwards a cold-start drop and has no stray hub', () => {
+  const vm = require('vm');
+  const dir = path.join(__dirname, '..', 'src', 'renderer');
+  const els = {};
+  const mk = (id) => ({
+    id, hidden: false, innerHTML: '', style: {}, dataset: {},
+    classList: { _s: new Set(), add(c) { this._s.add(c); }, remove(c) { this._s.delete(c); }, toggle() {}, contains(c) { return this._s.has(c); } },
+    appendChild() {}, setAttribute() {}, addEventListener() {}, querySelector: () => null, querySelectorAll: () => [],
+    getBoundingClientRect: () => ({ left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 }),
+  });
+  const docListeners = {};
+  const body = mk('body');
+  const document = {
+    body,
+    getElementById: (id) => (els[id] = els[id] || mk(id)),
+    createElement: () => mk('x'), createElementNS: () => mk('x'),
+    querySelectorAll: () => [],
+    addEventListener: (n, fn) => { docListeners[n] = fn; },
+  };
+  const sent = [];
+  const onHandlers = {};
+  const api = {
+    send: (ch, payload) => sent.push({ ch, payload }),
+    on: (ch, fn) => { onHandlers[ch] = fn; },
+    pathForFile: () => '/tmp/cold.png',
+  };
+  const ctx = { document, api, window: {}, setTimeout, clearTimeout, getComputedStyle: () => ({}), console };
+  ctx.window = ctx; ctx.window.api = api; ctx.innerWidth = 600; ctx.innerHeight = 400;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(dir, 'filetools', 'arc.js'), 'utf8'), ctx);
+  assert.ok(onHandlers['filetools:catch'], 'listens for the catch message');
+
+  onHandlers['filetools:catch']({ hubx: 300, huby: 200 });
+  assert.equal(els.catch.hidden, false);
+  assert.equal(els.catch.style.left, '300px');
+  assert.equal(els.hub.hidden, true);
+  assert.ok(body.classList.contains('catching'));
+
+  docListeners.drop({ preventDefault() {}, clientX: 300, clientY: 200, dataTransfer: { files: [{}] } });
+  const drop = sent.find((m) => m.ch === 'filetools:drop');
+  assert.ok(drop, 'a drop with no arc drawn still goes to main');
+  assert.deepEqual(Array.from(drop.payload.files), ['/tmp/cold.png']);
+
+  const html = fs.readFileSync(path.join(dir, 'arc.html'), 'utf8');
+  assert.match(html, /id="catch"/);
+  const css = fs.readFileSync(path.join(dir, 'filetools', 'arc.css'), 'utf8');
+  assert.match(css, /\[hidden\]\s*\{\s*display:\s*none\s*!important/);
+  const bg = css.match(/body\.catching\s*\{\s*background:\s*rgba\(([^)]*)\)/);
+  assert.ok(bg, 'catcher body has a background');
+  const alpha = Number(bg[1].split(',')[3]);
+  assert.ok(alpha > 0 && alpha < 0.05, 'catcher background is hit-testable but nearly invisible');
+  // 接收圈的样式不能套到 body 上（body 带 catching 类）：选择器只认 .catch-ring
+  assert.doesNotMatch(css, /(^|[\s,}])\.catching\s*\{/m, 'no bare .catching rule that would also style <body>');
+  assert.match(css, /\.catch-ring\s*\{[^}]*position:\s*absolute/);
+  assert.match(html, /class="catch-ring"/);
+});

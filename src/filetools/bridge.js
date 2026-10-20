@@ -15,6 +15,9 @@ const { ringPng } = require('./tray-ring');
 
 function baseName(file) { return path.basename(file || ''); }
 
+// 动作弧 / Shift 拖接收窗的窗口层级。见 ensureArc 里的说明。
+const ARC_LEVEL = 'pop-up-menu';
+
 function contentFrame(placement, area, column) {
   const pad = 36;
   let minX = -HUB / 2, maxX = HUB / 2, minY = -HUB / 2, maxY = HUB / 2;
@@ -63,6 +66,10 @@ function createFileTools(deps) {
   let trayBase = null;
   let trayTimer = null;
   let runStamp = { sig: '', at: 0 };
+  // Shift 拖：松手（helper 的 up）和松手落下的 drop 是两条路，谁先到不一定。
+  // up 先到时不能马上把接收窗收起来，否则 drop 落不进来；等一小会儿，没 drop 再收。
+  let catching = false;
+  let upTimer = null;
 
   const runner = new JobRunner({
     onUpdate: (job, info) => onJob(job, info || {}),
@@ -113,7 +120,10 @@ function createFileTools(deps) {
       alwaysOnTop: true, fullscreenable: false,
       webPreferences: { preload: R('preload.js'), spellcheck: false },
     });
-    try { arcWin.setAlwaysOnTop(true, 'screen-saver'); } catch {}
+    // 层级必须低于系统拖放图标的层级（kCGDraggingWindowLevel = 500）。
+    // 'screen-saver'（1000）比它高，macOS 不会把拖放交给这个窗口，Shift 拖松手时文件直接落到下面的 Finder。
+    // 'pop-up-menu'（101）仍然盖在普通窗口和浮动面板上面。
+    try { arcWin.setAlwaysOnTop(true, ARC_LEVEL); } catch {}
     try { arcWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true }); } catch {}
     arcWin.setMenu(null);
     arcWin.loadFile(R('renderer', 'arc.html'));
@@ -163,7 +173,41 @@ function createFileTools(deps) {
     const frame = contentFrame(placement, area, true);
     const win = ensureArc();
     win.setBounds({ x: frame.x, y: frame.y, width: frame.width, height: frame.height });
+    // 接收窗：旧的弧不算数，drop 进来一律按「还没画弧」处理（主进程收到后再画）。
+    // 渲染端画一个能接住 drop 的小圈（完全透明的像素在 macOS 上会让拖放穿过去）。
+    arcPayload = null;
+    const catchMsg = { hubx: frame.hubx, huby: frame.huby };
+    const push = () => { try { win.webContents.send('filetools:catch', catchMsg); } catch {} };
+    if (win.webContents.isLoading()) win.webContents.once('did-finish-load', push);
+    else push();
     if (!win.isVisible()) win.showInactive();
+  }
+
+  const DROP_GRACE_MS = 700;
+  function clearUpTimer() { if (upTimer) { clearTimeout(upTimer); upTimer = null; } }
+
+  // ShiftDrag helper 的一行消息。单独拿出来，测试可以直接喂。
+  function onHelperMessage(msg) {
+    if (!msg || typeof msg !== 'object') return;
+    if (msg.type === 'ready') {
+      lastProbe = { ok: msg.ok !== false, permission: msg.permission || 'none', needsPermission: !!msg.needsPermission };
+    } else if (msg.type === 'shift-drag' || msg.type === 'move') {
+      clearUpTimer();
+      catching = true;
+      showCatcher('shift', { x: msg.x, y: msg.y });
+    } else if (msg.type === 'up') {
+      if (!catching) return;
+      clearUpTimer();
+      upTimer = setTimeout(() => {
+        upTimer = null;
+        if (catching) { catching = false; closeArc(); }
+      }, DROP_GRACE_MS);
+    } else if (msg.type === 'shift-up') {
+      if (!catching) return;
+      clearUpTimer();
+      catching = false;
+      closeArc();
+    }
   }
 
   function ensurePanel() {
@@ -457,9 +501,7 @@ function createFileTools(deps) {
         if (!line) continue;
         let msg;
         try { msg = JSON.parse(line); } catch { continue; }
-        if (msg.type === 'ready') lastProbe = { ok: msg.ok !== false, permission: msg.permission || 'none', needsPermission: !!msg.needsPermission };
-        else if (msg.type === 'shift-drag' || msg.type === 'move') showCatcher('shift', { x: msg.x, y: msg.y });
-        else if (msg.type === 'up' || msg.type === 'shift-up') closeArc();
+        onHelperMessage(msg);
       }
     });
     watcher.on('exit', () => {
@@ -504,6 +546,7 @@ function createFileTools(deps) {
   });
   ipcMain.on('filetools:drop', (_e, msg) => {
     const files = (msg && msg.files) || [];
+    if (catching) { catching = false; clearUpTimer(); }
     if (!arcPayload || !arcPayload.model) { showArc(files, anchor, screen.getCursorScreenPoint()); return; }
     const hit = hitTest(msg.dx || 0, msg.dy || 0, msg.angles || arcPayload.angles || []);
     if (hit.zone === 'key') runKey(arcPayload.model.keys[hit.index], files.length ? files : arcPayload.files);
@@ -534,7 +577,8 @@ function createFileTools(deps) {
     setRecording: (on) => runner.setRecording(!!on),
     attachTray,
     syncShiftDrag,
-    dispose: () => { runner.dispose(); stopWatch(); closeArc(); },
+    dispose: () => { clearUpTimer(); runner.dispose(); stopWatch(); closeArc(); },
+    helperMessage: onHelperMessage,
     recent: () => recent.slice(),
     refreshLanguage() {
       if (toolsWin && !toolsWin.isDestroyed()) toolsWin.loadFile(R('renderer', 'filetools.html'));
@@ -544,4 +588,4 @@ function createFileTools(deps) {
   };
 }
 
-module.exports = { createFileTools, contentFrame };
+module.exports = { createFileTools, contentFrame, ARC_LEVEL };

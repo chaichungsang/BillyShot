@@ -40,8 +40,30 @@ function showTip(x, y, title, detail) {
 
 function hideTip() { $('tip').hidden = true; }
 
+// Shift 拖的接收窗：清掉旧弧，只在光标处画一个淡淡的接收圈，让 drop 有地方落。
+function showCatch(p) {
+  state = null;
+  active = 0;
+  clearTimeout(extraTimer);
+  document.body.classList.add('catching');
+  $('keys').innerHTML = '';
+  $('extra').innerHTML = '';
+  $('spokes').innerHTML = '';
+  $('hub').hidden = true;
+  $('tip').hidden = true;
+  $('warn').hidden = true;
+  const ring = $('catch');
+  if (ring && p) {
+    ring.style.left = (p.hubx || 0) + 'px';
+    ring.style.top = (p.huby || 0) + 'px';
+    ring.hidden = false;
+  }
+}
+
 function renderArc(payload) {
   state = payload;
+  document.body.classList.remove('catching');
+  if ($('catch')) $('catch').hidden = true;
   const stage = $('stage');
   const keys = payload.model.keys;
   const hub = $('hub');
@@ -249,11 +271,17 @@ document.addEventListener('dragover', (e) => { e.preventDefault(); if (e.dataTra
 document.addEventListener('drop', (e) => {
   e.preventDefault();
   const files = [...(e.dataTransfer.files || [])].map((f) => (api && api.pathForFile ? api.pathForFile(f) : '')).filter(Boolean);
-  if (!files.length || !state) return;
+  if (!files.length) return;
+  // 还没画过弧（冷启动后第一次 Shift 拖）：照样交给主进程，主进程会在光标处画弧。
+  if (!state) { send('filetools:drop', { files, dx: 0, dy: 0 }); return; }
   const dx = e.clientX - state.hubx;
   const dy = e.clientY - state.huby;
   send('filetools:drop', { files, dx, dy, angles: state.angles });
 });
 
 window.renderArc = renderArc;
-if (window.api && api.on) api.on('filetools:arc', renderArc);
+window.showCatch = showCatch;
+if (window.api && api.on) {
+  api.on('filetools:arc', renderArc);
+  api.on('filetools:catch', showCatch);
+}

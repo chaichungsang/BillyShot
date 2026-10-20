@@ -5,7 +5,7 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node --test test/filetools.test.js",
+    "test": "node --test test/filetools.test.js test/after_pack.test.js",
     "natives": "node scripts/fetch-natives.js",
     "dist:win": "node scripts/fetch-natives.js && electron-builder --win --x64 && node scripts/build-uninstall-tool.js",
     "dist:mac": "node scripts/fetch-natives.js && electron-builder --mac --x64 --arm64 && node scripts/sign-mac.js"

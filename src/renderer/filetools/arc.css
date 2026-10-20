@@ -40,9 +40,10 @@ body.catching { background: rgba(16, 15, 14, .012); }
   background: #2a2825; color: var(--ft-gold-2); font: 700 10px/16px -apple-system, sans-serif; text-align: center; }
 .key .glyph { width: 18px; height: 18px; }
 .key .glyph svg { width: 18px; height: 18px; display: block; }
-.key .cap { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%);
-  font: 600 11px/1.2 -apple-system, "PingFang SC", sans-serif; color: var(--ft-ink); white-space: nowrap; pointer-events: none; }
-.key.dashed .cap { top: calc(100% + 16px); }
+/* 圆下面的字也能点：它是按钮的子元素，点到就等于点圆。上下留 4px 方便点中，文字位置不变。 */
+.key .cap { position: absolute; left: 50%; top: calc(100% + 4px); transform: translateX(-50%); padding: 4px 6px;
+  font: 600 11px/1.2 -apple-system, "PingFang SC", sans-serif; color: var(--ft-ink); white-space: nowrap; pointer-events: auto; cursor: pointer; }
+.key.dashed .cap { top: calc(100% + 12px); }
 .key.on:not(.grey) .face { background: var(--ft-hover); box-shadow: 0 0 0 1.5px var(--ft-gold), 0 0 0 5px rgba(212, 168, 75, .28); }
 .key.on:not(.grey) .num { background: var(--ft-gold-2); color: var(--ft-graphite); }
 .key.grey .face, .key.grey .cap, .key.grey .num { opacity: .38; }

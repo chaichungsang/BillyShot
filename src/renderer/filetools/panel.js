@@ -33,6 +33,19 @@ function button(label, cls, on, disabled) {
 }
 
 function renderPanel(next) {
+  paintPanel(next);
+  reportSize();
+}
+
+// 画完把面板实际高度告诉主进程，窗口跟着缩放（不留空的深色条）。
+function reportSize() {
+  const panel = $('panel');
+  if (!panel || !(window.api && api.send)) return;
+  const h = Math.ceil(panel.getBoundingClientRect().height || panel.offsetHeight || 0);
+  if (h > 0) api.send('filetools:panel-size', { height: h });
+}
+
+function paintPanel(next) {
   const incoming = next || {};
   if (!incoming.action && incoming.kind && view && view.action && incoming.kind !== view.kind && incoming.kind !== view.action) {
     view = Object.assign({}, view, incoming);
@@ -309,7 +322,11 @@ function renderError() {
 
 $('close').addEventListener('click', () => send('filetools:close-panel'));
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { e.preventDefault(); send('filetools:cancel'); }
+  if (e.key !== 'Escape') return;
+  e.preventDefault();
+  // 完成 / 出错时 Esc 就是关闭；排队或进行中 Esc 是取消任务。
+  if (view && (view.phase === 'done' || view.phase === 'error')) send('filetools:close-panel');
+  else send('filetools:cancel');
 });
 window.renderPanel = renderPanel;
 if (window.api && api.on) api.on('filetools:panel', renderPanel);

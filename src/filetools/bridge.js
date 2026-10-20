@@ -210,11 +210,18 @@ function createFileTools(deps) {
     }
   }
 
+  // 面板窗口无边框、透明，只有自绘的 ×（没有假的红绿灯）。
+  // 窗口高度跟着内容走：渲染端画完报 filetools:panel-size，主进程改窗口高度并刷新阴影。
+  // 以前窗口固定 520 高，macOS 按旧内容算出的阴影会在面板下面留一条空的深色条。
+  const PANEL_W = 500;
+  const PANEL_MIN_H = 120;
+  const PANEL_MAX_H = 720;
+  let panelShowTimer = null;
   function ensurePanel() {
     if (panelWin && !panelWin.isDestroyed()) return panelWin;
     panelWin = new BrowserWindow({
-      width: 500, height: 520, show: false, frame: false, transparent: true, backgroundColor: '#00000000',
-      resizable: false, skipTaskbar: true, alwaysOnTop: true, fullscreenable: false,
+      width: PANEL_W, height: 300, show: false, frame: false, transparent: true, backgroundColor: '#00000000',
+      hasShadow: true, resizable: false, skipTaskbar: true, alwaysOnTop: true, fullscreenable: false,
       webPreferences: { preload: R('preload.js'), spellcheck: false },
     });
     panelWin.setMenu(null);
@@ -223,6 +230,19 @@ function createFileTools(deps) {
       if (!app.isQuitting) { e.preventDefault(); panelWin.hide(); }
     });
     return panelWin;
+  }
+
+  function showPanelNow() {
+    if (panelShowTimer) { clearTimeout(panelShowTimer); panelShowTimer = null; }
+    if (panelWin && !panelWin.isDestroyed() && !panelWin.isVisible()) panelWin.show();
+  }
+
+  function fitPanel(height) {
+    if (!panelWin || panelWin.isDestroyed()) return;
+    const h = Math.round(Math.min(PANEL_MAX_H, Math.max(PANEL_MIN_H, Number(height) || 0)));
+    const cur = panelWin.getContentSize ? panelWin.getContentSize() : [PANEL_W, 0];
+    if (cur[1] !== h || cur[0] !== PANEL_W) panelWin.setContentSize(PANEL_W, h);
+    if (isMac && typeof panelWin.invalidateShadow === 'function') panelWin.invalidateShadow();
   }
 
   function sendPanel(view) {
@@ -235,7 +255,8 @@ function createFileTools(deps) {
     panelView = view;
     const win = ensurePanel();
     const push = () => { try { win.webContents.send('filetools:panel', view); } catch {} };
-    if (!win.isVisible()) win.show();
+    // 先让渲染端画好并报高度，再显示；渲染端没回话也最多等 250 ms。
+    if (!win.isVisible() && !panelShowTimer) panelShowTimer = setTimeout(showPanelNow, 250);
     if (win.webContents.isLoading()) win.webContents.once('did-finish-load', push);
     else push();
   }
@@ -527,6 +548,11 @@ function createFileTools(deps) {
   ipcMain.on('filetools:run', (_e, msg) => startFrom(msg || {}));
   ipcMain.on('filetools:panel', (_e, msg) => openSetup(msg || {}));
   ipcMain.on('filetools:close-arc', () => closeArc());
+  ipcMain.on('filetools:panel-size', (e, msg) => {
+    if (!panelWin || panelWin.isDestroyed() || (e && e.sender && e.sender !== panelWin.webContents)) return;
+    fitPanel(msg && msg.height);
+    if (panelShowTimer) showPanelNow();
+  });
   ipcMain.on('filetools:close-panel', () => { if (panelWin && !panelWin.isDestroyed()) panelWin.hide(); });
   ipcMain.on('filetools:cancel', () => {
     if (panelView && panelView.id) runner.cancel(panelView.id);
@@ -577,7 +603,7 @@ function createFileTools(deps) {
     setRecording: (on) => runner.setRecording(!!on),
     attachTray,
     syncShiftDrag,
-    dispose: () => { clearUpTimer(); runner.dispose(); stopWatch(); closeArc(); },
+    dispose: () => { clearUpTimer(); if (panelShowTimer) { clearTimeout(panelShowTimer); panelShowTimer = null; } runner.dispose(); stopWatch(); closeArc(); },
     helperMessage: onHelperMessage,
     recent: () => recent.slice(),
     refreshLanguage() {

@@ -600,6 +600,9 @@ function fakeElectron() {
     hide() { this.visible = false; }
     focus() {}
     setBounds(b) { this.bounds = b; }
+    getContentSize() { return [this.opts.width, this.opts.height]; }
+    setContentSize(w, h) { this.opts.width = w; this.opts.height = h; }
+    invalidateShadow() { this.shadowRefreshed = (this.shadowRefreshed || 0) + 1; }
   }
   const deps = {
     BrowserWindow: FakeWin,
@@ -616,7 +619,8 @@ function fakeElectron() {
     getTray: () => null, trayIcon: () => null,
   };
   const arcWin = () => wins.find((w) => w.file.endsWith('arc.html'));
-  return { deps, handlers, wins, arcWin };
+  const panelWin = () => wins.find((w) => w.file.endsWith('filepanel.html'));
+  return { deps, handlers, wins, arcWin, panelWin };
 }
 
 test('first Shift-drag after a cold start shows the arc and accepts the drop', { timeout: 20000 }, async () => {
@@ -731,4 +735,104 @@ test('arc renderer forwards a cold-start drop and has no stray hub', () => {
   assert.doesNotMatch(css, /(^|[\s,}])\.catching\s*\{/m, 'no bare .catching rule that would also style <body>');
   assert.match(css, /\.catch-ring\s*\{[^}]*position:\s*absolute/);
   assert.match(html, /class="catch-ring"/);
+});
+
+// ---- 1.4.1：完成面板 ----
+function loadPanelRenderer(panelHeight) {
+  const vm = require('vm');
+  const dir = path.join(__dirname, '..', 'src', 'renderer');
+  const els = {};
+  const mk = (id) => ({
+    id, hidden: false, innerHTML: '', textContent: '', style: {}, dataset: {}, children: [],
+    classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
+    appendChild(c) { this.children.push(c); return c; }, setAttribute() {}, addEventListener() {},
+    querySelector: () => null, querySelectorAll: () => [],
+    getBoundingClientRect: () => ({ left: 0, top: 0, right: 500, bottom: id === 'panel' ? panelHeight : 0, width: 500, height: id === 'panel' ? panelHeight : 0 }),
+  });
+  const docListeners = {};
+  const document = {
+    body: mk('body'),
+    getElementById: (id) => (els[id] = els[id] || mk(id)),
+    createElement: () => mk('x'), createElementNS: () => mk('x'),
+    querySelectorAll: () => [],
+    addEventListener: (n, fn) => { docListeners[n] = fn; },
+  };
+  const sent = [];
+  const onHandlers = {};
+  const api = { send: (ch, payload) => sent.push({ ch, payload }), on: (ch, fn) => { onHandlers[ch] = fn; } };
+  const ctx = { document, api, setTimeout, clearTimeout, requestAnimationFrame: (fn) => fn(), getComputedStyle: () => ({}), console };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(dir, 'filetools', 'panel.js'), 'utf8'), ctx);
+  const esc = () => docListeners.keydown({ key: 'Escape', preventDefault() {} });
+  return { sent, onHandlers, esc };
+}
+
+test('done panel has one close control, fits its content and closes on Esc', () => {
+  const dir = path.join(__dirname, '..', 'src', 'renderer');
+  const html = fs.readFileSync(path.join(dir, 'filepanel.html'), 'utf8');
+  const css = fs.readFileSync(path.join(dir, 'filetools', 'panel.css'), 'utf8');
+  // 只有一个关闭：自绘的 ×，没有假的红绿灯
+  assert.equal((html.match(/class="x"/g) || []).length, 1, 'exactly one close control');
+  assert.doesNotMatch(html, /<i><\/i>/, 'no fake traffic-light dots');
+  assert.doesNotMatch(css, /\.drag i\b/, 'no traffic-light dot styles left');
+  assert.doesNotMatch(css, /#ff5f57/i, 'no red close dot');
+  // 面板外面不画大阴影：窗口和面板一样大，阴影交给系统
+  const panelRule = css.match(/\.panel\s*\{[^}]*\}/)[0];
+  assert.doesNotMatch(panelRule, /24px 60px/, 'no outer CSS shadow that needs a taller window');
+
+  const { sent, onHandlers, esc } = loadPanelRenderer(268);
+  onHandlers['filetools:panel']({ phase: 'done', action: 'image.convert', file: '/tmp/a.jpg', fileName: 'a.jpg', bytes: 4700, measured: true, revealLabel: '在 Finder 中显示' });
+  const size = sent.filter((m) => m.ch === 'filetools:panel-size').pop();
+  assert.ok(size, 'renderer reports its height after drawing');
+  assert.equal(size.payload.height, 268);
+
+  sent.length = 0;
+  esc();
+  assert.deepEqual(sent.map((m) => m.ch), ['filetools:close-panel'], 'Esc closes the done panel');
+
+  // 进行中 Esc 仍然是取消任务
+  onHandlers['filetools:panel']({ phase: 'running', id: 7, action: 'image.convert', ratio: 0.5 });
+  sent.length = 0;
+  esc();
+  assert.deepEqual(sent.map((m) => m.ch), ['filetools:cancel']);
+});
+
+test('done panel window shrinks to the reported height, so no empty strip is left under it', { timeout: 30000 }, async () => {
+  const { createFileTools } = require('../src/filetools/bridge');
+  const { deps, handlers, panelWin } = fakeElectron();
+  const ft = createFileTools(deps);
+  try {
+    const png = path.join(root, 'panel-done.png');
+    await samplePng(png, 40, 30, 'navy');
+    handlers['filetools:run']({}, { action: 'image.convert', files: [png], options: { format: 'jpg' } });
+    const win = await waitFor(() => { const w = panelWin(); return w && w.sent.find((m) => m.ch === 'filetools:panel' && m.payload.phase === 'done') && w; }, 20000);
+    assert.equal(win.opts.frame, false, 'frameless: no native traffic lights next to the custom ×');
+
+    handlers['filetools:panel-size']({ sender: win.webContents }, { height: 268 });
+    assert.deepEqual(win.getContentSize(), [500, 268], 'window is exactly as tall as the panel');
+    assert.ok(win.shadowRefreshed >= 1, 'window shadow is recomputed after the resize');
+    assert.equal(win.visible, true);
+
+    // 收起后，迟到的尺寸消息不会把面板重新弹出来
+    handlers['filetools:close-panel']();
+    handlers['filetools:panel-size']({ sender: win.webContents }, { height: 300 });
+    assert.equal(win.visible, false);
+    // 别的窗口发来的尺寸不算
+    handlers['filetools:panel-size']({ sender: {} }, { height: 600 });
+    assert.deepEqual(win.getContentSize(), [500, 300]);
+  } finally { ft.dispose(); }
+});
+
+test('the label under each arc circle is part of its button and clickable', () => {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'filetools', 'arc.css'), 'utf8');
+  const cap = css.match(/\.key \.cap\s*\{[^}]*\}/)[0];
+  assert.doesNotMatch(cap, /pointer-events:\s*none/, 'label does not let clicks fall through');
+  assert.match(cap, /pointer-events:\s*auto/);
+  const js = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'filetools', 'arc.js'), 'utf8');
+  // 字是按钮的子元素，点字就是点按钮
+  assert.match(js, /btn\.appendChild\(face\);\s*btn\.appendChild\(cap\);/);
+  // 子选项（→ JPG）叠在字上面时，还是子选项先收到点击
+  const z = (sel) => Number((css.match(new RegExp(sel + '[^{]*\\{[^}]*z-index:\\s*(\\d+)')) || [])[1]);
+  assert.ok(z('\\.pills') > z('\\.key'), 'pills stay above the labels');
 });

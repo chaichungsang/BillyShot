@@ -836,3 +836,33 @@ test('the label under each arc circle is part of its button and clickable', () =
   const z = (sel) => Number((css.match(new RegExp(sel + '[^{]*\\{[^}]*z-index:\\s*(\\d+)')) || [])[1]);
   assert.ok(z('\\.pills') > z('\\.key'), 'pills stay above the labels');
 });
+
+test('mouse-moves while the arc window loads add one load listener and deliver the latest position', () => {
+  const { createFileTools } = require('../src/filetools/bridge');
+  const { deps, arcWin } = fakeElectron();
+  const ft = createFileTools(deps);
+  try {
+    ft.helperMessage({ type: 'shift-drag', x: 590, y: 495 });
+    const win = arcWin();
+    // 第一次之后的窗口：模拟「还在加载」，记下挂上的 did-finish-load
+    const loads = [];
+    win.webContents.isLoading = () => true;
+    win.webContents.once = (ev, fn) => { if (ev === 'did-finish-load') loads.push(fn); };
+    win.sent.length = 0;
+    for (let i = 1; i <= 15; i++) ft.helperMessage({ type: 'move', x: 600 + i, y: 500 + i });
+    assert.equal(loads.length, 1, 'at most one did-finish-load listener while loading');
+    assert.equal(win.sent.filter((m) => m.ch === 'filetools:catch').length, 0, 'nothing sent before the page loads');
+
+    win.webContents.isLoading = () => false;
+    loads[0]();
+    const caught = win.sent.filter((m) => m.ch === 'filetools:catch');
+    assert.equal(caught.length, 1, 'one catch message after load');
+    assert.equal(win.bounds.x + caught[0].payload.hubx, 615, 'latest x is delivered');
+    assert.equal(win.bounds.y + caught[0].payload.huby, 515, 'latest y is delivered');
+
+    // 加载完以后照常每次直接发
+    ft.helperMessage({ type: 'move', x: 620, y: 520 });
+    assert.equal(win.sent.filter((m) => m.ch === 'filetools:catch').length, 2);
+    assert.equal(loads.length, 1);
+  } finally { ft.dispose(); }
+});

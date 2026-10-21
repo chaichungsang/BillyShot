@@ -127,7 +127,7 @@ function createFileTools(deps) {
     try { arcWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true }); } catch {}
     arcWin.setMenu(null);
     arcWin.loadFile(R('renderer', 'arc.html'));
-    arcWin.on('closed', () => { arcWin = null; arcPayload = null; });
+    arcWin.on('closed', () => { arcWin = null; arcPayload = null; pendingCatch = null; });
     arcWin.webContents.on('before-input-event', (event, input) => {
       if (input.type === 'keyDown' && input.key === 'Escape') { event.preventDefault(); closeArc(); }
     });
@@ -165,6 +165,7 @@ function createFileTools(deps) {
     return info;
   }
 
+  let pendingCatch = null; // 窗口加载完要发的接收圈位置（只留最新的）
   function showCatcher(how, cursor) {
     anchor = how || 'shift';
     const pt = cursor || screen.getCursorScreenPoint();
@@ -177,9 +178,22 @@ function createFileTools(deps) {
     // 渲染端画一个能接住 drop 的小圈（完全透明的像素在 macOS 上会让拖放穿过去）。
     arcPayload = null;
     const catchMsg = { hubx: frame.hubx, huby: frame.huby };
-    const push = () => { try { win.webContents.send('filetools:catch', catchMsg); } catch {} };
-    if (win.webContents.isLoading()) win.webContents.once('did-finish-load', push);
-    else push();
+    // 冷启动时窗口还在加载，helper 每次 move 都会走到这里。只挂一个 did-finish-load，
+    // 加载完只发最新的位置（以前每次 move 挂一个，十几个之后 Node 报 MaxListenersExceededWarning）。
+    if (win.webContents.isLoading()) {
+      const first = !pendingCatch;
+      pendingCatch = catchMsg;
+      if (first) {
+        win.webContents.once('did-finish-load', () => {
+          const m = pendingCatch;
+          pendingCatch = null;
+          if (m) { try { win.webContents.send('filetools:catch', m); } catch {} }
+        });
+      }
+    } else {
+      pendingCatch = null;
+      try { win.webContents.send('filetools:catch', catchMsg); } catch {}
+    }
     if (!win.isVisible()) win.showInactive();
   }
 

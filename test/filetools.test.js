@@ -696,7 +696,8 @@ test('arc renderer forwards a cold-start drop and has no stray hub', () => {
   const document = {
     body,
     getElementById: (id) => (els[id] = els[id] || mk(id)),
-    createElement: () => mk('x'), createElementNS: () => mk('x'),
+    createElement: (tag) => { const n = mk('x'); n.tag = tag; created.push(n); return n; }, createElementNS: () => mk('x'),
+    createTextNode: (t) => ({ textContent: t }),
     querySelectorAll: () => [],
     addEventListener: (n, fn) => { docListeners[n] = fn; },
   };
@@ -743,18 +744,21 @@ function loadPanelRenderer(panelHeight) {
   const vm = require('vm');
   const dir = path.join(__dirname, '..', 'src', 'renderer');
   const els = {};
+  const created = [];
+  let height = panelHeight;
   const mk = (id) => ({
-    id, hidden: false, innerHTML: '', textContent: '', style: {}, dataset: {}, children: [],
+    id, hidden: false, innerHTML: '', textContent: '', style: {}, dataset: {}, children: [], listeners: {},
     classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
-    appendChild(c) { this.children.push(c); return c; }, setAttribute() {}, addEventListener() {},
+    appendChild(c) { this.children.push(c); return c; }, setAttribute() {}, addEventListener(ev, fn) { this.listeners[ev] = fn; },
     querySelector: () => null, querySelectorAll: () => [],
-    getBoundingClientRect: () => ({ left: 0, top: 0, right: 500, bottom: id === 'panel' ? panelHeight : 0, width: 500, height: id === 'panel' ? panelHeight : 0 }),
+    getBoundingClientRect: () => ({ left: 0, top: 0, right: 500, bottom: id === 'panel' ? height : 0, width: 500, height: id === 'panel' ? height : 0 }),
   });
   const docListeners = {};
   const document = {
     body: mk('body'),
     getElementById: (id) => (els[id] = els[id] || mk(id)),
-    createElement: () => mk('x'), createElementNS: () => mk('x'),
+    createElement: (tag) => { const n = mk('x'); n.tag = tag; created.push(n); return n; }, createElementNS: () => mk('x'),
+    createTextNode: (t) => ({ textContent: t }),
     querySelectorAll: () => [],
     addEventListener: (n, fn) => { docListeners[n] = fn; },
   };
@@ -766,7 +770,7 @@ function loadPanelRenderer(panelHeight) {
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(dir, 'filetools', 'panel.js'), 'utf8'), ctx);
   const esc = () => docListeners.keydown({ key: 'Escape', preventDefault() {} });
-  return { sent, onHandlers, esc };
+  return { sent, onHandlers, esc, created, setHeight: (h) => { height = h; } };
 }
 
 test('done panel has one close control, fits its content and closes on Esc', () => {
@@ -1192,4 +1196,38 @@ test('File Tools window: × and Esc close it', () => {
     handlers['filetools:close-window']();
     assert.equal(wins.find((w) => w.file.endsWith('filetools.html')).closedByApp, true);
   } finally { ft.dispose(); }
+});
+
+test('GIF over 15 s: the refusal hint makes the panel report its new height (no hidden footer, no scrollbar)', () => {
+  const { sent, onHandlers, created, setHeight } = loadPanelRenderer(258);
+  onHandlers['filetools:panel']({ kind: 'trim', gif: true, start: 0, end: 20, duration: 20, fileName: 'long.mov', files: ['/tmp/long.mov'] });
+  const go = created.find((n) => n.tag === 'button' && n.textContent === '剪切并转 GIF');
+  const hint = created.find((n) => n.id === 'trimHint');
+  assert.ok(go && hint);
+  sent.length = 0;
+  setHeight(289); // 提示多一行后的实际高度（Windows 实测 289 vs 窗口 258）
+  go.listeners.click();
+  assert.equal(hint.textContent, 'GIF 最长 15 秒，先剪一段');
+  assert.deepEqual(sent.map((m) => m.ch), ['filetools:panel-size'], 'no job started, height reported');
+  assert.equal(sent[0].payload.height, 289);
+  // 同一提示再点一次不重复报
+  sent.length = 0; go.listeners.click();
+  assert.deepEqual(sent, []);
+  // 改到 15 s 以内：提示清空、重新报高度，然后开始转 GIF
+  const inputs = created.filter((n) => n.tag === 'input' && n.type === 'number');
+  inputs[1].value = '10';
+  setHeight(258);
+  go.listeners.click();
+  assert.equal(hint.textContent, '');
+  assert.deepEqual(sent.map((m) => m.ch), ['filetools:panel-size', 'filetools:run']);
+  assert.equal(sent[0].payload.height, 258);
+});
+
+test('video poster: the panel reports its height again once the poster image loads', () => {
+  const { sent, onHandlers, created, setHeight } = loadPanelRenderer(240);
+  onHandlers['filetools:panel']({ phase: 'running', id: 3, ratio: 0.2, kind: 'compress-video', action: 'video.compress', poster: 'file:///tmp/p.jpg', duration: 4, fileName: 'a.mov', files: ['/tmp/a.mov'] });
+  const img = created.find((n) => n.tag === 'img');
+  assert.ok(img && img.listeners.load, 'poster has a load handler');
+  sent.length = 0; setHeight(300); img.listeners.load();
+  assert.deepEqual(sent.map((m) => [m.ch, m.payload.height]), [['filetools:panel-size', 300]]);
 });

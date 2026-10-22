@@ -166,11 +166,20 @@ function renderTrim() {
   const go = () => {
     const s = Number(start.input.value) || 0;
     const e = Number(end.input.value);
-    if (view.gif && e - s > 15.001) { hint.textContent = tr('GIF 最长 15 秒，先剪一段'); return; }
+    // 提示会让面板变高：改完文字马上报高度，窗口跟着长，底部按钮不被挡、不出滚动条。
+    if (view.gif && e - s > 15.001) { setHint(hint, tr('GIF 最长 15 秒，先剪一段')); return; }
+    setHint(hint, '');
     if (view.gif) send('filetools:run', { action: 'video.gif', options: { start: s, end: e } });
     else send('filetools:run', { action: 'video.trim', options: { start: s, end: e } });
   };
   footButtons(label, go);
+}
+
+// 渲染后再改面板里的文字（提示、错误）都走这里，改完重新报高度。
+function setHint(node, text) {
+  if (!node || node.textContent === text) return;
+  node.textContent = text;
+  reportSize();
 }
 
 function numField(name, value) {
@@ -251,6 +260,7 @@ function previewCard() {
       const img = document.createElement('img');
       img.className = 'poster';
       img.alt = '';
+      img.addEventListener('load', reportSize);
       img.src = view.poster;
       split.appendChild(img);
     } else {

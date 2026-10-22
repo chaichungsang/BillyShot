@@ -957,3 +957,15 @@ test('packaged layout without app: the job worker runs all four video actions wi
   assert.equal(refused.code, 'GIF_TOO_LONG');
   assert.equal(fs.existsSync(path.join(dir, 'long.gif.part')), false);
 });
+
+test('NSIS sidebar File paths use backslashes so Windows makensis finds them', () => {
+  const nsh = fs.readFileSync(path.join(__dirname, '..', 'build', 'installer.nsh'), 'utf8');
+  assert.match(nsh, /!define BILLY_SIDEBAR_DIR "\$\{__FILEDIR__\}\\sidebar"/);
+  const files = nsh.split(/\r?\n/).filter((l) => /^\s*File\s/.test(l));
+  assert.equal(files.length, 8);
+  for (const line of files) {
+    const m = line.match(/"\$\{BILLY_SIDEBAR_DIR\}\\(side-\d+\.bmp)"\s*$/);
+    assert.ok(m, line);
+    assert.equal(fs.existsSync(path.join(__dirname, '..', 'build', 'sidebar', m[1])), true, m[1]);
+  }
+});

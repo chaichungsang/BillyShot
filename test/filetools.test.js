@@ -592,7 +592,8 @@ function fakeElectron() {
     }
     setAlwaysOnTop(on, level) { this.level = on ? level : null; } setVisibleOnAllWorkspaces() {} setMenu() {}
     loadFile(f) { this.file = String(f); }
-    on() {}
+    on(ev) { (this.events = this.events || []).push(ev); }
+    close() { this.closedByApp = true; }
     isDestroyed() { return this.destroyed; }
     isVisible() { return this.visible; }
     showInactive() { this.visible = true; }
@@ -984,16 +985,19 @@ function loadWindowRenderer(platform, lang) {
   const classes = new Set();
   const mk = (id) => ({
     id, hidden: false, innerHTML: '', textContent: '', title: '', disabled: false, children: [],
-    appendChild(c) { this.children.push(c); return c; }, addEventListener() {},
+    appendChild(c) { this.children.push(c); return c; }, addEventListener(ev, fn) { (this.listeners = this.listeners || {})[ev] = fn; },
     classList: { add: (c) => classes.add(c), remove: (c) => classes.delete(c), contains: (c) => classes.has(c) },
   });
   const body = mk('body');
-  const document = { body, getElementById: (id) => (els[id] = els[id] || mk(id)), createElement: () => mk('x') };
-  const ctx = { document, api: { platform, lang, send() {}, on() {} }, tx: rendererTx(lang), console };
+  const docListeners = {};
+  const sent = [];
+  const document = { body, getElementById: (id) => (els[id] = els[id] || mk(id)), createElement: () => mk('x'),
+    addEventListener: (ev, fn) => { docListeners[ev] = fn; } };
+  const ctx = { document, api: { platform, lang, send: (ch, payload) => sent.push({ ch, payload }), on() {} }, tx: rendererTx(lang), console };
   ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'filetools', 'window.js'), 'utf8'), ctx);
-  return { els, render: ctx.renderWindow, classes };
+  return { els, render: ctx.renderWindow, classes, sent, docListeners };
 }
 
 test('File Tools window: tray-icon hint on Windows, menu-bar hint on macOS, in both languages', () => {
@@ -1103,4 +1107,89 @@ test('Windows file panels reuse the 1.4.1 panel: frameless, no dots, sized to co
   onHandlers['filetools:panel']({ phase: 'done', action: 'video.gif', file: 'C:\\t\\a.gif', fileName: 'a.gif', bytes: 1000, measured: true, revealLabel: '在资源管理器中显示' });
   sent.length = 0; esc();
   assert.deepEqual(sent.map((m) => m.ch), ['filetools:close-panel']);
+});
+
+// ---- 1.4.1：不在前台时第一下点击就生效；文件工具小窗没有系统红绿灯压标题 ----
+test('File Tools window and file panel act on the first click when not focused (macOS and Windows)', { timeout: 30000 }, async () => {
+  const { createFileTools } = require('../src/filetools/bridge');
+  for (const mac of [true, false]) {
+    const { deps, handlers, wins, panelWin } = fakeElectron();
+    Object.assign(deps, { isMac: mac, isWin: !mac });
+    const ft = createFileTools(deps);
+    try {
+      ft.openWindow();
+      const tools = wins.find((w) => w.file.endsWith('filetools.html'));
+      assert.ok(tools, 'File Tools window created');
+      assert.equal(tools.opts.acceptFirstMouse, true, 'File Tools window: first click acts');
+      const png = path.join(root, 'first-click-' + (mac ? 'mac' : 'win') + '.png');
+      await samplePng(png, 20, 20, 'teal');
+      handlers['filetools:run']({}, { action: 'image.convert', files: [png], options: { format: 'jpg' } });
+      const panel = await waitFor(() => panelWin(), 20000);
+      assert.equal(panel.opts.acceptFirstMouse, true, 'panel: first click on × acts');
+      for (const w of [tools, panel]) {
+        // Windows 默认激活并把点击交给窗口；只要不把窗口设成不可聚焦、不在失焦时藏起来，第一下就不会被吃掉。
+        assert.notEqual(w.opts.focusable, false, 'window stays focusable');
+        assert.ok(!(w.events || []).includes('blur'), 'no blur handler that could eat or hide the first click');
+      }
+    } finally { ft.dispose(); }
+  }
+});
+
+test('File Tools window: no native traffic lights over the title on macOS, system title bar on Windows', () => {
+  const { createFileTools } = require('../src/filetools/bridge');
+  // macOS：无边框，和面板一样只有自绘的 ×
+  {
+    const { deps, wins } = fakeElectron();
+    const ft = createFileTools(deps);
+    try {
+      ft.openWindow();
+      const o = wins.find((w) => w.file.endsWith('filetools.html')).opts;
+      assert.equal(o.frame, false, 'frameless on macOS: no native traffic lights');
+      assert.equal(o.titleBarStyle, undefined, 'no hiddenInset title bar (its greyed green light overlapped the title)');
+      assert.equal(o.trafficLightPosition, undefined);
+    } finally { ft.dispose(); }
+  }
+  // Windows：系统标题栏在内容上方，没有叠在内容上的按钮
+  {
+    const { deps, wins } = fakeElectron();
+    Object.assign(deps, { isMac: false, isWin: true });
+    const ft = createFileTools(deps);
+    try {
+      ft.openWindow();
+      const o = wins.find((w) => w.file.endsWith('filetools.html')).opts;
+      assert.equal(o.frame, true, 'native frame on Windows');
+      assert.notEqual(o.titleBarStyle, 'hidden', 'title bar not hidden into the content');
+      assert.equal(o.titleBarOverlay, undefined, 'no caption buttons overlaid on the content');
+    } finally { ft.dispose(); }
+  }
+  const dir = path.join(__dirname, '..', 'src', 'renderer');
+  const html = fs.readFileSync(path.join(dir, 'filetools.html'), 'utf8');
+  const css = fs.readFileSync(path.join(dir, 'filetools', 'window.css'), 'utf8');
+  const chrome = html.match(/<div class="chrome">[\s\S]*?<\/div>/)[0];
+  assert.doesNotMatch(chrome, /<i\b/, 'no traffic-light dots in the Mac top bar');
+  assert.equal((chrome.match(/class="x"/g) || []).length, 1, 'one custom close control');
+  assert.match(chrome, /<b id="winTitle">文件工具<\/b>/);
+  assert.ok(chrome.indexOf('winTitle') < chrome.indexOf('winClose'), 'title on the left, × on the right');
+  assert.doesNotMatch(css, /#ff5f57|\.chrome i\b/i, 'no traffic-light styles left');
+  assert.match(css, /\.chrome \.x \{[^}]*-webkit-app-region: no-drag/, '× is clickable inside the drag bar');
+  assert.match(css, /body\.win \.chrome \{ display: none; \}/, 'Windows draws no second title bar');
+});
+
+test('File Tools window: × and Esc close it', () => {
+  const win = loadWindowRenderer('darwin', 'zh');
+  win.els.winClose.listeners.click();
+  assert.deepEqual(win.sent.map((m) => m.ch), ['filetools:close-window']);
+  win.sent.length = 0;
+  win.docListeners.keydown({ key: 'Escape' });
+  win.docListeners.keydown({ key: 'a' });
+  assert.deepEqual(win.sent.map((m) => m.ch), ['filetools:close-window']);
+
+  const { createFileTools } = require('../src/filetools/bridge');
+  const { deps, handlers, wins } = fakeElectron();
+  const ft = createFileTools(deps);
+  try {
+    ft.openWindow();
+    handlers['filetools:close-window']();
+    assert.equal(wins.find((w) => w.file.endsWith('filetools.html')).closedByApp, true);
+  } finally { ft.dispose(); }
 });

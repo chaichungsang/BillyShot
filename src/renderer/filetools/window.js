@@ -45,6 +45,14 @@ function paintHint(payload) {
 }
 paintHint(null);
 
+// Mac 顶栏的 × 和 Esc 关闭小窗（Windows 用系统标题栏的关闭按钮，Esc 也能关）。
+function closeWindow() { if (window.api && api.send) api.send('filetools:close-window'); }
+const winClose = document.getElementById('winClose');
+if (winClose) winClose.addEventListener('click', closeWindow);
+if (typeof document.addEventListener === 'function') {
+  document.addEventListener('keydown', (e) => { if (e && e.key === 'Escape') closeWindow(); });
+}
+
 function renderWindow(payload) {
   if (!payload) return;
   paintHint(payload);

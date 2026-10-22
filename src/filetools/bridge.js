@@ -236,6 +236,8 @@ function createFileTools(deps) {
     panelWin = new BrowserWindow({
       width: PANEL_W, height: 300, show: false, frame: false, transparent: true, backgroundColor: '#00000000',
       hasShadow: true, resizable: false, skipTaskbar: true, alwaysOnTop: true, fullscreenable: false,
+      // macOS：面板不在前台时，第一下点 × 或按钮就生效，不是只把窗口激活。
+      acceptFirstMouse: true,
       webPreferences: { preload: R('preload.js'), spellcheck: false },
     });
     panelWin.setMenu(null);
@@ -275,15 +277,23 @@ function createFileTools(deps) {
     else push();
   }
 
-  function ensureTools() {
-    if (toolsWin && !toolsWin.isDestroyed()) return toolsWin;
-    toolsWin = new BrowserWindow({
+  // 文件工具小窗。macOS：和面板一样无边框，没有系统红绿灯（以前 hiddenInset 的灰色绿灯压在标题上），
+  // 顶栏只有标题和自绘的 ×，Esc 关闭；不在前台时第一下点击就生效（acceptFirstMouse）。
+  // Windows：用系统标题栏（标题和关闭按钮在内容上方，不会压住内容），渲染端不画自己的顶栏。
+  function toolsWindowOptions() {
+    return {
       width: 400, height: 360, show: false, title: t('文件工具'),
       frame: !isMac, transparent: !!isMac, backgroundColor: isMac ? '#00000000' : '#161514',
-      titleBarStyle: isMac ? 'hiddenInset' : 'default',
+      ...(isMac ? { hasShadow: true } : { titleBarStyle: 'default' }),
+      acceptFirstMouse: true,
       autoHideMenuBar: true, resizable: false, fullscreenable: false,
       webPreferences: { preload: R('preload.js'), spellcheck: false },
-    });
+    };
+  }
+
+  function ensureTools() {
+    if (toolsWin && !toolsWin.isDestroyed()) return toolsWin;
+    toolsWin = new BrowserWindow(toolsWindowOptions());
     toolsWin.setMenu(null);
     toolsWin.loadFile(R('renderer', 'filetools.html'));
     toolsWin.on('closed', () => { toolsWin = null; });
@@ -571,6 +581,7 @@ function createFileTools(deps) {
     if (panelShowTimer) showPanelNow();
   });
   ipcMain.on('filetools:close-panel', () => { if (panelWin && !panelWin.isDestroyed()) panelWin.hide(); });
+  ipcMain.on('filetools:close-window', () => { if (toolsWin && !toolsWin.isDestroyed()) toolsWin.close(); });
   ipcMain.on('filetools:cancel', () => {
     if (panelView && panelView.id) runner.cancel(panelView.id);
     else if (panelWin && !panelWin.isDestroyed()) panelWin.hide();

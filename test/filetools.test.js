@@ -866,3 +866,94 @@ test('mouse-moves while the arc window loads add one load listener and deliver t
     assert.equal(loads.length, 1);
   } finally { ft.dispose(); }
 });
+
+// 1.4.1：打包后的布局。utilityProcess 里没有 app，ffmpeg-bin 不能指到 app.asar 里面（spawn 会 ENOENT）。
+function packagedLayout() {
+  const res = fs.mkdtempSync(path.join(root, 'packaged-')) + path.sep + 'resources';
+  const asarSrc = path.join(res, 'app.asar', 'src', 'filetools');
+  fs.mkdirSync(asarSrc, { recursive: true });
+  for (const f of fs.readdirSync(path.join(__dirname, '..', 'src', 'filetools'))) {
+    if (f.endsWith('.js')) fs.copyFileSync(path.join(__dirname, '..', 'src', 'filetools', f), path.join(asarSrc, f));
+  }
+  // app.asar 里也“看得到”一个 ffmpeg，但它不能执行，和真实 asar 一样。
+  const fake = path.join(res, 'app.asar', 'vendor', 'ffmpeg', 'linux-x64');
+  fs.mkdirSync(fake, { recursive: true });
+  fs.writeFileSync(path.join(fake, 'ffmpeg'), 'not runnable inside asar\n', { mode: 0o644 });
+  const real = path.join(res, 'app.asar.unpacked', 'vendor', 'ffmpeg', 'linux-x64');
+  fs.mkdirSync(real, { recursive: true });
+  fs.copyFileSync(process.env.BILLYSHOT_FFMPEG, path.join(real, 'ffmpeg'));
+  fs.chmodSync(path.join(real, 'ffmpeg'), 0o755);
+  return { res, asarSrc, realBin: path.join(real, 'ffmpeg') };
+}
+
+test('ffmpeg-bin never returns a path inside app.asar, with or without app', () => {
+  const { unpackedPath, insideAsar, roots, ffmpegBin } = require('../src/filetools/ffmpeg-bin');
+  assert.equal(unpackedPath('/A/Resources/app.asar/vendor/ffmpeg'), '/A/Resources/app.asar.unpacked/vendor/ffmpeg');
+  assert.equal(unpackedPath('C:\\P\\BillyShot\\resources\\app.asar\\vendor\\ffmpeg'), 'C:\\P\\BillyShot\\resources\\app.asar.unpacked\\vendor\\ffmpeg');
+  assert.equal(unpackedPath('/x/app.asar.unpacked/vendor'), '/x/app.asar.unpacked/vendor');
+  assert.equal(unpackedPath('/x/my.app.asarish/vendor'), '/x/my.app.asarish/vendor');
+  const { res, asarSrc, realBin } = packagedLayout();
+  const env = { dirname: asarSrc, resourcesPath: res, ffmpeg: '', ffmpegRoot: '', platform: 'linux', arch: 'x64' };
+  for (const r of roots(env)) assert.equal(insideAsar(r), false, r);
+  assert.equal(ffmpegBin(env), realBin);
+  // utilityProcess 里有 resourcesPath 但没有 app；Windows 布局也一样。
+  const seen = [];
+  const win = ffmpegBin({ dirname: 'C:\\BS\\resources\\app.asar\\src\\filetools', resourcesPath: 'C:\\BS\\resources', ffmpeg: '', ffmpegRoot: '', platform: 'win32', arch: 'x64', existsSync: (p) => { seen.push(p); return !insideAsar(p); } });
+  assert.match(win, /app\.asar\.unpacked[\\/]vendor[\\/]ffmpeg[\\/]win32-x64[\\/]ffmpeg\.exe$/);
+  assert.equal(seen.some(insideAsar), false);
+  // 主进程传下来的路径如果误指 app.asar，也换成 unpacked。
+  assert.equal(ffmpegBin({ ffmpeg: path.join(res, 'app.asar', 'vendor', 'ffmpeg', 'linux-x64', 'ffmpeg') }), realBin);
+});
+
+test('main hands the resolved ffmpeg to the file-job worker', () => {
+  const { workerEnv } = require('../src/filetools/jobs');
+  const env = workerEnv({ PATH: '/bin' }, () => '/R/app.asar.unpacked/vendor/ffmpeg/darwin-arm64/ffmpeg');
+  assert.equal(env.BILLYSHOT_FFMPEG, '/R/app.asar.unpacked/vendor/ffmpeg/darwin-arm64/ffmpeg');
+  assert.equal(env.PATH, '/bin');
+  assert.equal(workerEnv({ BILLYSHOT_FFMPEG: '/keep' }, () => '/other').BILLYSHOT_FFMPEG, '/keep');
+  assert.equal('BILLYSHOT_FFMPEG' in workerEnv({}, () => null), false);
+  const jobs = fs.readFileSync(path.join(__dirname, '..', 'src', 'filetools', 'jobs.js'), 'utf8');
+  assert.match(jobs, /utilityProcess\.fork\([^)]*env: workerEnv\(\)/);
+});
+
+test('packaged layout without app: the job worker runs all four video actions with the unpacked ffmpeg', { timeout: 180000 }, async () => {
+  const { res, asarSrc } = packagedLayout();
+  const dir = fs.mkdtempSync(path.join(root, 'pkg-video-'));
+  const src = path.join(dir, 'in.mp4');
+  await h264Clip(src, '160x120', 2);
+  const { fork } = require('child_process');
+  const env = { ...process.env, NODE_PATH: path.join(__dirname, '..', 'node_modules') };
+  delete env.BILLYSHOT_FFMPEG;
+  delete env.BILLYSHOT_FFMPEG_ROOT;
+  delete env.ELECTRON_RUN_AS_NODE;
+  const runJob = (job) => new Promise((resolve) => {
+    // 与 utilityProcess 一样：worker 脚本在 app.asar 里，进程里没有 electron 的 app。
+    const child = fork(path.join(asarSrc, 'run-job.js'), [], { env, cwd: res, stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
+    let last = null;
+    child.on('message', (m) => { if (m && m.type !== 'progress') last = m; });
+    child.on('exit', () => resolve(last));
+    child.send(job);
+  });
+  const cases = [
+    ['video.mp4', {}, '-mp4.mp4'],
+    ['video.compress', { level: 'small' }, '-small.mp4'],
+    ['video.trim', { start: 0, end: 1 }, '-trim.mp4'],
+    ['video.gif', { start: 0, end: 1 }, '.gif'],
+  ];
+  for (const [action, options, tail] of cases) {
+    const finalPath = path.join(dir, `out${tail}`);
+    const msg = await runJob({ action, inputs: [src], options, finalPath, partial: finalPath + '.part' });
+    assert.equal(msg && msg.type, 'done', `${action}: ${JSON.stringify(msg)}`);
+    assert.equal(fs.existsSync(finalPath + '.part'), false);
+    const buf = fs.readFileSync(finalPath);
+    if (action === 'video.gif') assert.equal(buf.slice(0, 3).toString(), 'GIF');
+    else assert.equal(buf.slice(0, 64).includes(Buffer.from('ftyp')), true);
+  }
+  // 超过 15 秒的 GIF 在同一条路径上照样被拒绝。
+  const long = path.join(dir, 'long.mp4');
+  await h264Clip(long, '160x120', 17);
+  const refused = await runJob({ action: 'video.gif', inputs: [long], options: { start: 0, end: 16 }, finalPath: path.join(dir, 'long.gif'), partial: path.join(dir, 'long.gif.part') });
+  assert.equal(refused.type, 'error');
+  assert.equal(refused.code, 'GIF_TOO_LONG');
+  assert.equal(fs.existsSync(path.join(dir, 'long.gif.part')), false);
+});

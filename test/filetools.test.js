@@ -969,3 +969,138 @@ test('NSIS sidebar File paths use backslashes so Windows makensis finds them', (
     assert.equal(fs.existsSync(path.join(__dirname, '..', 'build', 'sidebar', m[1])), true, m[1]);
   }
 });
+
+// ---- 1.4.1：Windows 界面 ----
+function rendererTx(lang) {
+  const vm = require('vm');
+  const ctx = { api: { lang }, console };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'src', 'i18n.js'), 'utf8'), ctx);
+  return ctx.tx;
+}
+function loadWindowRenderer(platform, lang) {
+  const vm = require('vm');
+  const els = {};
+  const classes = new Set();
+  const mk = (id) => ({
+    id, hidden: false, innerHTML: '', textContent: '', title: '', disabled: false, children: [],
+    appendChild(c) { this.children.push(c); return c; }, addEventListener() {},
+    classList: { add: (c) => classes.add(c), remove: (c) => classes.delete(c), contains: (c) => classes.has(c) },
+  });
+  const body = mk('body');
+  const document = { body, getElementById: (id) => (els[id] = els[id] || mk(id)), createElement: () => mk('x') };
+  const ctx = { document, api: { platform, lang, send() {}, on() {} }, tx: rendererTx(lang), console };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'filetools', 'window.js'), 'utf8'), ctx);
+  return { els, render: ctx.renderWindow, classes };
+}
+
+test('File Tools window: tray-icon hint on Windows, menu-bar hint on macOS, in both languages', () => {
+  for (const lang of ['zh', 'en']) {
+    const win = loadWindowRenderer('win32', lang);
+    win.render({ platform: 'win32', hotkey: 'Ctrl+Shift+Alt+F', model: { keys: [] } });
+    const hint = win.els.hintText.textContent;
+    assert.doesNotMatch(hint, /菜单栏|menu-bar|menu bar/i, 'no menu-bar wording on Windows: ' + hint);
+    assert.match(hint, lang === 'en' ? /tray icon/ : /托盘图标/);
+    assert.equal(win.els.chip.textContent, 'Ctrl+Shift+Alt+F');
+
+    const mac = loadWindowRenderer('darwin', lang);
+    mac.render({ platform: 'darwin', model: { keys: [] } });
+    assert.match(mac.els.hintText.textContent, lang === 'en' ? /menu-bar icon/ : /菜单栏图标/);
+  }
+  // 新句子在英文词典里
+  const { EN } = require('../src/i18n');
+  assert.ok(EN['也可以从托盘图标菜单打开，或用快捷键']);
+});
+
+test('File Tools window: Convert buttons follow the app language', () => {
+  const model = { keys: [{ action: 'image.convert', pills: [{ label: 'JPG', format: 'jpg' }, { label: 'WebP', format: 'webp' }] }] };
+  const en = loadWindowRenderer('win32', 'en');
+  en.render({ platform: 'win32', model });
+  assert.deepEqual(en.els.actions.children.map((b) => b.textContent), ['Convert · JPG', 'Convert · WebP']);
+  const zh = loadWindowRenderer('win32', 'zh');
+  zh.render({ platform: 'win32', model });
+  assert.deepEqual(zh.els.actions.children.map((b) => b.textContent), ['转格式 · JPG', '转格式 · WebP']);
+});
+
+test('tray progress ring is drawn at the tray icon\'s own pixel size, at every scale', async () => {
+  const sharp = require('sharp');
+  const { composeRing } = require('../src/filetools/tray-ring');
+  const logos = path.join(__dirname, '..', 'assets', 'logos');
+  const files = [];
+  for (const name of fs.readdirSync(logos)) {
+    for (const f of fs.readdirSync(path.join(logos, name))) if (/^tray.*\.png$/.test(f)) files.push(path.join(logos, name, f));
+  }
+  assert.ok(files.some((f) => /[\\/]tray\.png$/.test(f)), 'Windows 16 px tray icon is covered');
+  for (const f of files) {
+    const base = fs.readFileSync(f);
+    const meta = await sharp(base).metadata();
+    for (const [ratio, ind] of [[0.3, true], [0.5, false], [1, false]]) {
+      const out = await composeRing(base, ratio, ind); // 以前 16 px 图标 + 18 px 环会抛 "same dimensions or smaller"
+      const m = await sharp(out).metadata();
+      assert.deepEqual([m.width, m.height], [meta.width, meta.height], f);
+    }
+  }
+  // 非正方形、比 16 还小的图也不报错
+  const tiny = await sharp({ create: { width: 12, height: 10, channels: 4, background: '#000' } }).png().toBuffer();
+  const m = await sharp(await composeRing(tiny, 0.5, false)).metadata();
+  assert.deepEqual([m.width, m.height], [12, 10]);
+});
+
+test('Windows tray: paintTray composes one ring per scale factor and sets the tray image', { timeout: 30000 }, async () => {
+  const sharp = require('sharp');
+  const { createFileTools } = require('../src/filetools/bridge');
+  const { deps, handlers } = fakeElectron();
+  const reps = { 1: fs.readFileSync(path.join(__dirname, '..', 'assets', 'logos', 'portrait', 'tray.png')),
+    1.5: fs.readFileSync(path.join(__dirname, '..', 'assets', 'logos', 'portrait', 'tray@1.5x.png')) };
+  const base = { getScaleFactors: () => [1, 1.5], toPNG: (o) => reps[(o && o.scaleFactor) || 1], getSize: () => ({ width: 16, height: 16 }) };
+  const set = [];
+  const tray = { isDestroyed: () => false, setImage: (img) => set.push(img), on() {} };
+  const logs = [];
+  Object.assign(deps, {
+    isMac: false, isWin: true, getTray: () => tray, trayIcon: () => base, log: (...a) => logs.push(a.join(' ')),
+    nativeImage: { createEmpty: () => ({ reps: [], addRepresentation(r) { this.reps.push(r); } }) },
+  });
+  const ft = createFileTools(deps);
+  try {
+    const png = path.join(root, 'tray-ring.png');
+    await samplePng(png, 40, 30, 'olive');
+    handlers['filetools:run']({}, { action: 'image.convert', files: [png], options: { format: 'jpg' } });
+    const img = await waitFor(() => set.find((i) => i.reps), 20000);
+    assert.deepEqual(img.reps.map((r) => r.scaleFactor), [1, 1.5]);
+    for (const r of img.reps) {
+      const m = await sharp(r.buffer).metadata();
+      assert.equal(m.width, r.scaleFactor === 1 ? 16 : 24);
+    }
+    assert.equal(logs.filter((l) => /tray ring/.test(l)).length, 0, 'no tray ring errors: ' + logs.join('; '));
+  } finally { ft.dispose(); }
+});
+
+test('Windows file panels reuse the 1.4.1 panel: frameless, no dots, sized to content, Esc closes', { timeout: 30000 }, async () => {
+  const { createFileTools } = require('../src/filetools/bridge');
+  const { deps, handlers, panelWin } = fakeElectron();
+  Object.assign(deps, { isMac: false, isWin: true });
+  const ft = createFileTools(deps);
+  try {
+    const png = path.join(root, 'panel-win.png');
+    await samplePng(png, 40, 30, 'maroon');
+    handlers['filetools:run']({}, { action: 'image.convert', files: [png], options: { format: 'jpg' } });
+    const win = await waitFor(() => { const w = panelWin(); return w && w.sent.find((m) => m.ch === 'filetools:panel' && m.payload.phase === 'done') && w; }, 20000);
+    assert.equal(win.opts.frame, false, 'no native title bar on Windows either');
+    const done = win.sent.find((m) => m.ch === 'filetools:panel' && m.payload.phase === 'done').payload;
+    assert.equal(done.revealLabel, '在资源管理器中显示');
+    handlers['filetools:panel-size']({ sender: win.webContents }, { height: 244 });
+    assert.deepEqual(win.getContentSize(), [500, 244], 'content-sized on Windows');
+    assert.equal(win.visible, true);
+    assert.equal(win.shadowRefreshed || 0, 0, 'invalidateShadow is macOS-only');
+  } finally { ft.dispose(); }
+  // 同一份渲染端：没有红绿灯，只有一个 ×；完成后 Esc 关闭
+  const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'filepanel.html'), 'utf8');
+  assert.doesNotMatch(html, /<i><\/i>/);
+  assert.equal((html.match(/class="x"/g) || []).length, 1);
+  const { sent, onHandlers, esc } = loadPanelRenderer(244);
+  onHandlers['filetools:panel']({ phase: 'done', action: 'video.gif', file: 'C:\\t\\a.gif', fileName: 'a.gif', bytes: 1000, measured: true, revealLabel: '在资源管理器中显示' });
+  sent.length = 0; esc();
+  assert.deepEqual(sent.map((m) => m.ch), ['filetools:close-panel']);
+});

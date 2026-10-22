@@ -11,7 +11,7 @@ const image = require('./image-ops');
 const { isHeic } = require('./heic');
 const { decide } = require('./shift-drag-policy');
 const { panelTitle } = require('./panel-title');
-const { ringPng } = require('./tray-ring');
+const { composeRing } = require('./tray-ring');
 
 function baseName(file) { return path.basename(file || ''); }
 
@@ -450,12 +450,15 @@ function createFileTools(deps) {
     if (!tray || tray.isDestroyed() || !nativeImage) return;
     try {
       if (!trayBase) trayBase = trayIcon();
-      const size = trayBase.getSize();
-      const png = await ringPng(Math.max(size.width, size.height, 18), ratio == null ? 0.3 : ratio, indeterminate || ratio == null);
-      const base = trayBase.toPNG();
-      const sharp = require('sharp');
-      const composed = await sharp(base).composite([{ input: png }]).png().toBuffer();
-      tray.setImage(nativeImage.createFromBuffer(composed));
+      // 每个缩放倍数各画一张（Windows 125% / 150% 用 tray@1.25x / @1.5x），环按那张 PNG 的像素尺寸画。
+      const factors = (trayBase.getScaleFactors && trayBase.getScaleFactors()) || [1];
+      const out = nativeImage.createEmpty();
+      for (const scaleFactor of (factors.length ? factors : [1])) {
+        const base = trayBase.toPNG({ scaleFactor });
+        const buffer = await composeRing(base, ratio == null ? 0.3 : ratio, indeterminate || ratio == null);
+        out.addRepresentation({ scaleFactor, buffer });
+      }
+      if (!tray.isDestroyed()) tray.setImage(out);
     } catch (e) { log('tray ring', e.message); }
   }
 

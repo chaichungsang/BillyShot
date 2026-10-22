@@ -519,6 +519,7 @@
     '合成 PDF': 'Make PDF',
     '录屏结束后开始': 'Starts after recording ends',
     '拖不到菜单栏图标时用快捷键': "Can't reach the menu-bar icon? Use the shortcut.",
+    '也可以从托盘图标菜单打开，或用快捷键': 'You can also open it from the tray icon menu, or use the shortcut.',
     '原图小于 1920，不放大': 'Original is narrower than 1920; no upscaling.',
     '原图小于 1280，不放大': 'Original is narrower than 1280; no upscaling.',
     '不知道原图宽度，不放大': 'Original width is unknown; no upscaling.',

@@ -19,9 +19,20 @@ function macChip(acc) {
   const map = { Control: '⌃', Ctrl: '⌃', Alt: '⌥', Option: '⌥', Shift: '⇧', Command: '⌘', Cmd: '⌘', Meta: '⌘' };
   return String(acc || 'Control+Alt+F').split('+').map((p) => map[p] || p).join('');
 }
-function chipText(payload) {
-  const plat = (payload && (payload.platform || (payload.shot === 'win' ? 'win32' : payload.shot === 'mac' ? 'darwin' : '')))
+function platformOf(payload) {
+  return (payload && (payload.platform || (payload.shot === 'win' ? 'win32' : payload.shot === 'mac' ? 'darwin' : '')))
     || (document.body.classList.contains('win') ? 'win32' : 'darwin');
+}
+// 提示语按平台说：macOS 可以把文件拖到菜单栏图标上；Windows 托盘图标不收拖放，只能从托盘菜单打开或按快捷键。
+const HINT = {
+  darwin: '拖不到菜单栏图标时用快捷键',
+  win32: '也可以从托盘图标菜单打开，或用快捷键',
+};
+function hintText(payload) {
+  return platformOf(payload) === 'win32' ? HINT.win32 : HINT.darwin;
+}
+function chipText(payload) {
+  const plat = platformOf(payload);
   const acc = payload && payload.hotkey;
   if (plat === 'win32') return acc || 'Ctrl+Shift+Alt+F';
   return macChip(acc || 'Control+Alt+F');
@@ -29,7 +40,7 @@ function chipText(payload) {
 function paintHint(payload) {
   const hint = document.getElementById('hintText');
   const chip = document.getElementById('chip');
-  if (hint) hint.textContent = tr('拖不到菜单栏图标时用快捷键');
+  if (hint) hint.textContent = tr(hintText(payload || {}));
   if (chip) chip.textContent = chipText(payload || {});
 }
 paintHint(null);
@@ -49,7 +60,7 @@ function renderWindow(payload) {
   const keys = (model && model.keys) || [];
   keys.forEach((k) => {
     if (k.action === 'image.convert' && k.pills) {
-      k.pills.forEach((p) => actions.appendChild(act('转格式 · ' + p.label, false, () => send('filetools:run', { action: 'image.convert', options: { format: p.format } }))));
+      k.pills.forEach((p) => actions.appendChild(act(tr('转格式') + ' · ' + p.label, false, () => send('filetools:run', { action: 'image.convert', options: { format: p.format } }))));
       return;
     }
     if (k.action === 'image.resize') {

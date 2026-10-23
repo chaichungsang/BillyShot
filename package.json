@@ -1,6 +1,6 @@
 {
   "name": "billyshot",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "免费截图录屏工具 BillyShot",
   "main": "src/main.js",
   "scripts": {

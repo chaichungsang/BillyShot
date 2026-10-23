@@ -11,7 +11,7 @@ ManifestDPIAware true
 
 ; 向导左侧的品牌图：每种常见系统缩放各一张（scripts/make_installer_sidebar.py 生成），
 ; 显示时按图片框的实际像素挑最接近的一张，基本是 1:1，不会被拉糊。
-!define BILLY_SIDEBAR_DIR "${__FILEDIR__}/sidebar"
+!define BILLY_SIDEBAR_DIR "${__FILEDIR__}\sidebar"
 
 !macro BILLY_FIT_SIDEBAR HWND BMP
   System::Store "S"
@@ -19,21 +19,21 @@ ManifestDPIAware true
   System::Call '*$0(i, i, i .r1, i .r2)'
   ; 宽度 = 164 × 缩放比例；取中间值作为分界，挑最接近的一张
   ${If} $1 < 185
-    File "/oname=$PLUGINSDIR\billy-side.bmp" "${BILLY_SIDEBAR_DIR}/side-100.bmp"
+    File "/oname=$PLUGINSDIR\billy-side.bmp" "${BILLY_SIDEBAR_DIR}\side-100.bmp"
   ${ElseIf} $1 < 226
-    File "/oname=$PLUGINSDIR\billy-side.bmp" "${BILLY_SIDEBAR_DIR}/side-125.bmp"
+    File "/oname=$PLUGINSDIR\billy-side.bmp" "${BILLY_SIDEBAR_DIR}\side-125.bmp"
   ${ElseIf} $1 < 267
-    File "/oname=$PLUGINSDIR\billy-side.bmp" "${BILLY_SIDEBAR_DIR}/side-150.bmp"
+    File "/oname=$PLUGINSDIR\billy-side.bmp" "${BILLY_SIDEBAR_DIR}\side-150.bmp"
   ${ElseIf} $1 < 308
-    File "/oname=$PLUGINSDIR\billy-side.bmp" "${BILLY_SIDEBAR_DIR}/side-175.bmp"
+    File "/oname=$PLUGINSDIR\billy-side.bmp" "${BILLY_SIDEBAR_DIR}\side-175.bmp"
   ${ElseIf} $1 < 349
-    File "/oname=$PLUGINSDIR\billy-side.bmp" "${BILLY_SIDEBAR_DIR}/side-200.bmp"
+    File "/oname=$PLUGINSDIR\billy-side.bmp" "${BILLY_SIDEBAR_DIR}\side-200.bmp"
   ${ElseIf} $1 < 390
-    File "/oname=$PLUGINSDIR\billy-side.bmp" "${BILLY_SIDEBAR_DIR}/side-225.bmp"
+    File "/oname=$PLUGINSDIR\billy-side.bmp" "${BILLY_SIDEBAR_DIR}\side-225.bmp"
   ${ElseIf} $1 < 451
-    File "/oname=$PLUGINSDIR\billy-side.bmp" "${BILLY_SIDEBAR_DIR}/side-250.bmp"
+    File "/oname=$PLUGINSDIR\billy-side.bmp" "${BILLY_SIDEBAR_DIR}\side-250.bmp"
   ${Else}
-    File "/oname=$PLUGINSDIR\billy-side.bmp" "${BILLY_SIDEBAR_DIR}/side-300.bmp"
+    File "/oname=$PLUGINSDIR\billy-side.bmp" "${BILLY_SIDEBAR_DIR}\side-300.bmp"
   ${EndIf}
   ; IMAGE_BITMAP = 0，LR_LOADFROMFILE = 0x10；按图片框实际大小载入（和挑中的图只差几个像素）
   System::Call 'user32::LoadImage(p 0, t "$PLUGINSDIR\billy-side.bmp", i 0, i r1, i r2, i 0x10) p .r3'

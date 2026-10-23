@@ -573,3 +573,661 @@ test('cancelling a real ffmpeg job kills it and deletes the partial', { timeout:
   assert.deepEqual(leftover, []);
   runner.dispose();
 });
+
+// ---- 1.4.1：冷启动后第一次 Shift 拖 ----
+function fakeElectron() {
+  const wins = [];
+  const handlers = {};
+  class FakeWin {
+    constructor(opts) {
+      this.opts = opts; this.visible = false; this.bounds = null; this.sent = []; this.destroyed = false; this.file = '';
+      const self = this;
+      this.webContents = {
+        isLoading: () => false,
+        once: (_ev, fn) => fn(),
+        on: () => {},
+        send: (ch, payload) => self.sent.push({ ch, payload }),
+      };
+      wins.push(this);
+    }
+    setAlwaysOnTop(on, level) { this.level = on ? level : null; } setVisibleOnAllWorkspaces() {} setMenu() {}
+    loadFile(f) { this.file = String(f); }
+    on(ev) { (this.events = this.events || []).push(ev); }
+    close() { this.closedByApp = true; }
+    isDestroyed() { return this.destroyed; }
+    isVisible() { return this.visible; }
+    showInactive() { this.visible = true; }
+    show() { this.visible = true; }
+    hide() { this.visible = false; }
+    focus() {}
+    setBounds(b) { this.bounds = b; }
+    getContentSize() { return [this.opts.width, this.opts.height]; }
+    setContentSize(w, h) { this.opts.width = w; this.opts.height = h; }
+    invalidateShadow() { this.shadowRefreshed = (this.shadowRefreshed || 0) + 1; }
+  }
+  const deps = {
+    BrowserWindow: FakeWin,
+    ipcMain: { on: (ch, fn) => { handlers[ch] = fn; } },
+    screen: {
+      getCursorScreenPoint: () => ({ x: 600, y: 500 }),
+      getDisplayNearestPoint: () => ({ workArea: { x: 0, y: 28, width: 1496, height: 877 } }),
+    },
+    shell: { showItemInFolder() {} }, dialog: {}, Notification: null, nativeImage: null,
+    app: { isQuitting: false },
+    settings: { get: () => ({ fileTools: { shiftDrag: true }, hotkeys: {} }) },
+    t: (s) => s, isMac: true, isWin: false, log: () => {},
+    R: (...p) => path.join(__dirname, '..', 'src', ...p),
+    getTray: () => null, trayIcon: () => null,
+  };
+  const arcWin = () => wins.find((w) => w.file.endsWith('arc.html'));
+  const panelWin = () => wins.find((w) => w.file.endsWith('filepanel.html'));
+  return { deps, handlers, wins, arcWin, panelWin };
+}
+
+test('first Shift-drag after a cold start shows the arc and accepts the drop', { timeout: 20000 }, async () => {
+  const { createFileTools } = require('../src/filetools/bridge');
+  const { deps, handlers, arcWin } = fakeElectron();
+  const ft = createFileTools(deps);
+  try {
+    const png = path.join(root, 'cold-start.png');
+    await samplePng(png, 40, 30, 'teal');
+    assert.equal(arcWin(), undefined, 'no arc window before the first drag');
+
+    // helper：Shift 拖开始、移动
+    ft.helperMessage({ type: 'shift-drag', x: 590, y: 495 });
+    ft.helperMessage({ type: 'move', x: 600, y: 500 });
+    const win = arcWin();
+    assert.ok(win && win.visible, 'catcher window is shown at the cursor');
+    // macOS 只把拖放交给层级低于拖放图标（500）的窗口；screen-saver 是 1000，拖放会穿过去。
+    assert.notEqual(win.level, 'screen-saver');
+    assert.ok(['floating', 'torn-off-menu', 'modal-panel', 'main-menu', 'status', 'pop-up-menu'].includes(win.level), 'arc window level stays below the drag level: ' + win.level);
+    const caught = win.sent.filter((m) => m.ch === 'filetools:catch');
+    assert.ok(caught.length >= 1, 'renderer is told to draw the hit-testable catch ring');
+    const last = caught[caught.length - 1].payload;
+    assert.equal(win.bounds.x + last.hubx, 600);
+    assert.equal(win.bounds.y + last.huby, 500);
+
+    // helper 的 up 比 drop 先到：窗口不能马上收起
+    ft.helperMessage({ type: 'up', x: 600, y: 500 });
+    assert.equal(win.visible, true, 'mouse-up does not hide the catcher before the drop arrives');
+    await new Promise((r) => setTimeout(r, 150));
+    assert.equal(win.visible, true);
+
+    // 渲染端在没有弧的状态下也把 drop 交给主进程
+    handlers['filetools:drop']({}, { files: [png], dx: 0, dy: 0 });
+    const arc = await waitFor(() => win.sent.find((m) => m.ch === 'filetools:arc'), 10000);
+    assert.equal(arc.payload.model.keys[0].action, 'image.convert');
+    assert.equal(arc.payload.model.keys[0].label, '转格式');
+    assert.ok(arc.payload.model.keys[0].pills.some((p) => p.format === 'jpg'));
+    assert.deepEqual(arc.payload.files, [png]);
+    // 宽限期过了也不会把画好的弧收掉
+    await new Promise((r) => setTimeout(r, 900));
+    assert.equal(win.visible, true, 'the drawn arc stays open after the grace period');
+  } finally { ft.dispose(); }
+});
+
+test('Shift-drag released without a drop closes the catcher after a short grace', async () => {
+  const { createFileTools } = require('../src/filetools/bridge');
+  const { deps, arcWin } = fakeElectron();
+  const ft = createFileTools(deps);
+  try {
+    ft.helperMessage({ type: 'shift-drag', x: 600, y: 500 });
+    ft.helperMessage({ type: 'up', x: 600, y: 500 });
+    assert.equal(arcWin().visible, true);
+    await waitFor(() => !arcWin().visible, 3000);
+    ft.helperMessage({ type: 'shift-drag', x: 600, y: 500 });
+    ft.helperMessage({ type: 'shift-up' });
+    assert.equal(arcWin().visible, false, 'letting go of Shift mid-drag closes at once');
+  } finally { ft.dispose(); }
+});
+
+test('arc renderer forwards a cold-start drop and has no stray hub', () => {
+  const vm = require('vm');
+  const dir = path.join(__dirname, '..', 'src', 'renderer');
+  const els = {};
+  const mk = (id) => ({
+    id, hidden: false, innerHTML: '', style: {}, dataset: {},
+    classList: { _s: new Set(), add(c) { this._s.add(c); }, remove(c) { this._s.delete(c); }, toggle() {}, contains(c) { return this._s.has(c); } },
+    appendChild() {}, setAttribute() {}, addEventListener() {}, querySelector: () => null, querySelectorAll: () => [],
+    getBoundingClientRect: () => ({ left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 }),
+  });
+  const docListeners = {};
+  const body = mk('body');
+  const document = {
+    body,
+    getElementById: (id) => (els[id] = els[id] || mk(id)),
+    createElement: (tag) => { const n = mk('x'); n.tag = tag; created.push(n); return n; }, createElementNS: () => mk('x'),
+    createTextNode: (t) => ({ textContent: t }),
+    querySelectorAll: () => [],
+    addEventListener: (n, fn) => { docListeners[n] = fn; },
+  };
+  const sent = [];
+  const onHandlers = {};
+  const api = {
+    send: (ch, payload) => sent.push({ ch, payload }),
+    on: (ch, fn) => { onHandlers[ch] = fn; },
+    pathForFile: () => '/tmp/cold.png',
+  };
+  const ctx = { document, api, window: {}, setTimeout, clearTimeout, getComputedStyle: () => ({}), console };
+  ctx.window = ctx; ctx.window.api = api; ctx.innerWidth = 600; ctx.innerHeight = 400;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(dir, 'filetools', 'arc.js'), 'utf8'), ctx);
+  assert.ok(onHandlers['filetools:catch'], 'listens for the catch message');
+
+  onHandlers['filetools:catch']({ hubx: 300, huby: 200 });
+  assert.equal(els.catch.hidden, false);
+  assert.equal(els.catch.style.left, '300px');
+  assert.equal(els.hub.hidden, true);
+  assert.ok(body.classList.contains('catching'));
+
+  docListeners.drop({ preventDefault() {}, clientX: 300, clientY: 200, dataTransfer: { files: [{}] } });
+  const drop = sent.find((m) => m.ch === 'filetools:drop');
+  assert.ok(drop, 'a drop with no arc drawn still goes to main');
+  assert.deepEqual(Array.from(drop.payload.files), ['/tmp/cold.png']);
+
+  const html = fs.readFileSync(path.join(dir, 'arc.html'), 'utf8');
+  assert.match(html, /id="catch"/);
+  const css = fs.readFileSync(path.join(dir, 'filetools', 'arc.css'), 'utf8');
+  assert.match(css, /\[hidden\]\s*\{\s*display:\s*none\s*!important/);
+  const bg = css.match(/body\.catching\s*\{\s*background:\s*rgba\(([^)]*)\)/);
+  assert.ok(bg, 'catcher body has a background');
+  const alpha = Number(bg[1].split(',')[3]);
+  assert.ok(alpha > 0 && alpha < 0.05, 'catcher background is hit-testable but nearly invisible');
+  // 接收圈的样式不能套到 body 上（body 带 catching 类）：选择器只认 .catch-ring
+  assert.doesNotMatch(css, /(^|[\s,}])\.catching\s*\{/m, 'no bare .catching rule that would also style <body>');
+  assert.match(css, /\.catch-ring\s*\{[^}]*position:\s*absolute/);
+  assert.match(html, /class="catch-ring"/);
+});
+
+// ---- 1.4.1：完成面板 ----
+function loadPanelRenderer(panelHeight) {
+  const vm = require('vm');
+  const dir = path.join(__dirname, '..', 'src', 'renderer');
+  const els = {};
+  const created = [];
+  let height = panelHeight;
+  const mk = (id) => ({
+    id, hidden: false, innerHTML: '', textContent: '', style: {}, dataset: {}, children: [], listeners: {},
+    classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
+    appendChild(c) { this.children.push(c); return c; }, setAttribute() {}, addEventListener(ev, fn) { this.listeners[ev] = fn; },
+    querySelector: () => null, querySelectorAll: () => [],
+    getBoundingClientRect: () => ({ left: 0, top: 0, right: 500, bottom: id === 'panel' ? height : 0, width: 500, height: id === 'panel' ? height : 0 }),
+  });
+  const docListeners = {};
+  const document = {
+    body: mk('body'),
+    getElementById: (id) => (els[id] = els[id] || mk(id)),
+    createElement: (tag) => { const n = mk('x'); n.tag = tag; created.push(n); return n; }, createElementNS: () => mk('x'),
+    createTextNode: (t) => ({ textContent: t }),
+    querySelectorAll: () => [],
+    addEventListener: (n, fn) => { docListeners[n] = fn; },
+  };
+  const sent = [];
+  const onHandlers = {};
+  const api = { send: (ch, payload) => sent.push({ ch, payload }), on: (ch, fn) => { onHandlers[ch] = fn; } };
+  const ctx = { document, api, setTimeout, clearTimeout, requestAnimationFrame: (fn) => fn(), getComputedStyle: () => ({}), console };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(dir, 'filetools', 'panel.js'), 'utf8'), ctx);
+  const esc = () => docListeners.keydown({ key: 'Escape', preventDefault() {} });
+  return { sent, onHandlers, esc, created, setHeight: (h) => { height = h; } };
+}
+
+test('done panel has one close control, fits its content and closes on Esc', () => {
+  const dir = path.join(__dirname, '..', 'src', 'renderer');
+  const html = fs.readFileSync(path.join(dir, 'filepanel.html'), 'utf8');
+  const css = fs.readFileSync(path.join(dir, 'filetools', 'panel.css'), 'utf8');
+  // 只有一个关闭：自绘的 ×，没有假的红绿灯
+  assert.equal((html.match(/class="x"/g) || []).length, 1, 'exactly one close control');
+  assert.doesNotMatch(html, /<i><\/i>/, 'no fake traffic-light dots');
+  assert.doesNotMatch(css, /\.drag i\b/, 'no traffic-light dot styles left');
+  assert.doesNotMatch(css, /#ff5f57/i, 'no red close dot');
+  // 面板外面不画大阴影：窗口和面板一样大，阴影交给系统
+  const panelRule = css.match(/\.panel\s*\{[^}]*\}/)[0];
+  assert.doesNotMatch(panelRule, /24px 60px/, 'no outer CSS shadow that needs a taller window');
+
+  const { sent, onHandlers, esc } = loadPanelRenderer(268);
+  onHandlers['filetools:panel']({ phase: 'done', action: 'image.convert', file: '/tmp/a.jpg', fileName: 'a.jpg', bytes: 4700, measured: true, revealLabel: '在 Finder 中显示' });
+  const size = sent.filter((m) => m.ch === 'filetools:panel-size').pop();
+  assert.ok(size, 'renderer reports its height after drawing');
+  assert.equal(size.payload.height, 268);
+
+  sent.length = 0;
+  esc();
+  assert.deepEqual(sent.map((m) => m.ch), ['filetools:close-panel'], 'Esc closes the done panel');
+
+  // 进行中 Esc 仍然是取消任务
+  onHandlers['filetools:panel']({ phase: 'running', id: 7, action: 'image.convert', ratio: 0.5 });
+  sent.length = 0;
+  esc();
+  assert.deepEqual(sent.map((m) => m.ch), ['filetools:cancel']);
+});
+
+test('done panel window shrinks to the reported height, so no empty strip is left under it', { timeout: 30000 }, async () => {
+  const { createFileTools } = require('../src/filetools/bridge');
+  const { deps, handlers, panelWin } = fakeElectron();
+  const ft = createFileTools(deps);
+  try {
+    const png = path.join(root, 'panel-done.png');
+    await samplePng(png, 40, 30, 'navy');
+    handlers['filetools:run']({}, { action: 'image.convert', files: [png], options: { format: 'jpg' } });
+    const win = await waitFor(() => { const w = panelWin(); return w && w.sent.find((m) => m.ch === 'filetools:panel' && m.payload.phase === 'done') && w; }, 20000);
+    assert.equal(win.opts.frame, false, 'frameless: no native traffic lights next to the custom ×');
+
+    handlers['filetools:panel-size']({ sender: win.webContents }, { height: 268 });
+    assert.deepEqual(win.getContentSize(), [500, 268], 'window is exactly as tall as the panel');
+    assert.ok(win.shadowRefreshed >= 1, 'window shadow is recomputed after the resize');
+    assert.equal(win.visible, true);
+
+    // 收起后，迟到的尺寸消息不会把面板重新弹出来
+    handlers['filetools:close-panel']();
+    handlers['filetools:panel-size']({ sender: win.webContents }, { height: 300 });
+    assert.equal(win.visible, false);
+    // 别的窗口发来的尺寸不算
+    handlers['filetools:panel-size']({ sender: {} }, { height: 600 });
+    assert.deepEqual(win.getContentSize(), [500, 300]);
+  } finally { ft.dispose(); }
+});
+
+test('the label under each arc circle is part of its button and clickable', () => {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'filetools', 'arc.css'), 'utf8');
+  const cap = css.match(/\.key \.cap\s*\{[^}]*\}/)[0];
+  assert.doesNotMatch(cap, /pointer-events:\s*none/, 'label does not let clicks fall through');
+  assert.match(cap, /pointer-events:\s*auto/);
+  const js = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'filetools', 'arc.js'), 'utf8');
+  // 字是按钮的子元素，点字就是点按钮
+  assert.match(js, /btn\.appendChild\(face\);\s*btn\.appendChild\(cap\);/);
+  // 子选项（→ JPG）叠在字上面时，还是子选项先收到点击
+  const z = (sel) => Number((css.match(new RegExp(sel + '[^{]*\\{[^}]*z-index:\\s*(\\d+)')) || [])[1]);
+  assert.ok(z('\\.pills') > z('\\.key'), 'pills stay above the labels');
+});
+
+test('mouse-moves while the arc window loads add one load listener and deliver the latest position', () => {
+  const { createFileTools } = require('../src/filetools/bridge');
+  const { deps, arcWin } = fakeElectron();
+  const ft = createFileTools(deps);
+  try {
+    ft.helperMessage({ type: 'shift-drag', x: 590, y: 495 });
+    const win = arcWin();
+    // 第一次之后的窗口：模拟「还在加载」，记下挂上的 did-finish-load
+    const loads = [];
+    win.webContents.isLoading = () => true;
+    win.webContents.once = (ev, fn) => { if (ev === 'did-finish-load') loads.push(fn); };
+    win.sent.length = 0;
+    for (let i = 1; i <= 15; i++) ft.helperMessage({ type: 'move', x: 600 + i, y: 500 + i });
+    assert.equal(loads.length, 1, 'at most one did-finish-load listener while loading');
+    assert.equal(win.sent.filter((m) => m.ch === 'filetools:catch').length, 0, 'nothing sent before the page loads');
+
+    win.webContents.isLoading = () => false;
+    loads[0]();
+    const caught = win.sent.filter((m) => m.ch === 'filetools:catch');
+    assert.equal(caught.length, 1, 'one catch message after load');
+    assert.equal(win.bounds.x + caught[0].payload.hubx, 615, 'latest x is delivered');
+    assert.equal(win.bounds.y + caught[0].payload.huby, 515, 'latest y is delivered');
+
+    // 加载完以后照常每次直接发
+    ft.helperMessage({ type: 'move', x: 620, y: 520 });
+    assert.equal(win.sent.filter((m) => m.ch === 'filetools:catch').length, 2);
+    assert.equal(loads.length, 1);
+  } finally { ft.dispose(); }
+});
+
+// 1.4.1：打包后的布局。utilityProcess 里没有 app，ffmpeg-bin 不能指到 app.asar 里面（spawn 会 ENOENT）。
+function packagedLayout() {
+  const res = fs.mkdtempSync(path.join(root, 'packaged-')) + path.sep + 'resources';
+  const asarSrc = path.join(res, 'app.asar', 'src', 'filetools');
+  fs.mkdirSync(asarSrc, { recursive: true });
+  for (const f of fs.readdirSync(path.join(__dirname, '..', 'src', 'filetools'))) {
+    if (f.endsWith('.js')) fs.copyFileSync(path.join(__dirname, '..', 'src', 'filetools', f), path.join(asarSrc, f));
+  }
+  // app.asar 里也“看得到”一个 ffmpeg，但它不能执行，和真实 asar 一样。
+  const fake = path.join(res, 'app.asar', 'vendor', 'ffmpeg', 'linux-x64');
+  fs.mkdirSync(fake, { recursive: true });
+  fs.writeFileSync(path.join(fake, 'ffmpeg'), 'not runnable inside asar\n', { mode: 0o644 });
+  const real = path.join(res, 'app.asar.unpacked', 'vendor', 'ffmpeg', 'linux-x64');
+  fs.mkdirSync(real, { recursive: true });
+  fs.copyFileSync(process.env.BILLYSHOT_FFMPEG, path.join(real, 'ffmpeg'));
+  fs.chmodSync(path.join(real, 'ffmpeg'), 0o755);
+  return { res, asarSrc, realBin: path.join(real, 'ffmpeg') };
+}
+
+test('ffmpeg-bin never returns a path inside app.asar, with or without app', () => {
+  const { unpackedPath, insideAsar, roots, ffmpegBin } = require('../src/filetools/ffmpeg-bin');
+  assert.equal(unpackedPath('/A/Resources/app.asar/vendor/ffmpeg'), '/A/Resources/app.asar.unpacked/vendor/ffmpeg');
+  assert.equal(unpackedPath('C:\\P\\BillyShot\\resources\\app.asar\\vendor\\ffmpeg'), 'C:\\P\\BillyShot\\resources\\app.asar.unpacked\\vendor\\ffmpeg');
+  assert.equal(unpackedPath('/x/app.asar.unpacked/vendor'), '/x/app.asar.unpacked/vendor');
+  assert.equal(unpackedPath('/x/my.app.asarish/vendor'), '/x/my.app.asarish/vendor');
+  const { res, asarSrc, realBin } = packagedLayout();
+  const env = { dirname: asarSrc, resourcesPath: res, ffmpeg: '', ffmpegRoot: '', platform: 'linux', arch: 'x64' };
+  for (const r of roots(env)) assert.equal(insideAsar(r), false, r);
+  assert.equal(ffmpegBin(env), realBin);
+  // utilityProcess 里有 resourcesPath 但没有 app；Windows 布局也一样。
+  const seen = [];
+  const win = ffmpegBin({ dirname: 'C:\\BS\\resources\\app.asar\\src\\filetools', resourcesPath: 'C:\\BS\\resources', ffmpeg: '', ffmpegRoot: '', platform: 'win32', arch: 'x64', existsSync: (p) => { seen.push(p); return !insideAsar(p); } });
+  assert.match(win, /app\.asar\.unpacked[\\/]vendor[\\/]ffmpeg[\\/]win32-x64[\\/]ffmpeg\.exe$/);
+  assert.equal(seen.some(insideAsar), false);
+  // 主进程传下来的路径如果误指 app.asar，也换成 unpacked。
+  assert.equal(ffmpegBin({ ffmpeg: path.join(res, 'app.asar', 'vendor', 'ffmpeg', 'linux-x64', 'ffmpeg') }), realBin);
+});
+
+test('main hands the resolved ffmpeg to the file-job worker', () => {
+  const { workerEnv } = require('../src/filetools/jobs');
+  const env = workerEnv({ PATH: '/bin' }, () => '/R/app.asar.unpacked/vendor/ffmpeg/darwin-arm64/ffmpeg');
+  assert.equal(env.BILLYSHOT_FFMPEG, '/R/app.asar.unpacked/vendor/ffmpeg/darwin-arm64/ffmpeg');
+  assert.equal(env.PATH, '/bin');
+  assert.equal(workerEnv({ BILLYSHOT_FFMPEG: '/keep' }, () => '/other').BILLYSHOT_FFMPEG, '/keep');
+  assert.equal('BILLYSHOT_FFMPEG' in workerEnv({}, () => null), false);
+  const jobs = fs.readFileSync(path.join(__dirname, '..', 'src', 'filetools', 'jobs.js'), 'utf8');
+  assert.match(jobs, /utilityProcess\.fork\([^)]*env: workerEnv\(\)/);
+});
+
+test('packaged layout without app: the job worker runs all four video actions with the unpacked ffmpeg', { timeout: 180000 }, async () => {
+  const { res, asarSrc } = packagedLayout();
+  const dir = fs.mkdtempSync(path.join(root, 'pkg-video-'));
+  const src = path.join(dir, 'in.mp4');
+  await h264Clip(src, '160x120', 2);
+  const { fork } = require('child_process');
+  const env = { ...process.env, NODE_PATH: path.join(__dirname, '..', 'node_modules') };
+  delete env.BILLYSHOT_FFMPEG;
+  delete env.BILLYSHOT_FFMPEG_ROOT;
+  delete env.ELECTRON_RUN_AS_NODE;
+  const runJob = (job) => new Promise((resolve) => {
+    // 与 utilityProcess 一样：worker 脚本在 app.asar 里，进程里没有 electron 的 app。
+    const child = fork(path.join(asarSrc, 'run-job.js'), [], { env, cwd: res, stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
+    let last = null;
+    child.on('message', (m) => { if (m && m.type !== 'progress') last = m; });
+    child.on('exit', () => resolve(last));
+    child.send(job);
+  });
+  const cases = [
+    ['video.mp4', {}, '-mp4.mp4'],
+    ['video.compress', { level: 'small' }, '-small.mp4'],
+    ['video.trim', { start: 0, end: 1 }, '-trim.mp4'],
+    ['video.gif', { start: 0, end: 1 }, '.gif'],
+  ];
+  for (const [action, options, tail] of cases) {
+    const finalPath = path.join(dir, `out${tail}`);
+    const msg = await runJob({ action, inputs: [src], options, finalPath, partial: finalPath + '.part' });
+    assert.equal(msg && msg.type, 'done', `${action}: ${JSON.stringify(msg)}`);
+    assert.equal(fs.existsSync(finalPath + '.part'), false);
+    const buf = fs.readFileSync(finalPath);
+    if (action === 'video.gif') assert.equal(buf.slice(0, 3).toString(), 'GIF');
+    else assert.equal(buf.slice(0, 64).includes(Buffer.from('ftyp')), true);
+  }
+  // 超过 15 秒的 GIF 在同一条路径上照样被拒绝。
+  const long = path.join(dir, 'long.mp4');
+  await h264Clip(long, '160x120', 17);
+  const refused = await runJob({ action: 'video.gif', inputs: [long], options: { start: 0, end: 16 }, finalPath: path.join(dir, 'long.gif'), partial: path.join(dir, 'long.gif.part') });
+  assert.equal(refused.type, 'error');
+  assert.equal(refused.code, 'GIF_TOO_LONG');
+  assert.equal(fs.existsSync(path.join(dir, 'long.gif.part')), false);
+});
+
+test('NSIS sidebar File paths use backslashes so Windows makensis finds them', () => {
+  const nsh = fs.readFileSync(path.join(__dirname, '..', 'build', 'installer.nsh'), 'utf8');
+  assert.match(nsh, /!define BILLY_SIDEBAR_DIR "\$\{__FILEDIR__\}\\sidebar"/);
+  const files = nsh.split(/\r?\n/).filter((l) => /^\s*File\s/.test(l));
+  assert.equal(files.length, 8);
+  for (const line of files) {
+    const m = line.match(/"\$\{BILLY_SIDEBAR_DIR\}\\(side-\d+\.bmp)"\s*$/);
+    assert.ok(m, line);
+    assert.equal(fs.existsSync(path.join(__dirname, '..', 'build', 'sidebar', m[1])), true, m[1]);
+  }
+});
+
+// ---- 1.4.1：Windows 界面 ----
+function rendererTx(lang) {
+  const vm = require('vm');
+  const ctx = { api: { lang }, console };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'src', 'i18n.js'), 'utf8'), ctx);
+  return ctx.tx;
+}
+function loadWindowRenderer(platform, lang) {
+  const vm = require('vm');
+  const els = {};
+  const classes = new Set();
+  const mk = (id) => ({
+    id, hidden: false, innerHTML: '', textContent: '', title: '', disabled: false, children: [],
+    appendChild(c) { this.children.push(c); return c; }, addEventListener(ev, fn) { (this.listeners = this.listeners || {})[ev] = fn; },
+    classList: { add: (c) => classes.add(c), remove: (c) => classes.delete(c), contains: (c) => classes.has(c) },
+  });
+  const body = mk('body');
+  const docListeners = {};
+  const sent = [];
+  const document = { body, getElementById: (id) => (els[id] = els[id] || mk(id)), createElement: () => mk('x'),
+    addEventListener: (ev, fn) => { docListeners[ev] = fn; } };
+  const ctx = { document, api: { platform, lang, send: (ch, payload) => sent.push({ ch, payload }), on() {} }, tx: rendererTx(lang), console };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'filetools', 'window.js'), 'utf8'), ctx);
+  return { els, render: ctx.renderWindow, classes, sent, docListeners };
+}
+
+test('File Tools window: tray-icon hint on Windows, menu-bar hint on macOS, in both languages', () => {
+  for (const lang of ['zh', 'en']) {
+    const win = loadWindowRenderer('win32', lang);
+    win.render({ platform: 'win32', hotkey: 'Ctrl+Shift+Alt+F', model: { keys: [] } });
+    const hint = win.els.hintText.textContent;
+    assert.doesNotMatch(hint, /菜单栏|menu-bar|menu bar/i, 'no menu-bar wording on Windows: ' + hint);
+    assert.match(hint, lang === 'en' ? /tray icon/ : /托盘图标/);
+    assert.equal(win.els.chip.textContent, 'Ctrl+Shift+Alt+F');
+
+    const mac = loadWindowRenderer('darwin', lang);
+    mac.render({ platform: 'darwin', model: { keys: [] } });
+    assert.match(mac.els.hintText.textContent, lang === 'en' ? /menu-bar icon/ : /菜单栏图标/);
+  }
+  // 新句子在英文词典里
+  const { EN } = require('../src/i18n');
+  assert.ok(EN['也可以从托盘图标菜单打开，或用快捷键']);
+});
+
+test('File Tools window: Convert buttons follow the app language', () => {
+  const model = { keys: [{ action: 'image.convert', pills: [{ label: 'JPG', format: 'jpg' }, { label: 'WebP', format: 'webp' }] }] };
+  const en = loadWindowRenderer('win32', 'en');
+  en.render({ platform: 'win32', model });
+  assert.deepEqual(en.els.actions.children.map((b) => b.textContent), ['Convert · JPG', 'Convert · WebP']);
+  const zh = loadWindowRenderer('win32', 'zh');
+  zh.render({ platform: 'win32', model });
+  assert.deepEqual(zh.els.actions.children.map((b) => b.textContent), ['转格式 · JPG', '转格式 · WebP']);
+});
+
+test('tray progress ring is drawn at the tray icon\'s own pixel size, at every scale', async () => {
+  const sharp = require('sharp');
+  const { composeRing } = require('../src/filetools/tray-ring');
+  const logos = path.join(__dirname, '..', 'assets', 'logos');
+  const files = [];
+  for (const name of fs.readdirSync(logos)) {
+    for (const f of fs.readdirSync(path.join(logos, name))) if (/^tray.*\.png$/.test(f)) files.push(path.join(logos, name, f));
+  }
+  assert.ok(files.some((f) => /[\\/]tray\.png$/.test(f)), 'Windows 16 px tray icon is covered');
+  for (const f of files) {
+    const base = fs.readFileSync(f);
+    const meta = await sharp(base).metadata();
+    for (const [ratio, ind] of [[0.3, true], [0.5, false], [1, false]]) {
+      const out = await composeRing(base, ratio, ind); // 以前 16 px 图标 + 18 px 环会抛 "same dimensions or smaller"
+      const m = await sharp(out).metadata();
+      assert.deepEqual([m.width, m.height], [meta.width, meta.height], f);
+    }
+  }
+  // 非正方形、比 16 还小的图也不报错
+  const tiny = await sharp({ create: { width: 12, height: 10, channels: 4, background: '#000' } }).png().toBuffer();
+  const m = await sharp(await composeRing(tiny, 0.5, false)).metadata();
+  assert.deepEqual([m.width, m.height], [12, 10]);
+});
+
+test('Windows tray: paintTray composes one ring per scale factor and sets the tray image', { timeout: 30000 }, async () => {
+  const sharp = require('sharp');
+  const { createFileTools } = require('../src/filetools/bridge');
+  const { deps, handlers } = fakeElectron();
+  const reps = { 1: fs.readFileSync(path.join(__dirname, '..', 'assets', 'logos', 'portrait', 'tray.png')),
+    1.5: fs.readFileSync(path.join(__dirname, '..', 'assets', 'logos', 'portrait', 'tray@1.5x.png')) };
+  const base = { getScaleFactors: () => [1, 1.5], toPNG: (o) => reps[(o && o.scaleFactor) || 1], getSize: () => ({ width: 16, height: 16 }) };
+  const set = [];
+  const tray = { isDestroyed: () => false, setImage: (img) => set.push(img), on() {} };
+  const logs = [];
+  Object.assign(deps, {
+    isMac: false, isWin: true, getTray: () => tray, trayIcon: () => base, log: (...a) => logs.push(a.join(' ')),
+    nativeImage: { createEmpty: () => ({ reps: [], addRepresentation(r) { this.reps.push(r); } }) },
+  });
+  const ft = createFileTools(deps);
+  try {
+    const png = path.join(root, 'tray-ring.png');
+    await samplePng(png, 40, 30, 'olive');
+    handlers['filetools:run']({}, { action: 'image.convert', files: [png], options: { format: 'jpg' } });
+    const img = await waitFor(() => set.find((i) => i.reps), 20000);
+    assert.deepEqual(img.reps.map((r) => r.scaleFactor), [1, 1.5]);
+    for (const r of img.reps) {
+      const m = await sharp(r.buffer).metadata();
+      assert.equal(m.width, r.scaleFactor === 1 ? 16 : 24);
+    }
+    assert.equal(logs.filter((l) => /tray ring/.test(l)).length, 0, 'no tray ring errors: ' + logs.join('; '));
+  } finally { ft.dispose(); }
+});
+
+test('Windows file panels reuse the 1.4.1 panel: frameless, no dots, sized to content, Esc closes', { timeout: 30000 }, async () => {
+  const { createFileTools } = require('../src/filetools/bridge');
+  const { deps, handlers, panelWin } = fakeElectron();
+  Object.assign(deps, { isMac: false, isWin: true });
+  const ft = createFileTools(deps);
+  try {
+    const png = path.join(root, 'panel-win.png');
+    await samplePng(png, 40, 30, 'maroon');
+    handlers['filetools:run']({}, { action: 'image.convert', files: [png], options: { format: 'jpg' } });
+    const win = await waitFor(() => { const w = panelWin(); return w && w.sent.find((m) => m.ch === 'filetools:panel' && m.payload.phase === 'done') && w; }, 20000);
+    assert.equal(win.opts.frame, false, 'no native title bar on Windows either');
+    const done = win.sent.find((m) => m.ch === 'filetools:panel' && m.payload.phase === 'done').payload;
+    assert.equal(done.revealLabel, '在资源管理器中显示');
+    handlers['filetools:panel-size']({ sender: win.webContents }, { height: 244 });
+    assert.deepEqual(win.getContentSize(), [500, 244], 'content-sized on Windows');
+    assert.equal(win.visible, true);
+    assert.equal(win.shadowRefreshed || 0, 0, 'invalidateShadow is macOS-only');
+  } finally { ft.dispose(); }
+  // 同一份渲染端：没有红绿灯，只有一个 ×；完成后 Esc 关闭
+  const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'filepanel.html'), 'utf8');
+  assert.doesNotMatch(html, /<i><\/i>/);
+  assert.equal((html.match(/class="x"/g) || []).length, 1);
+  const { sent, onHandlers, esc } = loadPanelRenderer(244);
+  onHandlers['filetools:panel']({ phase: 'done', action: 'video.gif', file: 'C:\\t\\a.gif', fileName: 'a.gif', bytes: 1000, measured: true, revealLabel: '在资源管理器中显示' });
+  sent.length = 0; esc();
+  assert.deepEqual(sent.map((m) => m.ch), ['filetools:close-panel']);
+});
+
+// ---- 1.4.1：不在前台时第一下点击就生效；文件工具小窗没有系统红绿灯压标题 ----
+test('File Tools window and file panel act on the first click when not focused (macOS and Windows)', { timeout: 30000 }, async () => {
+  const { createFileTools } = require('../src/filetools/bridge');
+  for (const mac of [true, false]) {
+    const { deps, handlers, wins, panelWin } = fakeElectron();
+    Object.assign(deps, { isMac: mac, isWin: !mac });
+    const ft = createFileTools(deps);
+    try {
+      ft.openWindow();
+      const tools = wins.find((w) => w.file.endsWith('filetools.html'));
+      assert.ok(tools, 'File Tools window created');
+      assert.equal(tools.opts.acceptFirstMouse, true, 'File Tools window: first click acts');
+      const png = path.join(root, 'first-click-' + (mac ? 'mac' : 'win') + '.png');
+      await samplePng(png, 20, 20, 'teal');
+      handlers['filetools:run']({}, { action: 'image.convert', files: [png], options: { format: 'jpg' } });
+      const panel = await waitFor(() => panelWin(), 20000);
+      assert.equal(panel.opts.acceptFirstMouse, true, 'panel: first click on × acts');
+      for (const w of [tools, panel]) {
+        // Windows 默认激活并把点击交给窗口；只要不把窗口设成不可聚焦、不在失焦时藏起来，第一下就不会被吃掉。
+        assert.notEqual(w.opts.focusable, false, 'window stays focusable');
+        assert.ok(!(w.events || []).includes('blur'), 'no blur handler that could eat or hide the first click');
+      }
+    } finally { ft.dispose(); }
+  }
+});
+
+test('File Tools window: no native traffic lights over the title on macOS, system title bar on Windows', () => {
+  const { createFileTools } = require('../src/filetools/bridge');
+  // macOS：无边框，和面板一样只有自绘的 ×
+  {
+    const { deps, wins } = fakeElectron();
+    const ft = createFileTools(deps);
+    try {
+      ft.openWindow();
+      const o = wins.find((w) => w.file.endsWith('filetools.html')).opts;
+      assert.equal(o.frame, false, 'frameless on macOS: no native traffic lights');
+      assert.equal(o.titleBarStyle, undefined, 'no hiddenInset title bar (its greyed green light overlapped the title)');
+      assert.equal(o.trafficLightPosition, undefined);
+    } finally { ft.dispose(); }
+  }
+  // Windows：系统标题栏在内容上方，没有叠在内容上的按钮
+  {
+    const { deps, wins } = fakeElectron();
+    Object.assign(deps, { isMac: false, isWin: true });
+    const ft = createFileTools(deps);
+    try {
+      ft.openWindow();
+      const o = wins.find((w) => w.file.endsWith('filetools.html')).opts;
+      assert.equal(o.frame, true, 'native frame on Windows');
+      assert.notEqual(o.titleBarStyle, 'hidden', 'title bar not hidden into the content');
+      assert.equal(o.titleBarOverlay, undefined, 'no caption buttons overlaid on the content');
+    } finally { ft.dispose(); }
+  }
+  const dir = path.join(__dirname, '..', 'src', 'renderer');
+  const html = fs.readFileSync(path.join(dir, 'filetools.html'), 'utf8');
+  const css = fs.readFileSync(path.join(dir, 'filetools', 'window.css'), 'utf8');
+  const chrome = html.match(/<div class="chrome">[\s\S]*?<\/div>/)[0];
+  assert.doesNotMatch(chrome, /<i\b/, 'no traffic-light dots in the Mac top bar');
+  assert.equal((chrome.match(/class="x"/g) || []).length, 1, 'one custom close control');
+  assert.match(chrome, /<b id="winTitle">文件工具<\/b>/);
+  assert.ok(chrome.indexOf('winTitle') < chrome.indexOf('winClose'), 'title on the left, × on the right');
+  assert.doesNotMatch(css, /#ff5f57|\.chrome i\b/i, 'no traffic-light styles left');
+  assert.match(css, /\.chrome \.x \{[^}]*-webkit-app-region: no-drag/, '× is clickable inside the drag bar');
+  assert.match(css, /body\.win \.chrome \{ display: none; \}/, 'Windows draws no second title bar');
+});
+
+test('File Tools window: × and Esc close it', () => {
+  const win = loadWindowRenderer('darwin', 'zh');
+  win.els.winClose.listeners.click();
+  assert.deepEqual(win.sent.map((m) => m.ch), ['filetools:close-window']);
+  win.sent.length = 0;
+  win.docListeners.keydown({ key: 'Escape' });
+  win.docListeners.keydown({ key: 'a' });
+  assert.deepEqual(win.sent.map((m) => m.ch), ['filetools:close-window']);
+
+  const { createFileTools } = require('../src/filetools/bridge');
+  const { deps, handlers, wins } = fakeElectron();
+  const ft = createFileTools(deps);
+  try {
+    ft.openWindow();
+    handlers['filetools:close-window']();
+    assert.equal(wins.find((w) => w.file.endsWith('filetools.html')).closedByApp, true);
+  } finally { ft.dispose(); }
+});
+
+test('GIF over 15 s: the refusal hint makes the panel report its new height (no hidden footer, no scrollbar)', () => {
+  const { sent, onHandlers, created, setHeight } = loadPanelRenderer(258);
+  onHandlers['filetools:panel']({ kind: 'trim', gif: true, start: 0, end: 20, duration: 20, fileName: 'long.mov', files: ['/tmp/long.mov'] });
+  const go = created.find((n) => n.tag === 'button' && n.textContent === '剪切并转 GIF');
+  const hint = created.find((n) => n.id === 'trimHint');
+  assert.ok(go && hint);
+  sent.length = 0;
+  setHeight(289); // 提示多一行后的实际高度（Windows 实测 289 vs 窗口 258）
+  go.listeners.click();
+  assert.equal(hint.textContent, 'GIF 最长 15 秒，先剪一段');
+  assert.deepEqual(sent.map((m) => m.ch), ['filetools:panel-size'], 'no job started, height reported');
+  assert.equal(sent[0].payload.height, 289);
+  // 同一提示再点一次不重复报
+  sent.length = 0; go.listeners.click();
+  assert.deepEqual(sent, []);
+  // 改到 15 s 以内：提示清空、重新报高度，然后开始转 GIF
+  const inputs = created.filter((n) => n.tag === 'input' && n.type === 'number');
+  inputs[1].value = '10';
+  setHeight(258);
+  go.listeners.click();
+  assert.equal(hint.textContent, '');
+  assert.deepEqual(sent.map((m) => m.ch), ['filetools:panel-size', 'filetools:run']);
+  assert.equal(sent[0].payload.height, 258);
+});
+
+test('video poster: the panel reports its height again once the poster image loads', () => {
+  const { sent, onHandlers, created, setHeight } = loadPanelRenderer(240);
+  onHandlers['filetools:panel']({ phase: 'running', id: 3, ratio: 0.2, kind: 'compress-video', action: 'video.compress', poster: 'file:///tmp/p.jpg', duration: 4, fileName: 'a.mov', files: ['/tmp/a.mov'] });
+  const img = created.find((n) => n.tag === 'img');
+  assert.ok(img && img.listeners.load, 'poster has a load handler');
+  sent.length = 0; setHeight(300); img.listeners.load();
+  assert.deepEqual(sent.map((m) => [m.ch, m.payload.height]), [['filetools:panel-size', 300]]);
+});

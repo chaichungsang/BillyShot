@@ -6,6 +6,7 @@ const path = require('path');
 const { nextTo, partialFor, discardPartial, samePath } = require('./paths');
 const { outputSpec } = require('./plan');
 const { FileJobQueue } = require('./queue');
+const { ffmpegBin } = require('./ffmpeg-bin');
 
 function freeBytes(dir) {
   try {
@@ -31,12 +32,23 @@ function lowerPriority(pid) {
   }
 }
 
+// 主进程有 app，能可靠找到 app.asar.unpacked 里的 ffmpeg；把结果交给子进程，子进程就不用再猜。
+function workerEnv(base = process.env, resolve = ffmpegBin) {
+  const env = { ...base };
+  if (!env.BILLYSHOT_FFMPEG) {
+    let bin = null;
+    try { bin = resolve(); } catch { bin = null; }
+    if (bin) env.BILLYSHOT_FFMPEG = bin;
+  }
+  return env;
+}
+
 function spawnWorker(script) {
   script = script || path.join(__dirname, 'run-job.js');
   if (process.versions && process.versions.electron) {
     try {
       const { utilityProcess } = require('electron');
-      const child = utilityProcess.fork(script, [], { serviceName: 'billyshot-file-job', stdio: 'inherit' });
+      const child = utilityProcess.fork(script, [], { serviceName: 'billyshot-file-job', stdio: 'inherit', env: workerEnv() });
       return {
         pid: () => child.pid,
         send: (msg) => child.postMessage(msg),
@@ -47,7 +59,7 @@ function spawnWorker(script) {
     } catch { /* 退回 fork */ }
   }
   const child = fork(script, [], {
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+    env: { ...workerEnv(), ELECTRON_RUN_AS_NODE: '1' },
     stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
     detached: process.platform !== 'win32',
   });
@@ -162,4 +174,4 @@ class JobRunner {
   }
 }
 
-module.exports = { JobRunner, freeBytes, killTree, lowerPriority, spawnWorker };
+module.exports = { JobRunner, freeBytes, killTree, lowerPriority, spawnWorker, workerEnv };

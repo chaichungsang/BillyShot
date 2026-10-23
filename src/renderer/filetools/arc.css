@@ -11,10 +11,18 @@
   --ft-hub: 64px;
 }
 * { box-sizing: border-box; }
+/* .hub 等元素自带 display，[hidden] 要压过它们，否则隐藏的圆会以 0,0 为圆心露出左上角的四分之一圆。 */
+[hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
   font: 12px/1.35 -apple-system, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
   color: var(--ft-ink); user-select: none; }
 body.shot { background: #100f0e; }
+/* Shift 拖接收窗：macOS 上完全透明的像素不接拖放，所以整窗铺一层几乎看不见的底色，
+   再在光标处画一个淡圈。不要把 alpha 调成 0。 */
+body.catching { background: rgba(16, 15, 14, .012); }
+/* 类名别和 body 的 catching 重名：同名会把 body 本身变成左上角的小圆。 */
+.catch-ring { position: absolute; z-index: 3; width: 76px; height: 76px; margin: -38px 0 0 -38px; border-radius: 50%;
+  background: rgba(22, 21, 20, .38); box-shadow: 0 0 0 1px rgba(212, 168, 75, .35); pointer-events: none; }
 .stage { position: relative; width: 100%; height: 100%; }
 .spokes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .hub { position: absolute; z-index: 4; width: var(--ft-hub); height: var(--ft-hub); margin: calc(var(--ft-hub) / -2) 0 0 calc(var(--ft-hub) / -2);
@@ -32,9 +40,10 @@ body.shot { background: #100f0e; }
   background: #2a2825; color: var(--ft-gold-2); font: 700 10px/16px -apple-system, sans-serif; text-align: center; }
 .key .glyph { width: 18px; height: 18px; }
 .key .glyph svg { width: 18px; height: 18px; display: block; }
-.key .cap { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%);
-  font: 600 11px/1.2 -apple-system, "PingFang SC", sans-serif; color: var(--ft-ink); white-space: nowrap; pointer-events: none; }
-.key.dashed .cap { top: calc(100% + 16px); }
+/* 圆下面的字也能点：它是按钮的子元素，点到就等于点圆。上下留 4px 方便点中，文字位置不变。 */
+.key .cap { position: absolute; left: 50%; top: calc(100% + 4px); transform: translateX(-50%); padding: 4px 6px;
+  font: 600 11px/1.2 -apple-system, "PingFang SC", sans-serif; color: var(--ft-ink); white-space: nowrap; pointer-events: auto; cursor: pointer; }
+.key.dashed .cap { top: calc(100% + 12px); }
 .key.on:not(.grey) .face { background: var(--ft-hover); box-shadow: 0 0 0 1.5px var(--ft-gold), 0 0 0 5px rgba(212, 168, 75, .28); }
 .key.on:not(.grey) .num { background: var(--ft-gold-2); color: var(--ft-graphite); }
 .key.grey .face, .key.grey .cap, .key.grey .num { opacity: .38; }

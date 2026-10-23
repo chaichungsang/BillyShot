@@ -25,8 +25,18 @@ BILLYSHOT_SIGN_DIR=<放 cert.pem + key.pem 的文件夹> npm run dist:mac
 
 需要 rcodesign（apple-codesign 0.29.0，GitHub 有 Linux musl 预编译包）。
 
-## 证书
-- 名称 BillyShot Code Signing (Benji)，RSA 2048，2026-10-04 至 2046-09-29，扩展用途只有 Code Signing。
-- SHA-1 `5ba125bc0247568936c57aa8a521046885684e45`。
-- 私钥不在源码里（`.gitignore` 忽略 `*.pem` / `*.p12`），由 Benji 保管。
-- **永远用这一张。** 换证书 = 所有 Mac 用户重新授权一次。私钥泄露 = 别人能做出继承 BillyShot 授权的程序。
+## 证书（当前规则，1.4.0 起）
+- 签名身份：**BillyShot Code Signing**（自签名证书，2026-10-13 生成）。
+- SHA-1 `32904a2594181a8564820a3b55999aa7727417c0`。
+- 主程序 designated requirement：
+  `identifier "com.billyshot.app" and certificate leaf = H"32904a2594181a8564820a3b55999aa7727417c0"`。
+- 存放位置：Billy 的 Mac，`~/BillyShot-sign`（`cert.pem` + `key.pem`，打包时 `BILLYSHOT_SIGN_DIR` 指向这里）。私钥不在源码里（`.gitignore` 忽略 `*.pem` / `*.p12`），不要提交、不要贴到任何地方。
+- 自签名，**没有公证**（不是 Apple Developer ID），所以「无法验证开发者」提示照旧。
+- 1.4.0 及以后的 Mac 包都用这一张签。
+- **以后永远用这一张。** 换证书 = 所有 Mac 用户重新授权一次。私钥泄露 = 别人能做出继承 BillyShot 授权的程序。
+- 打包后核对：`sign-mac.js` 会打印「证书 SHA-1」，必须等于上面的值；不一致就不要发布。
+
+## 历史
+- 1.3.3 及以前：ad-hoc 签名（见上）。
+- 1.3.5 及以前（ad-hoc 之后的证书签名版本）：用 **BillyShot Code Signing (Benji)** 签，SHA-1 `5ba125bc0247568936c57aa8a521046885684e45`。这张证书已不再使用。
+- 1.4.0 换成了现在这张证书，designated requirement 跟 1.3.5 不同。**从 1.3.5（或更早）升级的用户需要在「系统设置 → 隐私与安全性」里重新授权一次「屏幕录制」和「辅助功能」**（列表里旧的 BillyShot 条目可以先删掉再重新添加）。之后的版本升级不用再授权。

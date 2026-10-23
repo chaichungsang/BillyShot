@@ -2,7 +2,7 @@
 const sharp = require('sharp');
 
 function ringRaw(size, ratio, indeterminate) {
-  const s = Math.max(16, size | 0);
+  const s = Math.max(1, size | 0);
   const data = Buffer.alloc(s * s * 4);
   const cx = (s - 1) / 2;
   const cy = cx;
@@ -26,8 +26,20 @@ function ringRaw(size, ratio, indeterminate) {
 }
 
 async function ringPng(size, ratio, indeterminate) {
-  const s = Math.max(16, size | 0);
+  const s = Math.max(1, size | 0);
   return sharp(ringRaw(s, ratio, indeterminate), { raw: { width: s, height: s, channels: 4 } }).png().toBuffer();
 }
 
-module.exports = { ringRaw, ringPng };
+// 把进度环叠到托盘图标上。环的像素尺寸取自图标 PNG 本身（不是 DIP 尺寸），
+// 所以永远不会比底图大：Windows 托盘图标 16 DIP，以前环固定至少 18 px，sharp 报
+// "Image to composite must have same dimensions or smaller"。
+async function composeRing(basePng, ratio, indeterminate) {
+  const meta = await sharp(basePng).metadata();
+  const s = Math.max(1, Math.min(meta.width | 0, meta.height | 0));
+  const ring = ringRaw(s, ratio, indeterminate);
+  return sharp(basePng)
+    .composite([{ input: ring, raw: { width: s, height: s, channels: 4 }, gravity: 'centre' }])
+    .png().toBuffer();
+}
+
+module.exports = { ringRaw, ringPng, composeRing };

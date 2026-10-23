@@ -14,12 +14,12 @@ html, body { margin: 0; height: 100%; background: transparent; }
 body { font: 13px/1.45 -apple-system, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif; color: var(--ft-ink); }
 body.shot { background: #100f0e; }
 .panel { width: 500px; margin: 0; background: var(--ft-graphite); border-radius: 14px;
-  box-shadow: 0 0 0 1px rgba(212, 168, 75, .28), 0 24px 60px rgba(0, 0, 0, .45); overflow: hidden; display: flex; flex-direction: column; }
+  /* 金边画在面板里面：窗口和面板一样大，外面的阴影交给 macOS 的窗口阴影。 */
+  box-shadow: inset 0 0 0 1px rgba(212, 168, 75, .28); overflow: hidden; display: flex; flex-direction: column; }
 .drag { height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 14px; -webkit-app-region: drag; }
-.drag i { width: 10px; height: 10px; border-radius: 50%; background: #3a3834; display: inline-block; }
-.drag i:first-child { background: #ff5f57; }
-.drag b { margin-left: 8px; font-size: 12px; font-weight: 600; color: var(--ft-ink); }
-.drag .x { margin-left: auto; -webkit-app-region: no-drag; border: 0; background: transparent; color: var(--ft-mute); cursor: pointer; font-size: 16px; }
+.drag b { font-size: 12px; font-weight: 600; color: var(--ft-ink); }
+.drag .x { margin-left: auto; -webkit-app-region: no-drag; width: 24px; height: 24px; border-radius: 6px; border: 0; background: transparent; color: var(--ft-mute); cursor: pointer; font-size: 16px; line-height: 24px; padding: 0; }
+.drag .x:hover { color: var(--ft-gold-2); background: rgba(212, 168, 75, .12); }
 .body { padding: 4px 18px 12px; flex: 1; }
 .card { background: var(--ft-graphite-2); border-radius: 12px; padding: 14px; box-shadow: 0 0 0 1px rgba(255, 255, 255, .04) inset; }
 .split { height: 132px; border-radius: 10px; background:

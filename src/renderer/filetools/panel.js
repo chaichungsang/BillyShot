@@ -33,6 +33,19 @@ function button(label, cls, on, disabled) {
 }
 
 function renderPanel(next) {
+  paintPanel(next);
+  reportSize();
+}
+
+// 画完把面板实际高度告诉主进程，窗口跟着缩放（不留空的深色条）。
+function reportSize() {
+  const panel = $('panel');
+  if (!panel || !(window.api && api.send)) return;
+  const h = Math.ceil(panel.getBoundingClientRect().height || panel.offsetHeight || 0);
+  if (h > 0) api.send('filetools:panel-size', { height: h });
+}
+
+function paintPanel(next) {
   const incoming = next || {};
   if (!incoming.action && incoming.kind && view && view.action && incoming.kind !== view.kind && incoming.kind !== view.action) {
     view = Object.assign({}, view, incoming);
@@ -153,11 +166,20 @@ function renderTrim() {
   const go = () => {
     const s = Number(start.input.value) || 0;
     const e = Number(end.input.value);
-    if (view.gif && e - s > 15.001) { hint.textContent = tr('GIF 最长 15 秒，先剪一段'); return; }
+    // 提示会让面板变高：改完文字马上报高度，窗口跟着长，底部按钮不被挡、不出滚动条。
+    if (view.gif && e - s > 15.001) { setHint(hint, tr('GIF 最长 15 秒，先剪一段')); return; }
+    setHint(hint, '');
     if (view.gif) send('filetools:run', { action: 'video.gif', options: { start: s, end: e } });
     else send('filetools:run', { action: 'video.trim', options: { start: s, end: e } });
   };
   footButtons(label, go);
+}
+
+// 渲染后再改面板里的文字（提示、错误）都走这里，改完重新报高度。
+function setHint(node, text) {
+  if (!node || node.textContent === text) return;
+  node.textContent = text;
+  reportSize();
 }
 
 function numField(name, value) {
@@ -238,6 +260,7 @@ function previewCard() {
       const img = document.createElement('img');
       img.className = 'poster';
       img.alt = '';
+      img.addEventListener('load', reportSize);
       img.src = view.poster;
       split.appendChild(img);
     } else {
@@ -309,7 +332,11 @@ function renderError() {
 
 $('close').addEventListener('click', () => send('filetools:close-panel'));
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { e.preventDefault(); send('filetools:cancel'); }
+  if (e.key !== 'Escape') return;
+  e.preventDefault();
+  // 完成 / 出错时 Esc 就是关闭；排队或进行中 Esc 是取消任务。
+  if (view && (view.phase === 'done' || view.phase === 'error')) send('filetools:close-panel');
+  else send('filetools:cancel');
 });
 window.renderPanel = renderPanel;
 if (window.api && api.on) api.on('filetools:panel', renderPanel);

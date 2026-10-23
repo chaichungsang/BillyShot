@@ -11,9 +11,12 @@ const image = require('./image-ops');
 const { isHeic } = require('./heic');
 const { decide } = require('./shift-drag-policy');
 const { panelTitle } = require('./panel-title');
-const { ringPng } = require('./tray-ring');
+const { composeRing } = require('./tray-ring');
 
 function baseName(file) { return path.basename(file || ''); }
+
+// 动作弧 / Shift 拖接收窗的窗口层级。见 ensureArc 里的说明。
+const ARC_LEVEL = 'pop-up-menu';
 
 function contentFrame(placement, area, column) {
   const pad = 36;
@@ -63,6 +66,10 @@ function createFileTools(deps) {
   let trayBase = null;
   let trayTimer = null;
   let runStamp = { sig: '', at: 0 };
+  // Shift 拖：松手（helper 的 up）和松手落下的 drop 是两条路，谁先到不一定。
+  // up 先到时不能马上把接收窗收起来，否则 drop 落不进来；等一小会儿，没 drop 再收。
+  let catching = false;
+  let upTimer = null;
 
   const runner = new JobRunner({
     onUpdate: (job, info) => onJob(job, info || {}),
@@ -113,11 +120,14 @@ function createFileTools(deps) {
       alwaysOnTop: true, fullscreenable: false,
       webPreferences: { preload: R('preload.js'), spellcheck: false },
     });
-    try { arcWin.setAlwaysOnTop(true, 'screen-saver'); } catch {}
+    // 层级必须低于系统拖放图标的层级（kCGDraggingWindowLevel = 500）。
+    // 'screen-saver'（1000）比它高，macOS 不会把拖放交给这个窗口，Shift 拖松手时文件直接落到下面的 Finder。
+    // 'pop-up-menu'（101）仍然盖在普通窗口和浮动面板上面。
+    try { arcWin.setAlwaysOnTop(true, ARC_LEVEL); } catch {}
     try { arcWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true }); } catch {}
     arcWin.setMenu(null);
     arcWin.loadFile(R('renderer', 'arc.html'));
-    arcWin.on('closed', () => { arcWin = null; arcPayload = null; });
+    arcWin.on('closed', () => { arcWin = null; arcPayload = null; pendingCatch = null; });
     arcWin.webContents.on('before-input-event', (event, input) => {
       if (input.type === 'keyDown' && input.key === 'Escape') { event.preventDefault(); closeArc(); }
     });
@@ -155,6 +165,7 @@ function createFileTools(deps) {
     return info;
   }
 
+  let pendingCatch = null; // 窗口加载完要发的接收圈位置（只留最新的）
   function showCatcher(how, cursor) {
     anchor = how || 'shift';
     const pt = cursor || screen.getCursorScreenPoint();
@@ -163,14 +174,70 @@ function createFileTools(deps) {
     const frame = contentFrame(placement, area, true);
     const win = ensureArc();
     win.setBounds({ x: frame.x, y: frame.y, width: frame.width, height: frame.height });
+    // 接收窗：旧的弧不算数，drop 进来一律按「还没画弧」处理（主进程收到后再画）。
+    // 渲染端画一个能接住 drop 的小圈（完全透明的像素在 macOS 上会让拖放穿过去）。
+    arcPayload = null;
+    const catchMsg = { hubx: frame.hubx, huby: frame.huby };
+    // 冷启动时窗口还在加载，helper 每次 move 都会走到这里。只挂一个 did-finish-load，
+    // 加载完只发最新的位置（以前每次 move 挂一个，十几个之后 Node 报 MaxListenersExceededWarning）。
+    if (win.webContents.isLoading()) {
+      const first = !pendingCatch;
+      pendingCatch = catchMsg;
+      if (first) {
+        win.webContents.once('did-finish-load', () => {
+          const m = pendingCatch;
+          pendingCatch = null;
+          if (m) { try { win.webContents.send('filetools:catch', m); } catch {} }
+        });
+      }
+    } else {
+      pendingCatch = null;
+      try { win.webContents.send('filetools:catch', catchMsg); } catch {}
+    }
     if (!win.isVisible()) win.showInactive();
   }
 
+  const DROP_GRACE_MS = 700;
+  function clearUpTimer() { if (upTimer) { clearTimeout(upTimer); upTimer = null; } }
+
+  // ShiftDrag helper 的一行消息。单独拿出来，测试可以直接喂。
+  function onHelperMessage(msg) {
+    if (!msg || typeof msg !== 'object') return;
+    if (msg.type === 'ready') {
+      lastProbe = { ok: msg.ok !== false, permission: msg.permission || 'none', needsPermission: !!msg.needsPermission };
+    } else if (msg.type === 'shift-drag' || msg.type === 'move') {
+      clearUpTimer();
+      catching = true;
+      showCatcher('shift', { x: msg.x, y: msg.y });
+    } else if (msg.type === 'up') {
+      if (!catching) return;
+      clearUpTimer();
+      upTimer = setTimeout(() => {
+        upTimer = null;
+        if (catching) { catching = false; closeArc(); }
+      }, DROP_GRACE_MS);
+    } else if (msg.type === 'shift-up') {
+      if (!catching) return;
+      clearUpTimer();
+      catching = false;
+      closeArc();
+    }
+  }
+
+  // 面板窗口无边框、透明，只有自绘的 ×（没有假的红绿灯）。
+  // 窗口高度跟着内容走：渲染端画完报 filetools:panel-size，主进程改窗口高度并刷新阴影。
+  // 以前窗口固定 520 高，macOS 按旧内容算出的阴影会在面板下面留一条空的深色条。
+  const PANEL_W = 500;
+  const PANEL_MIN_H = 120;
+  const PANEL_MAX_H = 720;
+  let panelShowTimer = null;
   function ensurePanel() {
     if (panelWin && !panelWin.isDestroyed()) return panelWin;
     panelWin = new BrowserWindow({
-      width: 500, height: 520, show: false, frame: false, transparent: true, backgroundColor: '#00000000',
-      resizable: false, skipTaskbar: true, alwaysOnTop: true, fullscreenable: false,
+      width: PANEL_W, height: 300, show: false, frame: false, transparent: true, backgroundColor: '#00000000',
+      hasShadow: true, resizable: false, skipTaskbar: true, alwaysOnTop: true, fullscreenable: false,
+      // macOS：面板不在前台时，第一下点 × 或按钮就生效，不是只把窗口激活。
+      acceptFirstMouse: true,
       webPreferences: { preload: R('preload.js'), spellcheck: false },
     });
     panelWin.setMenu(null);
@@ -179,6 +246,19 @@ function createFileTools(deps) {
       if (!app.isQuitting) { e.preventDefault(); panelWin.hide(); }
     });
     return panelWin;
+  }
+
+  function showPanelNow() {
+    if (panelShowTimer) { clearTimeout(panelShowTimer); panelShowTimer = null; }
+    if (panelWin && !panelWin.isDestroyed() && !panelWin.isVisible()) panelWin.show();
+  }
+
+  function fitPanel(height) {
+    if (!panelWin || panelWin.isDestroyed()) return;
+    const h = Math.round(Math.min(PANEL_MAX_H, Math.max(PANEL_MIN_H, Number(height) || 0)));
+    const cur = panelWin.getContentSize ? panelWin.getContentSize() : [PANEL_W, 0];
+    if (cur[1] !== h || cur[0] !== PANEL_W) panelWin.setContentSize(PANEL_W, h);
+    if (isMac && typeof panelWin.invalidateShadow === 'function') panelWin.invalidateShadow();
   }
 
   function sendPanel(view) {
@@ -191,20 +271,29 @@ function createFileTools(deps) {
     panelView = view;
     const win = ensurePanel();
     const push = () => { try { win.webContents.send('filetools:panel', view); } catch {} };
-    if (!win.isVisible()) win.show();
+    // 先让渲染端画好并报高度，再显示；渲染端没回话也最多等 250 ms。
+    if (!win.isVisible() && !panelShowTimer) panelShowTimer = setTimeout(showPanelNow, 250);
     if (win.webContents.isLoading()) win.webContents.once('did-finish-load', push);
     else push();
   }
 
-  function ensureTools() {
-    if (toolsWin && !toolsWin.isDestroyed()) return toolsWin;
-    toolsWin = new BrowserWindow({
+  // 文件工具小窗。macOS：和面板一样无边框，没有系统红绿灯（以前 hiddenInset 的灰色绿灯压在标题上），
+  // 顶栏只有标题和自绘的 ×，Esc 关闭；不在前台时第一下点击就生效（acceptFirstMouse）。
+  // Windows：用系统标题栏（标题和关闭按钮在内容上方，不会压住内容），渲染端不画自己的顶栏。
+  function toolsWindowOptions() {
+    return {
       width: 400, height: 360, show: false, title: t('文件工具'),
       frame: !isMac, transparent: !!isMac, backgroundColor: isMac ? '#00000000' : '#161514',
-      titleBarStyle: isMac ? 'hiddenInset' : 'default',
+      ...(isMac ? { hasShadow: true } : { titleBarStyle: 'default' }),
+      acceptFirstMouse: true,
       autoHideMenuBar: true, resizable: false, fullscreenable: false,
       webPreferences: { preload: R('preload.js'), spellcheck: false },
-    });
+    };
+  }
+
+  function ensureTools() {
+    if (toolsWin && !toolsWin.isDestroyed()) return toolsWin;
+    toolsWin = new BrowserWindow(toolsWindowOptions());
     toolsWin.setMenu(null);
     toolsWin.loadFile(R('renderer', 'filetools.html'));
     toolsWin.on('closed', () => { toolsWin = null; });
@@ -371,12 +460,15 @@ function createFileTools(deps) {
     if (!tray || tray.isDestroyed() || !nativeImage) return;
     try {
       if (!trayBase) trayBase = trayIcon();
-      const size = trayBase.getSize();
-      const png = await ringPng(Math.max(size.width, size.height, 18), ratio == null ? 0.3 : ratio, indeterminate || ratio == null);
-      const base = trayBase.toPNG();
-      const sharp = require('sharp');
-      const composed = await sharp(base).composite([{ input: png }]).png().toBuffer();
-      tray.setImage(nativeImage.createFromBuffer(composed));
+      // 每个缩放倍数各画一张（Windows 125% / 150% 用 tray@1.25x / @1.5x），环按那张 PNG 的像素尺寸画。
+      const factors = (trayBase.getScaleFactors && trayBase.getScaleFactors()) || [1];
+      const out = nativeImage.createEmpty();
+      for (const scaleFactor of (factors.length ? factors : [1])) {
+        const base = trayBase.toPNG({ scaleFactor });
+        const buffer = await composeRing(base, ratio == null ? 0.3 : ratio, indeterminate || ratio == null);
+        out.addRepresentation({ scaleFactor, buffer });
+      }
+      if (!tray.isDestroyed()) tray.setImage(out);
     } catch (e) { log('tray ring', e.message); }
   }
 
@@ -457,9 +549,7 @@ function createFileTools(deps) {
         if (!line) continue;
         let msg;
         try { msg = JSON.parse(line); } catch { continue; }
-        if (msg.type === 'ready') lastProbe = { ok: msg.ok !== false, permission: msg.permission || 'none', needsPermission: !!msg.needsPermission };
-        else if (msg.type === 'shift-drag' || msg.type === 'move') showCatcher('shift', { x: msg.x, y: msg.y });
-        else if (msg.type === 'up' || msg.type === 'shift-up') closeArc();
+        onHelperMessage(msg);
       }
     });
     watcher.on('exit', () => {
@@ -485,7 +575,13 @@ function createFileTools(deps) {
   ipcMain.on('filetools:run', (_e, msg) => startFrom(msg || {}));
   ipcMain.on('filetools:panel', (_e, msg) => openSetup(msg || {}));
   ipcMain.on('filetools:close-arc', () => closeArc());
+  ipcMain.on('filetools:panel-size', (e, msg) => {
+    if (!panelWin || panelWin.isDestroyed() || (e && e.sender && e.sender !== panelWin.webContents)) return;
+    fitPanel(msg && msg.height);
+    if (panelShowTimer) showPanelNow();
+  });
   ipcMain.on('filetools:close-panel', () => { if (panelWin && !panelWin.isDestroyed()) panelWin.hide(); });
+  ipcMain.on('filetools:close-window', () => { if (toolsWin && !toolsWin.isDestroyed()) toolsWin.close(); });
   ipcMain.on('filetools:cancel', () => {
     if (panelView && panelView.id) runner.cancel(panelView.id);
     else if (panelWin && !panelWin.isDestroyed()) panelWin.hide();
@@ -504,6 +600,7 @@ function createFileTools(deps) {
   });
   ipcMain.on('filetools:drop', (_e, msg) => {
     const files = (msg && msg.files) || [];
+    if (catching) { catching = false; clearUpTimer(); }
     if (!arcPayload || !arcPayload.model) { showArc(files, anchor, screen.getCursorScreenPoint()); return; }
     const hit = hitTest(msg.dx || 0, msg.dy || 0, msg.angles || arcPayload.angles || []);
     if (hit.zone === 'key') runKey(arcPayload.model.keys[hit.index], files.length ? files : arcPayload.files);
@@ -534,7 +631,8 @@ function createFileTools(deps) {
     setRecording: (on) => runner.setRecording(!!on),
     attachTray,
     syncShiftDrag,
-    dispose: () => { runner.dispose(); stopWatch(); closeArc(); },
+    dispose: () => { clearUpTimer(); if (panelShowTimer) { clearTimeout(panelShowTimer); panelShowTimer = null; } runner.dispose(); stopWatch(); closeArc(); },
+    helperMessage: onHelperMessage,
     recent: () => recent.slice(),
     refreshLanguage() {
       if (toolsWin && !toolsWin.isDestroyed()) toolsWin.loadFile(R('renderer', 'filetools.html'));
@@ -544,4 +642,4 @@ function createFileTools(deps) {
   };
 }
 
-module.exports = { createFileTools, contentFrame };
+module.exports = { createFileTools, contentFrame, ARC_LEVEL };

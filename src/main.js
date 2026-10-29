@@ -1794,6 +1794,7 @@ function setupTestHooks() {
         console.log('NOTCHREC');
       }
       if (cmd.cmd === 'notchEnd' && notch) { notch.endRec(); console.log('NOTCHEND'); }
+      if (cmd.cmd === 'notchPress' && notch) { notch.press(); console.log('NOTCHPRESS'); }
       if (cmd.cmd === 'fileTools' && fileTools) { fileTools.openWindow(); console.log('FILETOOLS'); }
       if (cmd.cmd === 'filePanel' && fileTools) { fileTools.previewPanel(cmd.view || {}); console.log('PANEL'); }
       if (cmd.cmd === 'fileArc' && fileTools) { fileTools.previewArc(cmd.files || []).then(() => console.log('ARC'), (e) => console.log('ARC ERR', e && e.message)); }

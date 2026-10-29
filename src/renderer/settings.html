@@ -42,6 +42,7 @@
       <span class="chip" data-go="hotkeys">区域录屏 <span class="k" data-show="recordRegion"></span></span>
       <span class="chip" data-go="hotkeys">全屏录屏 <span class="k" data-show="recordFull"></span></span>
       <span class="chip" data-go="hotkeys">贴图 <span class="k" data-show="pinClipboard"></span></span>
+      <span class="chip" data-go="hotkeys">文件工具 <span class="k" data-show="fileTools"></span></span>
     </div>
     <div class="mac-only">
       <div class="h2row"><h2>macOS 权限</h2><a data-go="general">详情</a></div>
@@ -205,6 +206,7 @@
       <div class="row"><div class="lbl"><b>界面语言 · Language</b><small>「跟随系统」：电脑是中文就显示中文，否则显示英文</small></div><select data-k="general.language" id="langSel"><option value="auto">跟随系统 · System</option><option value="zh">简体中文</option><option value="en">English</option></select></div>
       <div class="row"><div class="lbl"><b>开机自动启动</b><small>登录后在后台静默运行</small></div><label class="sw"><input type="checkbox" data-k="general.launchAtLogin"><span></span></label></div>
       <div class="row"><div class="lbl"><b>自动检查更新</b><small>每天问一次 GitHub 有没有新版本，只请求版本号，不上传任何内容</small></div><label class="sw"><input type="checkbox" data-k="general.updateCheck"><span></span></label></div>
+      <div class="row mac-only"><div class="lbl"><b>Shift 拖弹出动作弧</b><small>按住 Shift 拖动文件时，在光标旁弹出动作弧。不需要系统权限。</small></div><label class="sw"><input type="checkbox" data-k="fileTools.shiftDrag"><span></span></label></div>
       <div class="row"><div class="lbl"><b>恢复全部默认设置</b><small>快捷键、截图与录屏选项都会还原</small></div><button id="resetAll" class="danger">恢复默认</button></div>
     </div>
     <div class="note mac-only" id="macPerm">macOS 权限：
@@ -217,7 +219,9 @@
   <!-- 关于 -->
   <section data-tab="about">
     <div class="hero"><span class="mascot" data-mood="happy"></span><div><h1><span class="brand-en">Hopsnap</span> <span class="badge" id="ver"></span></h1><p class="lead" style="margin:0">免费使用 · 无广告 · 无账号 · 无水印 · 不上传任何内容</p><p class="lead" style="margin:4px 0 0;font-size:12px">Made by Billy Chai · MIT License</p></div></div>
-    <div class="row-btns"><button id="checkUpdate" class="primary">检查更新</button><button data-act="openReleases">下载页</button><button data-act="openLogs">打开日志文件</button><span class="status-inline" id="updateStatus"></span></div>
+    <p class="lead" style="font-size:12px">这个项目是开源的：https://github.com/chaichungsang/BillyShot</p>
+    <p class="lead" id="licenceNotice" style="font-size:12px">文件工具的视频处理使用 LGPL ffmpeg（动态链接，没有静态打进本程序）。图片处理使用 sharp / libvips（LGPL-3.0-or-later）。</p>
+    <div class="row-btns"><button id="checkUpdate" class="primary">检查更新</button><button data-act="openReleases">下载页</button><button data-act="openSource">打开 GitHub</button><button data-act="openLogs">打开日志文件</button><span class="status-inline" id="updateStatus"></span></div>
     <p class="lead" style="font-size:12px">遇到问题时，把日志文件 hopsnap.log 发给开发者，就能看到具体原因。</p>
     <ul class="plain">
       <li>截图：区域 / 窗口 / 全屏，原生分辨率（支持 4K、高 DPI）</li>
@@ -226,6 +230,7 @@
       <li>录屏：区域 / 全屏，MP4（H.264）或 GIF，1080p / 2K / 4K，24–60 fps，系统声音 + 麦克风</li>
       <li>演示：鼠标光圈、点击波纹、聚光灯、摄像头画中画（录屏和会议共享都看得到）</li>
       <li>快捷键：键盘与鼠标（中键 / 侧键）都能自定义</li>
+      <li>文件工具：转格式、压缩、改尺寸、剪视频、转 GIF、合成 PDF，都在本机处理</li>
       <li>中文 / English 界面，默认跟随系统</li>
     </ul>
   </section>

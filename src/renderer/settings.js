@@ -5,6 +5,8 @@ const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const isMac = api.platform === 'darwin';
 document.body.classList.add(api.platform);
 $$('.mod').forEach((m) => (m.textContent = isMac ? '⌘' : 'Ctrl+'));
+const licence = document.getElementById('licenceNotice');
+if (licence) licence.textContent = tx('文件工具的视频处理使用 LGPL ffmpeg（动态链接，没有静态打进本程序）。图片处理使用 sharp / libvips（LGPL-3.0-or-later）。');
 
 let S = null, STATUS = {};
 const ACTIONS = [
@@ -15,6 +17,7 @@ const ACTIONS = [
   ['pinClipboard', tx('贴图（钉住剪贴板图片）')],
   ['presentMode', tx('演示模式（鼠标光圈 / 点击波纹）开关')],
   ['spotlight', tx('聚光灯 开关')],
+  ['fileTools', tx('文件工具')],
 ];
 
 function get(path) { return path.split('.').reduce((o, k) => (o ? o[k] : undefined), S); }

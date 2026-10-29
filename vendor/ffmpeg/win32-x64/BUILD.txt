@@ -1,0 +1,24 @@
+ffmpeg 7.1.1
+source tag n7.1.1
+source commit db69d06eeeab4f46da15030a80d539efb4503ca8
+built on Linux with mingw-w64 (x86_64-w64-mingw32-gcc 13), not on a Windows machine.
+configure:
+  --enable-cross-compile --arch=x86_64 --target-os=mingw32
+  --cross-prefix=x86_64-w64-mingw32-
+  --disable-gpl --disable-nonfree --disable-static --enable-shared
+  --disable-everything --disable-doc --disable-debug --disable-avdevice --disable-network
+  --disable-autodetect --disable-x86asm --enable-small
+  --disable-programs --enable-ffmpeg
+  --enable-swscale --enable-swresample --enable-avcodec --enable-avformat --enable-avfilter --enable-avutil
+  --enable-protocol=file,pipe
+  --enable-demuxer=mov,matroska,gif,image2,avi,asf,aac,mp3,ogg,wav,webm
+  --enable-muxer=mp4,gif,image2,ipod,mov
+  --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,mjpeg,png,gif,aac,mp3,opus,pcm_s16le,pcm_s16be
+  --enable-encoder=mpeg4,aac,gif,png,mjpeg,h264_mf
+  --enable-mediafoundation
+  --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video,aac,mpegaudio,opus,png,gif,mjpeg
+  --enable-bsf=aac_adtstoasc,h264_mp4toannexb,hevc_mp4toannexb,null
+  --enable-filter=scale,fps,palettegen,paletteuse,format,trim,setpts,aresample,aformat,split,anull,null
+Verified with wine: ffmpeg -buildconf contains --disable-gpl and --enable-mediafoundation.
+ffmpeg -encoders lists h264_mf, mpeg4, gif, aac, mjpeg. It does not list libx264.
+DLLs sit next to ffmpeg.exe. Nothing is statically linked into BillyShot.

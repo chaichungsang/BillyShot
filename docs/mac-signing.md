@@ -48,3 +48,6 @@ openssl req -x509 -newkey rsa:2048 -days 7300 -nodes -subj "/CN=Hopsnap Code Sig
 
 ## Apple Silicon 上打 Windows 包
 electron-builder 自带的 makensis 是 x86_64 的，没装 Rosetta 会报 `spawn error -86`。`npm run dist:win`（`scripts/dist-win.js`）会自动改用 Homebrew 的 `makensis`：`brew install makensis`。
+
+## 1.4.0 的证书（对 2.0 没用）
+1.4.0 起用的「BillyShot Code Signing」（SHA-1 `32904a2594181a8564820a3b55999aa7727417c0`）绑的是 `com.billyshot.app`，对 2.0 的 `com.hopsnap.app` 没有用处。2.0 需要新的一张证书。

@@ -2,6 +2,8 @@
 
 免费的跨平台（Windows / macOS）截图 + 录屏 + 贴图工具，基于 Electron。2.0 起由 BillyShot 改名为呱咔 / Hopsnap，吉祥物是一只小青蛙。
 
+这个项目是开源的（MIT）：https://github.com/chaichungsang/BillyShot
+
 ![呱咔的表情](assets/logos/frog/moods.png)
 
 下载：[GitHub Releases](https://github.com/chaichungsang/BillyShot/releases) · 介绍页：`docs/index.html`（GitHub Pages，Settings → Pages → Deploy from branch → `/docs`）· 使用说明：`使用说明.txt` / `User Guide (English).txt` · 更新记录：`CHANGELOG.md`

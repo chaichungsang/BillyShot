@@ -12,7 +12,7 @@
 //
 // 校验：macOS 上用苹果自己的 codesign（rcodesign verify 在 mac 上会误报），Linux 上用 rcodesign。
 
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
@@ -105,14 +105,23 @@ function signApp(app) {
 }
 
 function verifyApp(app, t) {
+  const machos = listMachO(app);
   if (isMac) {
     try { sh('/usr/bin/codesign', ['--verify', '--deep', '--strict', app]); }
     catch (e) { die(`${t.dir}: codesign --verify 不通过：${String(e.stderr || e.message).trim()}`); }
     const info = (() => { try { return sh('/usr/bin/codesign', ['-d', '-r-', app]); } catch (e) { return String(e.stderr || ''); } })();
     if (mode === 'cert' && !info.toLowerCase().includes(`certificate leaf = h"${leafSha1}"`)) die(`${t.dir}: 主程序签名里没有证书 requirement`);
-    return listMachO(app).length;
+    // 1.4：ShiftDrag、ffmpeg 和旁边的 dylib 也在这张表里，不能漏成 ad-hoc
+    if (mode === 'cert') {
+      for (const f of machos) {
+        const r = spawnSync('/usr/bin/codesign', ['-dv', f], { encoding: 'utf8' });
+        const dv = String(r.stdout || '') + String(r.stderr || '');
+        if (/Signature=adhoc/i.test(dv)) die(`${t.dir}: 还是 ad-hoc 签名：${path.relative(app, f)}`);
+      }
+    }
+    return machos.length;
   }
-  const machos = listMachO(app);
+  // ShiftDrag、ffmpeg 及其 dylib 走同一张表，用证书签时不能还是 ad-hoc
   for (const f of machos) {
     rc(['verify', f]);
     if (mode === 'cert' && /CodeSignatureFlags\(ADHOC\)/.test(rc(['print-signature-info', f]))) die(`${t.dir}: 还是 ad-hoc 签名：${path.relative(app, f)}`);

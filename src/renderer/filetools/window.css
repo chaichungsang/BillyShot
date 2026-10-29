@@ -29,3 +29,5 @@ body.win .chrome { display: none; }
 .winbar { display: none; height: 32px; align-items: center; padding: 0 10px; background: var(--panel); border-bottom: 1px solid var(--line); font-size: 12px; }
 body.shot.win .winbar { display: flex; }
 body.shot.win .winbar span { margin-left: auto; color: var(--mute); }
+/* 快捷键小标签：和开始页的快捷键胶囊同一个样子 */
+kbd { font: 800 12px/20px var(--font-head); padding: 0 8px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink); }

@@ -39,8 +39,11 @@ body.catching { background: rgba(16, 15, 14, .012); }
 .key .glyph { width: 18px; height: 18px; }
 .key .glyph svg { width: 18px; height: 18px; display: block; }
 /* 圆下面的字也能点：它是按钮的子元素，点到就等于点圆。上下留 4px 方便点中，文字位置不变。 */
-.key .cap { position: absolute; left: 50%; top: calc(100% + 4px); transform: translateX(-50%); padding: 4px 6px;
+/* 弧浮在用户桌面上，底下可能是白的：文字要坐在自己的深色小胶囊里，不然浅色桌面上看不见（原来靠阴影，2.0 不用阴影） */
+.key .cap { position: absolute; left: 50%; top: calc(100% + 4px); transform: translateX(-50%); padding: 3px 9px; border-radius: 999px;
+  background: var(--glass); border: 1px solid var(--line);
   font: 600 11px/1.2 -apple-system, "PingFang SC", sans-serif; color: var(--ink); white-space: nowrap; pointer-events: auto; cursor: pointer; }
+.key.on:not(.grey) .cap { color: var(--accent); border-color: rgba(59, 203, 124, .45); }
 .key.dashed .cap { top: calc(100% + 12px); }
 .key.on:not(.grey) .face { background: rgba(59, 203, 124, .16); border-color: var(--accent); }
 .key.on:not(.grey) .num { background: var(--accent); color: #0B2A18; }

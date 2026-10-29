@@ -1,4 +1,4 @@
-"""合成 BillyShot 音效（WAV, 44.1kHz, 16bit, 单声道）"""
+"""合成 Hopsnap 音效（WAV, 44.1kHz, 16bit, 单声道）"""
 import numpy as np, wave, os
 SR = 44100
 OUT = os.path.join(os.path.dirname(__file__), '..', 'assets', 'sounds')

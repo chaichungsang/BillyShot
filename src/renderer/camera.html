@@ -2,14 +2,14 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<title>BillyShot Camera</title>
+<title>Hopsnap Camera</title>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; media-src 'self' blob: mediastream:; style-src 'self' 'unsafe-inline'">
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; user-select: none;
     font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", -apple-system, sans-serif; }
   .cam { position: absolute; inset: 0; overflow: hidden; background: #1c1c22; cursor: grab;
-    border: 3px solid rgba(255,255,255,.9); border-radius: 50%; }
+    border: 3px solid #3BCB7C; border-radius: 50%; }
   /* 1.3.1：Windows 上显卡会把摄像头画面单独叠加显示，外层 overflow + 圆角裁不到它，画面变成方块。
      clip-path 直接裁整个圆窗和画面本身；mask 让圆窗先合成成一张图再上屏，画面就不会被单独叠加出去。
      （Electron 44 / Chromium 144 已经没有 disable-direct-composition-video-overlays 开关，只能在页面里解决） */
@@ -31,10 +31,11 @@
     background: rgba(20,20,26,.82); opacity: 0; transition: opacity .15s; }
   body:hover .ctl { opacity: 1; }
   body.dragging .ctl { opacity: 0; }
-  .ctl button { width: 26px; height: 22px; border: 0; border-radius: 11px; background: transparent; color: #fff; font-size: 11px; font-weight: 700; cursor: pointer; padding: 0;
+  .ctl button { min-width: 26px; height: 22px; padding: 0 4px; gap: 2px; border: 0; border-radius: 11px; background: transparent; color: #fff; font-size: 11px; font-weight: 700; cursor: pointer; padding: 0;
     display: inline-flex; align-items: center; justify-content: center; }
   .ctl button:hover { background: rgba(255,255,255,.16); }
-  .ctl svg { width: 14px; height: 14px; }
+  .ctl svg { width: 13px; height: 13px; }
+  .ctl b { font-size: 10px; }
 </style>
 </head>
 <body>
@@ -43,7 +44,7 @@
   <div class="msg" id="msg">摄像头启动中…</div>
   <div class="tip">不在录制区域内</div>
   <div class="ctl" id="ctl">
-    <button id="bSize" title="大小（小 / 中 / 大）">M</button>
+    <button id="bSize" title="大小（小 / 中 / 大）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 14v6h6M20 10V4h-6M4 20l6-6M20 4l-6 6"/></svg><b id="bSizeT">M</b></button>
     <button id="bShape" title="圆形 / 圆角方形"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="14" rx="4"/></svg></button>
     <button id="bClose" title="关闭摄像头"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
   </div>

@@ -1,6 +1,6 @@
 #!/bin/bash
 # 1.3.1 摄像头圆窗形状测试：画面要被裁成圆形 / 圆角方形，四角露出后面的桌面（屏幕上、录出来的视频里都一样）
-cd /home/claude/billyshot
+cd "$(dirname "$0")/.."
 source test/env.sh
 PASS=0; FAIL=0; RESULTS=()
 ok()  { PASS=$((PASS+1)); RESULTS+=("PASS  $1"); echo "PASS  $1"; }
@@ -12,7 +12,7 @@ PJ()  { local r; for i in 1 2 3; do r=$(PS | jq -c "$1" 2>/dev/null) && [ -n "$r
 pix() { convert "$1" -crop 1x1+$2+$3 -depth 8 txt:- 2>/dev/null | tail -1 | grep -o 'srgb([0-9,]*)' | tr -d 'srgb()'; }
 dist() { awk -v a="$1" -v b="$2" 'BEGIN{split(a,x,",");split(b,y,",");d=0;for(i=1;i<=3;i++){t=x[i]-y[i];d+=(t<0?-t:t)};print d}'; }
 newest(){ ls -t $1 2>/dev/null | head -1; }
-VD=~/Videos/BillyShot
+VD=~/Videos/Hopsnap
 
 # 在截图 $1（对照图 $2）里检查圆窗 bounds $3：四角 = 桌面，中心 = 摄像头画面
 # $4 = 角上往里缩多少像素检查（圆形取 8，圆角 18px 取 2）
@@ -29,12 +29,12 @@ shape_check() {
   [ "$dc" -gt 40 ] && ok "$name：中间是摄像头画面（色差 $dc）" || bad "$name：中间是摄像头画面" "色差 $dc"
 }
 
-rm -rf ~/.config/BillyShot; mkdir -p ~/.config/BillyShot $VD; rm -f $VD/*
-cat > ~/.config/BillyShot/settings.json <<J
+rm -rf ~/.config/Hopsnap; mkdir -p ~/.config/Hopsnap $VD; rm -f $VD/*
+cat > ~/.config/Hopsnap/settings.json <<J
 {"general":{"firstRun":false,"language":"zh"},"record":{"countdown":0,"quality":"1080","fps":30,"format":"mp4","regionFormat":"mp4"},"sound":{"record":false,"countdown":false},
  "present":{"cameraShape":"circle","cameraSize":"l","cameraMirror":true,"cameraPos":{"cx":0.3,"cy":0.45}}}
 J
-start_x; EXTRA_ENV="BILLYSHOT_FAKE_MEDIA=1" start_app 6
+start_x; EXTRA_ENV="HOPSNAP_FAKE_MEDIA=1" start_app 6
 xdotool mousemove 1900 5; sleep 0.3
 shot /tmp/cs_ref.png
 

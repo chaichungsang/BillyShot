@@ -1,196 +1,145 @@
-BillyShot 1.3.5 — free screenshot + screen recording + pin
-==========================================================
+Hopsnap 2.0 (呱咔) — free screenshots, screen recording and pins
+==================================================================
+
+As of 2.0, BillyShot is called Hopsnap (呱咔 in Chinese) and has a frog for a mascot. The whole interface was
+redesigned; features and shortcuts are unchanged. Upgrading from BillyShot: the first launch copies your settings
+and screenshot history over, keeps your save folders, and leaves the old folders untouched.
 
 1. Install
 ----------
-Windows (recommended)
-  · Windows\BillyShot-Setup-1.3.3.exe       Double-click to install (1.3.4 / 1.3.5 only change the Mac version; Windows stays 1.3.3). Creates desktop and Start menu shortcuts.
-    Installing over an older version keeps your settings and screenshot history.
-  · Windows\卸载BillyShot-Uninstall.exe      Double-click to find and uninstall BillyShot on this PC (see "9. Uninstall").
-  If Windows shows "Windows protected your PC" the first time, click "More info → Run anyway"
-  (the app is not code-signed).
+Windows
+  · Hopsnap-Setup-2.0.0.exe            double-click to install (desktop + Start menu shortcuts); installs over old versions
+  · Hopsnap-2.0.0-Windows-x64-win.zip  portable, just unzip
+  · Uninstall-Hopsnap.exe              uninstall helper (see "8. Uninstall")
+  If Windows shows "Windows protected your PC", click "More info → Run anyway" (no paid code-signing certificate).
 
 Mac
-  · Mac/BillyShot-1.3.5-mac-AppleSilicon.zip   M1 / M2 / M3 / M4
-  · Mac/BillyShot-1.3.5-mac-Intel.zip          Intel
-  Unzip and drag BillyShot into Applications. If macOS says it "cannot verify the developer":
-    System Settings → Privacy & Security → scroll down and click "Open Anyway";
-    or run in Terminal: xattr -cr /Applications/BillyShot.app
-  Then allow BillyShot in System Settings → Privacy & Security:
-    · Screen & System Audio Recording (required for screenshots and recording)
-    · Accessibility (only for mouse shortcuts and click ripples)
-    · Microphone (only when recording the mic)
-    · Camera (only for the camera bubble)
-  Screen Recording only takes effect after BillyShot quits and reopens (closing the Settings window is
-    not enough — it keeps running in the menu bar). The permission dialog and Settings → General →
-    "macOS permissions" both have a "Reopen BillyShot" button. Accessibility takes effect within a few
-    seconds without reopening. (1.3.5)
-  Settings → General → "macOS permissions" shows whether Screen Recording and Accessibility are allowed.
-  If the switch is already on but BillyShot keeps asking (usually records left by an older version):
-    click "Repair permissions" (in the dialog or in Settings → General). It clears BillyShot's old
-    records; turn the switch on again in System Settings, then click "Reopen BillyShot".
-    Still stuck? Click "Copy diagnostics" and send us what it copies.
-  If BillyShot isn't running from the Applications folder (e.g. straight from Downloads), it offers to
-    move itself there — otherwise macOS often loses track of its permissions.
-  From this build on, the Mac version is signed with a fixed certificate, so future updates keep the permission.
-  On macOS 15 and later, macOS may occasionally ask whether to keep allowing screen recording — click Allow; that reminder comes from macOS itself.
+  · Hopsnap-2.0.0-mac-AppleSilicon.zip   M1 / M2 / M3 / M4
+  · Hopsnap-2.0.0-mac-Intel.zip          Intel
+  Unzip and drag Hopsnap into Applications. If macOS says the developer can't be verified:
+    System Settings → Privacy & Security → scroll down → "Open Anyway";
+    or in Terminal: xattr -cr /Applications/Hopsnap.app
+  On first launch the Permissions helper opens:
+    Step 1  Allow "Screen Recording" — needed for screenshots and recording. Click "Open System Settings", find Hopsnap
+            in the list and turn it on. The helper checks every second; once it's on, the button becomes "Reopen Hopsnap"
+            (macOS only hands the permission to a freshly opened process).
+    Step 2  "Accessibility" (optional) — only for mouse-button shortcuts and click ripples. Takes effect immediately.
+    Microphone and camera: macOS asks the first time you use them.
+  If the switch is already on but Hopsnap keeps asking (usually a stale record from an older version):
+    Permissions helper → "Still not working?" → "Repair permissions", then turn the switch on once more.
+    Still stuck? "Copy diagnostics" and send it to us.
+  You can reopen the helper any time from Settings → General or the Get started page; while the permission is missing
+  it's also the first item in the tray menu.
+  On macOS 15+ the system may periodically ask whether to keep allowing screen recording — click Allow; that's macOS.
 
-BillyShot lives in the tray (bottom right; on a Mac, the menu bar). There is no main window.
-Click the tray icon = screenshot; double-click = Settings; right-click = menu
-(record, pin, history, language, settings, quit).
+Hopsnap lives in the tray (menu bar on Mac, a black-and-white frog) with no main window.
+Click the tray icon = screenshot; double-click = settings; right-click = menu (record, presenting, files, settings, quit).
 
-Interface language (Chinese / English)
-  · Follows the system by default: Chinese (Simplified or Traditional) systems show Chinese,
-    every other language shows English
-  · Change it in Settings → General → "界面语言 · Language", or right-click the tray icon → "语言 / Language"
-  · Takes effect immediately, no restart needed
+Language: follows the system by default; Settings → General → Language to switch. The Chinese UI calls the app
+呱咔, the English UI Hopsnap; macOS permission lists always show "Hopsnap".
+Appearance: light / dark follows the system, or fix it in Settings → General. The screenshot toolbar is always dark.
 
 
-2. Default shortcuts (change them in Settings → Shortcuts; keyboard and mouse both work)
--------------------------------------------------------------------------------------
-                                   Windows            Mac
-  Screenshot (select + edit)       Alt + A            ⌃ ⌘ A
-  Full screen to clipboard         Alt + Shift + A    ⌃ ⌘ ⇧ A
-  Record region / stop             Alt + R            ⌃ ⌘ R
-  Record full screen / stop        Alt + Shift + R    ⌃ ⌘ ⇧ R
-  Pin clipboard image              Alt + P            ⌃ ⌘ P
+2. Default shortcuts (change any of them in Settings → Shortcuts; keyboard or mouse)
+-----------------------------------------------------------------------------------
+                                  Windows            Mac
+  Screenshot (select + edit)      Alt + A            ⌃ ⌘ A
+  Full-screen screenshot to clipboard  Alt + Shift + A    ⌃ ⌘ ⇧ A
+  Record region / stop            Alt + R            ⌃ ⌘ R
+  Record full screen / stop       Alt + Shift + R    ⌃ ⌘ ⇧ R
+  Pin clipboard image             Alt + P            ⌃ ⌘ P
 
-  * WeChat also uses Alt+A. Every time BillyShot starts it checks for conflicts; if a shortcut is taken,
-    it switches to Ctrl+Alt+A (or another free combo), shows a notification and a red dot in Settings.
-  * Mouse shortcuts: click the "Mouse" box in Settings, then press the middle or a side button
-    (you can hold Ctrl / Alt / Shift). In browsers the side buttons already mean Back / Forward and
-    BillyShot can't block that, so combine them with Ctrl / Alt.
-  * To use PrintScreen: Windows 11 gives it to the Snipping Tool by default. First turn off
-    "Use the Print screen key to open screen capture" in Windows Settings → Accessibility → Keyboard.
+  * WeChat also uses Alt+A. Hopsnap checks on every launch; if a shortcut is taken it switches to a free combination
+    and notifies you (a red dot shows in Settings).
+  * Mouse shortcuts: click the "Mouse" cell in Settings, then press the middle or a side button (optionally with
+    Ctrl/Alt/Shift). Side buttons are Back/Forward in browsers and can't be intercepted — combine them with Ctrl/Alt.
+  * PrintScreen: Windows 11 gives it to Snipping Tool by default; turn that off in
+    Windows Settings → Accessibility → Keyboard first.
+  * The Get started page lists all shortcuts; click one to edit.
 
 
-3. Screenshot screen
+3. Screenshot editor
 --------------------
-  Drag                 Select a region; hovering highlights windows, click to select one
-  Drag edges / 8 dots  Resize the selection; drag inside it to move it
-  Enter / double-click Finish and copy to the clipboard (paste into WeChat, Word, etc.)
-  Esc                  Exit
-  Right-click          Cancel the tool → reselect → exit
+  Drag                 select a region; hovering highlights windows, click to select one
+  Drag edges / handles resize; drag inside to move
+  Enter / double-click done — copies to the clipboard
+  Esc                  exit
+  Right-click          cancel tool → reselect → exit
 
   Toolbar: Rectangle(R) Ellipse(E) Arrow(A) Pen(P) Highlighter(H) Mosaic(M) Text(T) Number(N)
            Undo(Ctrl+Z) Redo(Ctrl+Y) · Record this region · Pin · Save(Ctrl+S) · Done
-  · Size and color appear below the toolbar after you pick a tool
-  · Hold Shift for a square / circle / 45° arrow
-  · Click an annotation to select, move or recolor it; Delete removes it; double-click text to edit it
-  · Mosaic has Brush and Box modes
-  · The magnifier shows pixels and colors; press C to copy the color; arrow keys nudge the selection
-  · If copying to the clipboard fails (another app is using it), you are told, and the screenshot
-    is still in Settings → History
+  · Width and color appear under the toolbar once a tool is selected; hold Shift for squares / circles / 45° arrows
+  · Click a shape to select, drag, recolor or Delete it; double-click text to edit
+  · Mosaic has "brush" and "box" modes
+  · The magnifier shows pixels and color; press C to copy the color; arrow keys nudge the selection
+  · If copying fails, you're told, and the shot is still in Settings → Recent screenshots
 
 
 4. Recording
 ------------
-  · Press the record-region shortcut → select a region → choose MP4 or GIF, System audio, Mic → Start recording
-    The region recorder remembers your last format; full-screen recording uses Settings → Recording → Default format.
-  · While recording, the region has a red border and a control bar: pause / stop and save / discard.
-    Pressing the shortcut again also stops.
-  · Resolution: Original / 4K / 2K / 1080p / 720p; frame rate 24 / 30 / 60. Click "1080p" or "30 fps"
-    on the toolbar to choose; it shows the real output size and is remembered. Default 1080p.
-    Output never exceeds your screen's resolution — to record 4K, the screen must be 4K.
-    If the computer can't keep up, you'll see "Low recording frame rate"; lower the fps or resolution.
-  · If something fails mid-recording (e.g. a graphics driver reset), the part already recorded is kept
-  · Recordings go to "Videos/BillyShot", screenshots to "Pictures/BillyShot"
-  · After you press stop, the control bar shows "Saving…" with progress, then a green "Saved" with
-    Open folder / Play buttons (it hides itself after 20 seconds). While recording, the file in the folder is named
-    "….mp4.part"; it becomes .mp4 only when it's finished — if you see the .mp4, it's done.
-    If BillyShot is closed or the PC loses power mid-recording, the recorded part is recovered as .mp4 the next time BillyShot starts. (1.3.2)
-  · Recording system audio on a Mac needs macOS 13 or later
-  · Choosing audio:
-      Only the computer's sound (videos, music) → turn on System audio only, turn off Mic. Cleanest sound.
-      Your voice too → turn both on and wear headphones. Without headphones the mic picks up your
-      speakers again and it sounds like an echo (the toolbar shows "Use headphones").
-      Don't pick "Stereo Mix" as the microphone — it records your speaker output, not your voice.
+  · Press the region shortcut → select → choose MP4 or GIF, system audio, microphone → Start.
+    Region recording remembers your last format; full-screen uses the default format in Settings → Recording.
+  · The countdown is a frog puffing its cheeks. While recording the region has a red frame and a control bar:
+    pause / stop & save / discard. Pressing the shortcut again also stops.
+  · Resolution: native / 4K / 2K / 1080p / 720p; 24 / 30 / 60 fps — pick directly from the toolbar. Output never
+    exceeds the screen's own resolution. If the machine can't keep up you'll see "Low frame rate".
+  · If recording fails midway (e.g. GPU reset) what was recorded is kept; after a crash the .part is recovered as .mp4.
+  · Files go to Movies/Hopsnap (Videos\Hopsnap), screenshots to Pictures/Hopsnap — BillyShot users keep their folders.
+  · After stop the bar shows "Saving…" then a green "Saved" with Open folder / Play.
+  · System audio on Mac needs macOS 13+.
+  · Audio tips: computer sound only → system audio only; your voice too → both, and wear headphones
+    (otherwise speaker sound is recorded twice as echo). Don't pick "Stereo Mix" as the microphone.
 
 
-5. App icon (new in 1.2.4)
---------------------------
-  · The default is the new portrait icon. To go back to the original purple glass icon:
-    Settings → General → App icon → "Purple glass". You can switch back any time.
-  · Windows: the tray, Settings window, notifications and the BillyShot shortcuts on the desktop /
-    Start menu / taskbar all change. If the desktop icon doesn't change right away, wait a few
-    seconds or press F5. The icon of BillyShot.exe itself in the install folder doesn't change.
-    Upgrading recreates the shortcuts with the portrait icon; BillyShot switches them back to your choice when it starts.
-  · Mac: the menu bar, Dock (while Settings is open) and BillyShot.app in Applications all change.
-    If macOS doesn't allow changing the icon in Applications, Settings tells you; in Finder select
-    BillyShot → Get Info and drag Contents/Resources/app.asar.unpacked/assets/logos/purple/mac.png
-    from inside BillyShot.app onto the small icon at the top left.
+5. Presenting
+-------------
+  For lessons, demos and screen sharing. Effects are drawn on the screen itself, so they appear in recordings and in
+  Zoom / Teams shares; they hide automatically during screenshots.
+  · Cursor halo: a soft ring around the pointer. Click ripples: water-like ripples on each click, reddish for left,
+    bluish for right (colors adjustable). Turn on in Settings → Presenting; options appear once a switch is on.
+  · Tray menu → Presenting: Halo / Click ripples / Spotlight / Camera, any time.
+  · Spotlight: dims the screen except around the pointer; turned on during a recording, it turns off afterwards.
+  · Camera bubble: click "Camera" on the region toolbar, or Settings → Presenting → "Show camera while recording".
+    Drag it (position is remembered); hover for size / shape / close; the frame turns orange outside the recorded area.
+    If Zoom / Teams / WeChat holds the camera, the bar tells you and the recording continues.
+  · Mac: click ripples need Accessibility, the camera needs Camera permission (macOS asks the first time).
 
 
-6. Color themes (new in 1.2.6)
-------------------------------
-  · Settings → General → Color theme. Changes apply right away, and the screenshot toolbar's
-    accent color follows too. 9 themes:
-      Midnight Purple (the original), Black Gold, Graphite (minimal black & white), Deep Ocean,
-      Forest, Rose, Paper White (light sidebar), Glass, Matrix (black + neon green with
-      falling code in the sidebar; dark only)
-  · The default is "Match icon": the portrait icon uses Black Gold, the purple icon uses
-    Midnight Purple. Once you pick a theme, it stays.
-  · Glass: on Windows 11 (22H2 or later) and Mac the desktop shows through the window (system
-    blur). Windows 10 has no system blur, so it shows a colored gradient with see-through cards.
-    On a Mac, the settings window reopens once (same place) when you switch to or from Glass —
-    that's expected. (1.3.4 fixes the ghosting / leftover colors on Mac.)
-  · The drop-down on the right sets "Light / dark: follow system / Light / Dark". Every theme has
-    a light and a dark version (Matrix is dark only).
+6. Everything else
+------------------
+  · Recent screenshots: the last 4 on the Get started page (click to copy again); all of them in Settings → Recent screenshots
+  · Pins: scroll to zoom, drag to move, double-click or Esc to close, right-click for opacity / copy / save
+  · Updates: Settings → About → "Check for updates". By default Hopsnap asks GitHub once a day for the latest version
+    number (nothing is uploaded); a new version adds a tray item and notifies once. Turn it off in Settings → General.
+  · Problems: Settings → About → Open log file and send hopsnap.log to Billy Chai
+  · Free, no ads, no watermark, no account, nothing uploaded
 
 
-7. Presenting (new in 1.3.0)
-----------------------------
-  For lessons, software walkthroughs and sharing your screen in meetings. The effects are drawn
-  on the screen, so they appear in recordings and viewers see them in Zoom / Teams shares.
-  They are hidden automatically when you take a screenshot.
-
-  · Cursor halo: a translucent ring around the pointer. Click ripples: each click sends out a few
-    rings like ripples on water, with highlights and shadows; left clicks are tinted red and right
-    clicks blue (colors can be changed). If the water ripple is unavailable, the click shows two or three translucent white rings instead of one pink ring. (1.3.5) Turn them on in Settings → Presenting,
-    where you can also change colors and size. With "Show while recording" on, they appear when a
-    recording starts and go away when it ends.
-  · Demo mode (to use them without recording, e.g. while sharing your screen): tick "Demo mode"
-    in the tray menu. If neither the halo nor ripples is on yet, this turns both on (they then
-    also show in recordings; you can change that in Settings).
-  · Spotlight: dims the whole screen except around the pointer. Toggle it from the tray menu,
-    Settings or the recording bar. A spotlight turned on during a recording turns off when it ends.
-  · Camera bubble:
-      Region recording: click "Camera" on the toolbar. Full-screen recording uses
-      Settings → Presenting → "Show camera while recording".
-      The bubble starts in the bottom-right of the recording area. Drag it anywhere (the position
-      is remembered). Hover it for size / shape / close buttons. Its border turns orange when it
-      is outside the recording area (that part is not recorded).
-      Without recording: "Camera bubble" in the tray menu, or "Preview" in Settings.
-      Some cameras work with only one app at a time. If Zoom / Teams / WeChat has the camera open,
-      BillyShot may not be able to open it; the recording bar shows why and recording continues.
-  · The recording bar has three new buttons: mouse effects, spotlight and camera.
-  · Shortcuts: Demo mode and Spotlight have no shortcut by default (so they don't take keys from
-    your other apps). Set them in Settings → Shortcuts if you want.
-  · Mac: click ripples need Accessibility permission, and the camera needs Camera permission
-    (macOS asks the first time).
+7. Upgrading from BillyShot
+---------------------------
+  · Windows: install 2.0; settings and history migrate automatically. Uninstall the old BillyShot afterwards.
+  · Mac: 2.0 has a new bundle id (com.hopsnap.app), so macOS treats it as a new app — Screen Recording must be
+    allowed once more; the Permissions helper walks you through it. Quit the old BillyShot.app and trash it.
+  · Your saved screenshots and recordings are never touched.
 
 
-8. Other
---------
-  · Screenshot history: Settings → History / Clipboard, click an image to copy it again
-  · Pin: scroll to zoom, drag to move, double-click or Esc to close; right-click for opacity / copy / save
-  · Problems: Settings → About → Open log file, and send billyshot.log to Billy Chai
-  · Free, offline, no ads, no watermark, no account
-
-
-9. Uninstall
+8. Uninstall
 ------------
-Windows (any one of these)
-  · Start menu → "Uninstall BillyShot" (on Chinese systems: 卸载 BillyShot)
-  · Double-click 卸载BillyShot-Uninstall.exe next to the installer
-  · Windows Settings → Apps → Installed apps → BillyShot → Uninstall
-  Uninstalling asks "Also delete BillyShot's settings and screenshot history?"
-    Yes = uninstall and delete settings; No = uninstall but keep settings (a reinstall picks up
-    where you left off); Cancel = don't uninstall
-  Your saved screenshots and recordings ("Pictures/BillyShot", "Videos/BillyShot") are never deleted.
-  Portable (zip) version: quit BillyShot and delete its folder.
+Windows (any of these)
+  · Start menu → "Uninstall Hopsnap"
+  · Double-click Uninstall-Hopsnap.exe
+  · Windows Settings → Apps → Installed apps → Hopsnap → Uninstall
+  You'll be asked whether to delete settings and screenshot history too. Saved screenshots and videos are never deleted.
+  Portable version: quit Hopsnap and delete the folder.
 
 Mac
-  · Click the BillyShot icon in the menu bar → Quit, then drag BillyShot from Applications to the Trash
-  · To remove settings too: in Finder press ⇧⌘G, go to ~/Library/Application Support/BillyShot and delete that folder
-  · You can also remove BillyShot from System Settings → Privacy & Security
+  · Right-click the frog in the menu bar → Quit, then drag Hopsnap from Applications to the Trash
+  · To remove settings as well: Finder ⇧⌘G → ~/Library/Application Support/Hopsnap and delete the folder
+  · Optionally remove Hopsnap from System Settings → Privacy & Security
+
+
+Source: https://github.com/chaichungsang/BillyShot (MIT)
+  npm install
+  npm start            run from source
+  npm run dist:win     Windows installer (on Apple Silicon Macs: brew install makensis first)
+  npm run dist:mac     Mac (signing options in docs/mac-signing.md)

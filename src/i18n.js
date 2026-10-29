@@ -6,7 +6,7 @@
   const EN = {
     // ---------------------------------------------------------------- 主进程：错误 / 通知
     '（详细信息已记录到日志：设置 → 关于 → 打开日志）': '(Details were written to the log: Settings → About → Open log file)',
-    'BillyShot 遇到问题': 'BillyShot ran into a problem',
+    'Hopsnap 遇到问题': 'Hopsnap ran into a problem',
     '截图自动保存失败': 'Auto-save failed',
     '截图已改存到备用文件夹': 'Screenshot saved to a fallback folder',
     '原文件夹无法写入，已保存到 {file}': "Couldn't write to the original folder. Saved to {file}",
@@ -21,7 +21,7 @@
     '打开系统设置': 'Open System Settings',
     '取消': 'Cancel',
     '需要「屏幕录制」权限': 'Screen Recording permission needed',
-    '请在 系统设置 → 隐私与安全性 → 屏幕与系统录音 中勾选 BillyShot，然后退出并重新打开 BillyShot。': 'Turn on BillyShot in System Settings → Privacy & Security → Screen & System Audio Recording, then quit and reopen BillyShot.',
+    '请在 系统设置 → 隐私与安全性 → 屏幕与系统录音 中勾选 Hopsnap，然后退出并重新打开 Hopsnap。': 'Turn on Hopsnap in System Settings → Privacy & Security → Screen & System Audio Recording, then quit and reopen Hopsnap.',
     '截图画面加载失败：': 'Failed to load the screenshot: ',
     '截图失败': 'Screenshot failed',
     '截图已保存': 'Screenshot saved',
@@ -32,7 +32,7 @@
     '全屏截图已复制到剪贴板': 'Full-screen screenshot copied to clipboard',
     '剪贴板里没有图片': 'No image on the clipboard',
     '先截图或复制一张图片，再按贴图快捷键': 'Take a screenshot or copy an image first, then press the pin shortcut',
-    'BillyShot 设置': 'BillyShot Settings',
+    'Hopsnap 设置': 'Hopsnap Settings',
     '找不到屏幕源': 'Screen source not found',
     '正在录制全屏': 'Recording full screen',
     '再按 {k} 停止录制': 'Press {k} again to stop',
@@ -78,9 +78,9 @@
     '光晕': 'Halo',
     '摄像头泡': 'Camera bubble',
     '设置…': 'Settings…',
-    '退出 BillyShot': 'Quit BillyShot',
-    'BillyShot — 录制中': 'BillyShot — Recording',
-    'BillyShot 截图录屏': 'BillyShot — Screenshot & Recorder',
+    '退出 Hopsnap': 'Quit Hopsnap',
+    'Hopsnap — 录制中': 'Hopsnap — Recording',
+    'Hopsnap 截图录屏': 'Hopsnap — Screenshot & Recorder',
     '跟随系统': 'System default',
     '全屏截图': 'Full-screen screenshot',
     '贴图': 'Pin',
@@ -222,7 +222,7 @@
     '历史 / 剪贴板': 'History / Clipboard',
     '常规': 'General',
     '关于': 'About',
-    '欢迎使用 BillyShot': 'Welcome to BillyShot',
+    '欢迎使用 Hopsnap': 'Welcome to Hopsnap',
     '免费的截图与录屏工具，常驻在托盘 / 菜单栏，一个快捷键随叫随到。': 'A free screenshot and screen-recording tool that lives in your tray / menu bar, always one shortcut away.',
     '拖动框选或单击识别窗口，直接画框、箭头、写字、马赛克。Enter 或双击复制到剪贴板。': 'Drag to select or click a window, then draw boxes, arrows, text and mosaic. Press Enter or double-click to copy to the clipboard.',
     '框选区域，选择 MP4 或 GIF，可录系统声音与麦克风，最高 4K。再按一次停止。': 'Select a region, choose MP4 or GIF, record system audio and the mic, up to 4K. Press again to stop.',
@@ -252,7 +252,7 @@
     '打开屏幕录制权限': 'Open Screen Recording permission',
     '打开辅助功能权限': 'Open Accessibility permission',
     '点击输入框后直接按下组合键。键盘与鼠标可同时设置，任意一个都能触发。鼠标支持中键、侧键（后退 / 前进），可配合 Ctrl / Alt / Shift；右键需配合修饰键。Backspace 清除。': 'Click a box, then press the key combo. You can set both a keyboard and a mouse shortcut; either one works. Mouse shortcuts support the middle and side (Back / Forward) buttons, with Ctrl / Alt / Shift; the right button needs a modifier. Backspace clears.',
-    '提示：鼠标侧键在浏览器里本身是「后退 / 前进」，BillyShot 无法拦截，截图前页面可能已经后退，建议侧键配合 Ctrl / Alt 使用。Windows 11 默认把 PrintScreen 交给系统截图工具，要用它请先在 Windows 设置 → 辅助功能 → 键盘 里关掉「使用 Print Screen 键打开屏幕截图」。': 'Tip: in browsers the side buttons already mean Back / Forward and BillyShot can\'t block that, so the page may go back before the screenshot. Combine side buttons with Ctrl / Alt. Windows 11 gives PrintScreen to the Snipping Tool by default; to use it here, first turn off "Use the Print screen key to open screen capture" in Windows Settings → Accessibility → Keyboard.',
+    '提示：鼠标侧键在浏览器里本身是「后退 / 前进」，Hopsnap 无法拦截，截图前页面可能已经后退，建议侧键配合 Ctrl / Alt 使用。Windows 11 默认把 PrintScreen 交给系统截图工具，要用它请先在 Windows 设置 → 辅助功能 → 键盘 里关掉「使用 Print Screen 键打开屏幕截图」。': 'Tip: in browsers the side buttons already mean Back / Forward and Hopsnap can\'t block that, so the page may go back before the screenshot. Combine side buttons with Ctrl / Alt. Windows 11 gives PrintScreen to the Snipping Tool by default; to use it here, first turn off "Use the Print screen key to open screen capture" in Windows Settings → Accessibility → Keyboard.',
     '功能': 'Action',
     '键盘': 'Keyboard',
     '鼠标': 'Mouse',
@@ -343,31 +343,69 @@
     '已允许': 'allowed',
     '未允许': 'not allowed',
     '未允许（用鼠标快捷键 / 点击波纹时才需要）': 'not allowed (only needed for mouse shortcuts / click ripples)',
-    '重新打开 BillyShot': 'Reopen BillyShot',
+    '重新打开 Hopsnap': 'Reopen Hopsnap',
     '修复权限': 'Repair permissions',
     '复制诊断信息': 'Copy diagnostics',
     '诊断信息已复制，可以直接粘贴发给我们': 'Diagnostics copied — paste them in a message to us',
     '复制失败': 'Copy failed',
-    '屏幕录制的开关打开后，要点「重新打开 BillyShot」才生效；开关开着还一直提示，点「修复权限」（清掉旧版本的授权记录，再打开一次开关）。': 'After turning on Screen Recording, click "Reopen BillyShot" for it to take effect. If the switch is on but BillyShot keeps asking, click "Repair permissions" (clears records left by older versions), then turn the switch on again.',
+    '屏幕录制的开关打开后，要点「重新打开 Hopsnap」才生效；开关开着还一直提示，点「修复权限」（清掉旧版本的授权记录，再打开一次开关）。': 'After turning on Screen Recording, click "Reopen Hopsnap" for it to take effect. If the switch is on but Hopsnap keeps asking, click "Repair permissions" (clears records left by older versions), then turn the switch on again.',
     '稍后': 'Later',
+    // 2.0 权限助手
+    'Hopsnap · 权限': 'Hopsnap · Permissions',
+    '打开权限助手': 'Open permissions helper',
+    '权限助手会一步步带你打开开关，开关开着还一直提示的「修复权限」也在里面。': 'The helper walks you through the switches step by step; "Repair permissions" (for when the switch is on but Hopsnap keeps asking) lives there too.',
+    '⚠️ 先开一下屏幕录制权限…': '⚠️ Turn on Screen Recording first…',
+    'Hopsnap 需要看到屏幕才能截图': 'Hopsnap needs to see your screen to take screenshots',
+    '只需设置一次：在系统设置里打开开关，再重新打开 Hopsnap 就好。': 'One-time setup: turn on the switch in System Settings, then reopen Hopsnap.',
+    '必需': 'Required',
+    '建议打开': 'Recommended',
+    '在列表里找到 {app}，把开关打开': 'Find {app} in the list and turn it on',
+    '等你打开开关…': 'Waiting for the switch…',
+    '已经打开了？重新打开 Hopsnap': 'Already on? Reopen Hopsnap',
+    '开关打开了！': 'The switch is on!',
+    '开关打开了！重新打开 Hopsnap 就能用': 'The switch is on! Reopen Hopsnap and you\'re set',
+    '重新打开 Hopsnap 一次，系统才会把新权限交给它。': 'macOS hands the new permission over only after Hopsnap reopens once.',
+    '已允许，可以截图和录屏了': 'Allowed — screenshots and recording are ready',
+    '全部就绪！': 'All set!',
+    '按下': 'Press',
+    '试试截图': 'to take a screenshot',
+    '鼠标侧键截图、点击波纹才需要；开了马上生效': 'Only for mouse-button shortcuts and click ripples. Takes effect right away',
+    '打开设置': 'Open settings',
+    '还是不行？': 'Still not working?',
+    '开关开着却一直提示，多半是旧版本留下的授权记录。「修复权限」会清掉它，然后在系统设置里再打开一次开关。': 'If the switch is on but Hopsnap keeps asking, an older version probably left a stale record. "Repair permissions" clears it; then turn the switch on once more in System Settings.',
+    '找不到 {app}？点列表下方的「+」，从「应用程序」里选它。': 'Can\'t find {app}? Click "+" under the list and pick it from Applications.',
+    '已清除旧记录，请在系统设置里重新打开开关': 'Old record cleared — turn the switch on again in System Settings',
+    '稍后再说': 'Later',
+    // 2.0 检查更新
+    '检查更新': 'Check for updates',
+    '下载页': 'Downloads',
+    '检查中…': 'Checking…',
+    '没连上 GitHub，稍后再试': "Couldn't reach GitHub, try again later",
+    '已是最新版本': "You're on the latest version",
+    '有新版本 {v}，去下载': 'Version {v} is available — download',
+    '有新版本 {v}，去下载…': 'Version {v} is available — download…',
+    'Hopsnap 有新版本 {v}': 'Hopsnap {v} is available',
+    '点击查看更新内容和下载': "Click to see what's new and download",
+    '自动检查更新': 'Check for updates automatically',
+    '每天问一次 GitHub 有没有新版本，只请求版本号，不上传任何内容': 'Asks GitHub once a day for the latest version number. Nothing is uploaded',
+    '免费使用 · 无广告 · 无账号 · 无水印 · 不上传任何内容': 'Free · No ads · No account · No watermark · Nothing uploaded',
     '没能自动清除旧的授权记录': "Couldn't clear the old permission records automatically",
-    '已清除 BillyShot 旧的授权记录': "Cleared BillyShot's old permission records",
-    '请在系统设置的「屏幕与系统录音」和「辅助功能」里选中 BillyShot，点下面的「−」删掉，再点「+」重新添加 BillyShot 并打开开关，然后点「重新打开 BillyShot」。': 'In System Settings, select BillyShot under "Screen & System Audio Recording" and "Accessibility", click "−" to remove it, then "+" to add BillyShot again and turn it on. Then click "Reopen BillyShot".',
-    '请在系统设置的「屏幕与系统录音」里打开 BillyShot（用鼠标快捷键 / 点击波纹的话，「辅助功能」也要打开），然后点「重新打开 BillyShot」。': 'Turn on BillyShot in System Settings → "Screen & System Audio Recording" (and "Accessibility" if you use mouse shortcuts or click ripples), then click "Reopen BillyShot".',
-    '请在 系统设置 → 隐私与安全性 → 屏幕与系统录音 中打开 BillyShot，然后点「重新打开 BillyShot」（只关掉窗口不算，要退出再打开才生效）。\n\n如果开关已经是打开的还一直提示，点「修复权限」：清掉旧版本留下的授权记录，再重新打开一次开关就好。': 'Turn on BillyShot in System Settings → Privacy & Security → Screen & System Audio Recording, then click "Reopen BillyShot" (closing the window is not enough — it has to quit and reopen).\n\nIf the switch is already on but you keep seeing this, click "Repair permissions": it clears records left by older versions; then turn the switch on once more.',
+    '已清除 Hopsnap 旧的授权记录': "Cleared Hopsnap's old permission records",
+    '请在系统设置的「屏幕与系统录音」和「辅助功能」里选中 Hopsnap，点下面的「−」删掉，再点「+」重新添加 Hopsnap 并打开开关，然后点「重新打开 Hopsnap」。': 'In System Settings, select Hopsnap under "Screen & System Audio Recording" and "Accessibility", click "−" to remove it, then "+" to add Hopsnap again and turn it on. Then click "Reopen Hopsnap".',
+    '请在系统设置的「屏幕与系统录音」里打开 Hopsnap（用鼠标快捷键 / 点击波纹的话，「辅助功能」也要打开），然后点「重新打开 Hopsnap」。': 'Turn on Hopsnap in System Settings → "Screen & System Audio Recording" (and "Accessibility" if you use mouse shortcuts or click ripples), then click "Reopen Hopsnap".',
+    '请在 系统设置 → 隐私与安全性 → 屏幕与系统录音 中打开 Hopsnap，然后点「重新打开 Hopsnap」（只关掉窗口不算，要退出再打开才生效）。\n\n如果开关已经是打开的还一直提示，点「修复权限」：清掉旧版本留下的授权记录，再重新打开一次开关就好。': 'Turn on Hopsnap in System Settings → Privacy & Security → Screen & System Audio Recording, then click "Reopen Hopsnap" (closing the window is not enough — it has to quit and reopen).\n\nIf the switch is already on but you keep seeing this, click "Repair permissions": it clears records left by older versions; then turn the switch on once more.',
     '移到「应用程序」': 'Move to Applications',
     '不移': 'Not now',
     '不再提示': "Don't ask again",
-    '把 BillyShot 移到「应用程序」文件夹？': 'Move BillyShot to the Applications folder?',
-    '现在 BillyShot 不在「应用程序」文件夹里运行。直接从下载文件夹打开时，macOS 的屏幕录制 / 辅助功能授权容易对不上、反复要求授权。': "BillyShot isn't running from the Applications folder. When it runs from Downloads, macOS often loses track of its Screen Recording / Accessibility permissions and keeps asking again.",
-    '没能移动 BillyShot': "Couldn't move BillyShot",
-    '请手动把 BillyShot 拖进「应用程序」文件夹，再从那里打开。': 'Drag BillyShot into the Applications folder yourself, then open it from there.',
+    '把 Hopsnap 移到「应用程序」文件夹？': 'Move Hopsnap to the Applications folder?',
+    '现在 Hopsnap 不在「应用程序」文件夹里运行。直接从下载文件夹打开时，macOS 的屏幕录制 / 辅助功能授权容易对不上、反复要求授权。': "Hopsnap isn't running from the Applications folder. When it runs from Downloads, macOS often loses track of its Screen Recording / Accessibility permissions and keeps asking again.",
+    '没能移动 Hopsnap': "Couldn't move Hopsnap",
+    '请手动把 Hopsnap 拖进「应用程序」文件夹，再从那里打开。': 'Drag Hopsnap into the Applications folder yourself, then open it from there.',
     '正在录屏，结束后再重新打开': 'Recording in progress — reopen after it finishes',
     '屏幕录制权限': 'Screen Recording permission',
     '辅助功能权限（鼠标快捷键）': 'Accessibility permission (mouse shortcuts)',
-    '免费使用 · 无广告 · 无账号 · 无水印 · 不联网': 'Free · no ads · no account · no watermark · works offline',
     '打开日志文件': 'Open log file',
-    '遇到问题时，把日志文件 billyshot.log 发给开发者，就能看到具体原因。': 'If something goes wrong, send the log file billyshot.log to the developer so they can see what happened.',
+    '遇到问题时，把日志文件 hopsnap.log 发给开发者，就能看到具体原因。': 'If something goes wrong, send the log file hopsnap.log to the developer so they can see what happened.',
     '截图：区域 / 窗口 / 全屏，原生分辨率（支持 4K、高 DPI）': 'Screenshots: region / window / full screen at native resolution (4K and high DPI)',
     '标注：矩形、椭圆、箭头、画笔、荧光笔、马赛克、文字、序号，可撤销重做、可拖动修改': 'Annotations: rectangle, ellipse, arrow, pen, highlighter, mosaic, text, numbers — with undo / redo and drag to edit',
     '输出：复制到剪贴板、保存 PNG / JPG、钉在屏幕（贴图）': 'Output: copy to clipboard, save PNG / JPG, pin to screen',
@@ -402,13 +440,13 @@
     '默认': 'Default',
     '紫色玻璃版': 'Purple glass',
     '原来的图标': 'The original icon',
-    '菜单栏、程序坞和「应用程序」里的 BillyShot 会一起换成所选图标': 'The menu bar, Dock and BillyShot in Applications all switch to the chosen icon',
+    '菜单栏、程序坞和「应用程序」里的 Hopsnap 会一起换成所选图标': 'The menu bar, Dock and Hopsnap in Applications all switch to the chosen icon',
     '托盘、窗口、桌面 / 开始菜单 / 任务栏快捷方式会一起换成所选图标': 'The tray, windows and desktop / Start menu / taskbar shortcuts all switch to the chosen icon',
     '托盘和窗口会换成所选图标': 'The tray and windows switch to the chosen icon',
     '有快捷方式没改成功，可在快捷方式上右键 → 属性 → 更改图标': "Some shortcuts couldn't be changed. Right-click the shortcut → Properties → Change Icon",
     '已更新 {n} 个快捷方式，桌面图标若没立刻变，稍等几秒或按 F5 刷新': 'Updated {n} shortcut(s). If the desktop icon doesn\'t change right away, wait a few seconds or press F5',
-    '「应用程序」里的图标系统没让改（菜单栏和程序坞已换）。可在访达里选中 BillyShot → 显示简介，把图标拖上去': "macOS didn't allow changing the icon in Applications (the menu bar and Dock were changed). In Finder, select BillyShot → Get Info and drag the icon onto it",
-    '访达里的图标已更换，程序坞里固定的图标在下次打开时更新': 'The Finder icon was changed; a pinned Dock icon updates the next time you open BillyShot',
+    '「应用程序」里的图标系统没让改（菜单栏和程序坞已换）。可在访达里选中 Hopsnap → 显示简介，把图标拖上去': "macOS didn't allow changing the icon in Applications (the menu bar and Dock were changed). In Finder, select Hopsnap → Get Info and drag the icon onto it",
+    '访达里的图标已更换，程序坞里固定的图标在下次打开时更新': 'The Finder icon was changed; a pinned Dock icon updates the next time you open Hopsnap',
     '。': '. ',
     '图标已更换': 'Icon changed',
     '中文 / English 界面，默认跟随系统': 'Chinese / English interface, follows the system by default',
@@ -421,7 +459,7 @@
     '演示模式': 'Demo mode',
     '摄像头还在等待授权，先开始录制': 'Still waiting for camera permission; recording started without it',
     '点击波纹需要「辅助功能」权限': 'Click ripples need Accessibility permission',
-    '系统设置 → 隐私与安全性 → 辅助功能 里勾选 BillyShot。鼠标光圈和聚光灯不受影响。': 'Turn on BillyShot in System Settings → Privacy & Security → Accessibility. The cursor halo and spotlight still work.',
+    '系统设置 → 隐私与安全性 → 辅助功能 里勾选 Hopsnap。鼠标光圈和聚光灯不受影响。': 'Turn on Hopsnap in System Settings → Privacy & Security → Accessibility. The cursor halo and spotlight still work.',
     '摄像头正被其他程序使用（例如 Zoom / Teams / 微信）': 'The camera is in use by another app (e.g. Zoom / Teams / WeChat)',
     '没有找到摄像头': 'No camera found',
     '没有摄像头权限（系统设置 → 隐私与安全性 → 摄像头）': 'No camera permission (System Settings → Privacy & Security → Camera)',
@@ -472,7 +510,8 @@
     '右键颜色': 'Right-click color',
     '录屏时自动显示': 'Show while recording',
     '开始录屏时显示上面开启的光圈 / 波纹，录完自动收起；录制中也可以在控制条上开关': 'Shows the halo / ripples turned on above when a recording starts and hides them when it ends. You can also toggle them on the recording bar.',
-    'html:presentDemoNote': 'Want them without recording (e.g. while sharing your screen in a meeting)? Tick <b>Demo mode</b> in the tray menu. You can also give it a shortcut under <b>Shortcuts</b> (current: <span class="k" data-show="presentMode"></span>).',
+    'html:presentDemoNote': 'Want them without recording (e.g. while sharing your screen in a meeting)? Turn on <b>Cursor halo</b> / <b>Click ripples</b> under <b>Presenting</b> in the tray menu, or give them a shortcut under <b>Shortcuts</b> (current: <span class="k" data-show="presentMode"></span>).',
+    'macOS 权限': 'macOS permissions',
     '开关': 'On / off',
     'html:presentSpotHint': 'Dims the screen except around the pointer. You can toggle it on the recording bar. Shortcut: <span class="k" data-show="spotlight"></span> (set it under Shortcuts)',
     '亮圈大小': 'Spotlight size',
@@ -487,22 +526,42 @@
     '像照镜子一样左右翻转（举字给观众看时可以关掉）': 'Flip left-right like a mirror (turn it off when holding up text for viewers)',
     '预览': 'Preview',
     '不录屏也能打开，可以当作开会时的画中画': 'Opens without recording too, as a picture-in-picture bubble for meetings',
-    '有些摄像头同一时间只能给一个程序用：Zoom / Teams / 微信 正开着摄像头时，BillyShot 可能打不开，会在控制条上提示，录屏照常进行。': 'Some cameras can only be used by one app at a time. If Zoom / Teams / WeChat has the camera open, BillyShot may not be able to open it. The recording bar will say so, and recording continues.',
+    '有些摄像头同一时间只能给一个程序用：Zoom / Teams / 微信 正开着摄像头时，Hopsnap 可能打不开，会在控制条上提示，录屏照常进行。': 'Some cameras can only be used by one app at a time. If Zoom / Teams / WeChat has the camera open, Hopsnap may not be able to open it. The recording bar will say so, and recording continues.',
     '打开摄像头权限': 'Open Camera permission',
     '辅助功能权限（点击波纹）': 'Accessibility permission (click ripples)',
     '演示录屏': 'Presenting',
     '鼠标光圈、点击波纹、聚光灯、摄像头画中画。录课、开会共享屏幕时用，在「演示」里设置。': 'Cursor halo, click ripples, spotlight and a camera bubble for lessons and meeting screen shares. Set them up under "Presenting".',
     '演示：鼠标光圈、点击波纹、聚光灯、摄像头画中画（录屏和会议共享都看得到）': 'Presenting: cursor halo, click ripples, spotlight, camera bubble (visible in recordings and meeting shares)',
+
+    // ---------------------------------------------------------------- 2.0 呱咔 / Hopsnap：开始页、常规页
+    '你好，我是 Hopsnap': "Hi, I'm Hopsnap",
+    '免费的截图、录屏、贴图工具，常驻在菜单栏，一个快捷键随叫随到。': 'A free screenshot, recording and pin tool that lives in your menu bar, one shortcut away.',
+    '修改': 'Edit',
+    '详情': 'Details',
+    '查看全部': 'View all',
+    '最近截图': 'Recent screenshots',
+    '还没有截图': 'No screenshots yet',
+    '按下 {k} 试试': 'Press {k} to take one',
+    '可选': 'optional',
+    '保留最近的截图，可在「最近截图」重新复制': 'Keeps recent screenshots so you can copy them again from Recent screenshots',
+    '外观': 'Appearance',
+    '浅色 / 深色，截图工具栏始终是深色': 'Light or dark. The screenshot toolbar is always dark',
+    '外观、语言、启动与重置。': 'Appearance, language, startup and reset.',
   };
 
   let lang = 'zh';
+  // 品牌名：词典和源码里统一写 Hopsnap，中文界面显示「呱咔」（紧挨着汉字时去掉两边的空格）
+  const BRAND = { en: 'Hopsnap', zh: '呱咔' };
+  const HAN = '[\\u4e00-\\u9fff\\u3000-\\u303f\\uff00-\\uffef]';
+  const B0 = new RegExp(`(${HAN}) Hopsnap (${HAN})`, 'g'), B1 = new RegExp(`(${HAN}) Hopsnap`, 'g'), B2 = new RegExp(`Hopsnap (${HAN})`, 'g'), B3 = /Hopsnap/g;
+  function brand(s) { return lang === 'en' || !s || s.indexOf('Hopsnap') < 0 ? s : s.replace(B0, '$1呱咔$2').replace(B1, '$1呱咔').replace(B2, '呱咔$1').replace(B3, '呱咔'); }
   function fill(s, vars) {
     if (!vars) return s;
     return s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
   }
   function t(key, vars) {
     const zh = String(key).split('#')[0];
-    const s = lang === 'en' && Object.prototype.hasOwnProperty.call(EN, key) ? EN[key] : zh;
+    const s = lang === 'en' && Object.prototype.hasOwnProperty.call(EN, key) ? EN[key] : brand(zh);
     return fill(s, vars);
   }
   function setLang(l) { lang = l === 'en' ? 'en' : 'zh'; return lang; }
@@ -518,8 +577,16 @@
   // 网页：翻译文字节点和 title / placeholder 属性；data-i18n-html 的元素整段替换
   const CJK = /[一-鿿]/;
   function applyDom(rootEl) {
-    if (lang !== 'en' || !rootEl) return;
+    if (!rootEl) return;
     const doc = rootEl.ownerDocument || rootEl;
+    if (lang !== 'en') {   // 中文：只把品牌名换成「呱咔」
+      const walker = doc.createTreeWalker(rootEl, 4);
+      const list = []; while (walker.nextNode()) list.push(walker.currentNode);
+      for (const n of list) if (n.nodeValue.indexOf('Hopsnap') >= 0 && !(n.parentNode && n.parentNode.classList && n.parentNode.classList.contains('brand-en'))) n.nodeValue = brand(n.nodeValue);
+      rootEl.querySelectorAll('[title],[placeholder],[alt]').forEach((el) => { for (const a of ['title', 'placeholder', 'alt']) { const v = el.getAttribute(a); if (v && v.indexOf('Hopsnap') >= 0) el.setAttribute(a, brand(v)); } });
+      if (doc.title && doc.title.indexOf('Hopsnap') >= 0) doc.title = brand(doc.title);
+      return;
+    }
     rootEl.querySelectorAll('[data-i18n-html]').forEach((el) => {
       const k = 'html:' + el.getAttribute('data-i18n-html');
       if (Object.prototype.hasOwnProperty.call(EN, k)) el.innerHTML = EN[k];

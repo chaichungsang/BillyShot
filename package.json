@@ -1,13 +1,15 @@
 {
-  "name": "billyshot",
-  "version": "1.3.5",
-  "description": "免费截图录屏工具 BillyShot",
+  "name": "hopsnap",
+  "version": "2.0.0",
+  "description": "呱咔 Hopsnap — 免费的截图、录屏、贴图工具",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
+    "assets": "electron scripts/make_frog_assets.js",
     "natives": "node scripts/fetch-natives.js",
-    "dist:win": "node scripts/fetch-natives.js && electron-builder --win --x64 && node scripts/build-uninstall-tool.js",
-    "dist:mac": "node scripts/fetch-natives.js && electron-builder --mac --x64 --arm64 && node scripts/sign-mac.js"
+    "dist:win": "node scripts/dist-win.js",
+    "dist:mac": "node scripts/fetch-natives.js && electron-builder --mac --x64 --arm64 && node scripts/sign-mac.js",
+    "dist:mac:release": "node scripts/fetch-natives.js && electron-builder --mac --x64 --arm64 -c.mac.identity=\"Developer ID Application\" -c.mac.notarize=true && node scripts/sign-mac.js"
   },
   "keywords": [],
   "author": "Billy Chai",
@@ -21,10 +23,10 @@
     "node-screenshots": "^0.2.8",
     "uiohook-napi": "^1.5.5"
   },
-  "productName": "BillyShot",
+  "productName": "Hopsnap",
   "build": {
-    "appId": "com.billyshot.app",
-    "productName": "BillyShot",
+    "appId": "com.hopsnap.app",
+    "productName": "Hopsnap",
     "copyright": "Free for everyone",
     "directories": {
       "output": "dist",
@@ -65,7 +67,7 @@
         }
       ],
       "icon": "assets/icon.ico",
-      "artifactName": "BillyShot-${version}-Windows-${arch}-${os}.${ext}",
+      "artifactName": "Hopsnap-${version}-Windows-${arch}-${os}.${ext}",
       "files": [
         "!node_modules/node-screenshots-linux*/**",
         "!node_modules/node-screenshots-darwin*/**",
@@ -94,8 +96,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "BillyShot",
-      "artifactName": "BillyShot-Setup-${version}.${ext}",
+      "shortcutName": "Hopsnap",
+      "artifactName": "Hopsnap-Setup-${version}.${ext}",
       "runAfterFinish": true,
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico",
@@ -116,13 +118,13 @@
       "icon": "assets/icon-mac.png",
       "category": "public.app-category.utilities",
       "identity": null,
-      "artifactName": "BillyShot-${version}-mac-${arch}.${ext}",
+      "artifactName": "Hopsnap-${version}-mac-${arch}.${ext}",
       "extendInfo": {
         "LSUIElement": true,
-        "NSMicrophoneUsageDescription": "BillyShot 需要麦克风来录制你的声音（可选）。",
-        "NSAccessibilityUsageDescription": "BillyShot 需要辅助功能权限来响应鼠标快捷键和显示点击波纹（可选）。",
-        "NSCameraUsageDescription": "BillyShot 需要摄像头，在录屏或演示时显示你的画面（可选）。",
-        "NSAudioCaptureUsageDescription": "BillyShot 需要录制系统声音（可选）。"
+        "NSMicrophoneUsageDescription": "呱咔（Hopsnap）需要麦克风来录制你的声音（可选）。",
+        "NSAccessibilityUsageDescription": "呱咔（Hopsnap）需要辅助功能权限来响应鼠标快捷键和显示点击波纹（可选）。",
+        "NSCameraUsageDescription": "呱咔（Hopsnap）需要摄像头，在录屏或演示时显示你的画面（可选）。",
+        "NSAudioCaptureUsageDescription": "呱咔（Hopsnap）需要录制系统声音（可选）。"
       },
       "files": [
         "!node_modules/node-screenshots-linux*/**",
@@ -137,7 +139,12 @@
         "!dist/**",
         "!使用说明.txt",
         "!README.md"
-      ]
+      ],
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "gatekeeperAssess": false,
+      "notarize": false
     },
     "electronLanguages": [
       "zh-CN",
@@ -145,5 +152,10 @@
       "en-US"
     ],
     "publish": null
+  },
+  "homepage": "https://github.com/chaichungsang/BillyShot",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chaichungsang/BillyShot.git"
   }
 }

@@ -1,6 +1,6 @@
 #!/bin/bash
 # 1.3.0 演示录屏测试：演示层（光圈 / 波纹 / 聚光灯）、演示模式、摄像头圆窗、控制条、设置页、托盘、快捷键
-cd /home/claude/billyshot
+cd "$(dirname "$0")/.."
 source test/env.sh
 PASS=0; FAIL=0; RESULTS=()
 ok()  { PASS=$((PASS+1)); RESULTS+=("PASS  $1"); echo "PASS  $1"; }
@@ -14,20 +14,20 @@ pix() { convert "$1" -crop 1x1+$2+$3 -depth 8 txt:- 2>/dev/null | tail -1 | grep
 lum() { echo "$1" | awk -F, '{printf "%d", ($1*299+$2*587+$3*114)/1000}'; }
 dist() { awk -v a="$1" -v b="$2" 'BEGIN{split(a,x,",");split(b,y,",");d=0;for(i=1;i<=3;i++){t=x[i]-y[i];d+=(t<0?-t:t)};print d}'; }
 newest(){ ls -t $1 2>/dev/null | head -1; }
-VD=~/Videos/BillyShot
+VD=~/Videos/Hopsnap
 sel() { xdotool mousemove $1 $2 mousedown 1 mousemove $(( ($1+$3)/2 )) $(( ($2+$4)/2 )) mousemove $3 $4 mouseup 1; sleep 0.5; }
 winid() { xwininfo -root -tree | grep "\"$1\"" | head -1 | awk '{print $1}'; }
 
-rm -rf ~/.config/BillyShot; mkdir -p ~/.config/BillyShot $VD; rm -f $VD/*
-cat > ~/.config/BillyShot/settings.json <<J
+rm -rf ~/.config/Hopsnap; mkdir -p ~/.config/Hopsnap $VD; rm -f $VD/*
+cat > ~/.config/Hopsnap/settings.json <<J
 {"general":{"firstRun":false,"language":"zh"},"record":{"countdown":0,"quality":"1080","fps":30,"format":"mp4","regionFormat":"mp4"},"sound":{"record":false,"countdown":false}}
 J
-start_x; EXTRA_ENV="BILLYSHOT_FAKE_MEDIA=1" start_app 6
+start_x; EXTRA_ENV="HOPSNAP_FAKE_MEDIA=1" start_app 6
 cmd '{"cmd":"windows"}' 0.6; W0=$(grep WINDOWS /tmp/app.log | tail -1 | awk '{print $2}')
 
 # ---------------------------------------------------------------- 默认状态
 chk "P1 默认没有演示层、没有摄像头" "$(PJ '[(.layers|length), .cam, .demo, .spot]')" '[0,null,false,false]'
-R=$(jq -c '[.present.halo,.present.clicks,.present.camera,.present.withRecord]' ~/.config/BillyShot/settings.json 2>/dev/null); [ -z "$R" ] && R=$(cat ~/.config/BillyShot/settings.json | head -c 100)
+R=$(jq -c '[.present.halo,.present.clicks,.present.camera,.present.withRecord]' ~/.config/Hopsnap/settings.json 2>/dev/null); [ -z "$R" ] && R=$(cat ~/.config/Hopsnap/settings.json | head -c 100)
 cmd '{"cmd":"status"}' 0.6; HS=$(grep '^STATUS' /tmp/app.log | tail -1 | sed 's/^STATUS //')
 chk "P1b 演示模式 / 聚光灯默认不占用快捷键" "$(echo "$HS" | jq -c '[.hotkeyStatus.presentMode.keyboard,.hotkeyStatus.spotlight.keyboard]')" '["",""]'
 grep -q "NOTIFY 有快捷键被其他软件占用" /tmp/app.log && bad "P1c 启动时不弹快捷键占用通知" "$(grep NOTIFY /tmp/app.log)" || ok "P1c 启动时不弹快捷键占用通知"
@@ -55,7 +55,7 @@ D=$(dist "$A" "$Bp"); RB=$(echo "$Bp" | awk -F, '{print ($1-$3)-0}'); RA=$(echo 
 [ "$D" -gt 20 ] && [ "$RB" -gt "$RA" ] && ok "P5 光圈真的画在屏幕上（像素 $A → $Bp，会被录屏 / 会议共享看到）" || bad "P5 光圈像素" "$A -> $Bp d=$D"
 FAR=$(dist "$(pix /tmp/p_nohalo.png 1300 800)" "$(pix /tmp/p_halo.png 1300 800)"); [ "$FAR" -lt 6 ] && ok "P5b 光圈以外的画面不受影响" || bad "P5b 远处像素被改变" "d=$FAR"
 # 鼠标穿透：鼠标下面的窗口不是演示层
-LID=$(winid "BillyShot Present"); UNDER=$(xdotool getmouselocation | grep -o 'window:[0-9]*' | cut -d: -f2)
+LID=$(winid "Hopsnap Present"); UNDER=$(xdotool getmouselocation | grep -o 'window:[0-9]*' | cut -d: -f2)
 [ -n "$LID" ] && [ "$(printf '0x%x' $UNDER 2>/dev/null)" != "$LID" ] && ok "P6 演示层鼠标穿透（鼠标下是其他窗口）" || bad "P6 鼠标穿透" "layer=$LID under=$UNDER"
 # 点击：真实鼠标点击穿过演示层，点到下面设置窗口的「截图」导航
 cmd '{"cmd":"settings","tab":"general"}' 2.5
@@ -96,7 +96,7 @@ chk "P10b 全部关闭后演示层销毁、钩子和定时器停掉" "$(PJ '[(.l
 cmd '{"cmd":"present","action":"demo","on":true}' 1.2
 xdotool mousemove 800 300; sleep 0.4
 cmd '{"cmd":"captureFull"}' 2; cmd '{"cmd":"clipboard"}' 1
-C=$(pix /tmp/billyshot-clip.png 815 300); A=$(pix /tmp/p_nohalo.png 815 300)
+C=$(pix /tmp/hopsnap-clip.png 815 300); A=$(pix /tmp/p_nohalo.png 815 300)
 [ "$(dist "$C" "$A")" -lt 12 ] && ok "P11 全屏截图里没有光圈 ($C)" || bad "P11 全屏截图里有光圈" "clip=$C nohalo=$A"
 chk "P11b 截完光圈恢复显示" "$(PJ '[.layers[0].visible,.hiddenForCapture]')" '[true,false]'
 cmd '{"cmd":"capture"}' 2
@@ -193,7 +193,7 @@ xdotool key Return; sleep 3
 CS=$(PJ '.cam'); CB=$(echo "$CS" | jq -c '.bounds')
 chk "P23 摄像头圆窗出现并出画" "$(echo "$CS" | jq -c '[.owner,.state,.visible]')" '["record","ok",true]'
 [ "$(echo "$CB" | jq '.x+.width==1201-20 and .y+.height==781-20 and .width==240')" = true ] && ok "P23b 默认在录制区域右下角内侧 ($CB)" || bad "P23b 圆窗位置" "$CB"
-jq -e '.present.camera==true' ~/.config/BillyShot/settings.json >/dev/null && ok "P23c 工具栏的摄像头开关记住了" || bad "P23c 记住摄像头开关" "$(jq -c .present ~/.config/BillyShot/settings.json)"
+jq -e '.present.camera==true' ~/.config/Hopsnap/settings.json >/dev/null && ok "P23c 工具栏的摄像头开关记住了" || bad "P23c 记住摄像头开关" "$(jq -c .present ~/.config/Hopsnap/settings.json)"
 R=$(EV evalCam "JSON.stringify(window.__cam())"); echo "$R" | grep -q '\\"ok\\":true' && echo "$R" | grep -q '\\"live\\":true' && ok "P23d 圆窗里有摄像头画面 ($(echo $R | head -c 60))" || bad "P23d 摄像头画面" "$R"
 cmd '{"cmd":"trayMenu"}' 0.6; TM=$(grep '^TRAYMENU' /tmp/app.log | tail -1 | sed 's/^TRAYMENU //')
 chk "R8 录屏打开的摄像头，托盘「摄像头泡」也显示已勾选" "$(echo "$TM" | jq -c '[.[]|select(.label=="摄像头泡")|.checked]')" '[true]'
@@ -202,7 +202,7 @@ CX=$(echo "$CB" | jq '.x+120'); CY=$(echo "$CB" | jq '.y+60')
 xdotool mousemove $CX $CY mousedown 1 mousemove $((CX-100)) $((CY-80)) mousemove $((CX-200)) $((CY-160)) mousemove $((CX-300)) $((CY-200)) mouseup 1; sleep 0.8
 NB=$(PJ '.cam.bounds'); DX=$(( $(echo "$NB" | jq .x) - $(echo "$CB" | jq .x) )); DY=$(( $(echo "$NB" | jq .y) - $(echo "$CB" | jq .y) ))
 [ "$DX" = -300 ] && [ "$DY" = -200 ] && ok "P24 拖动圆窗 (-300,-200)" || bad "P24 拖动圆窗" "dx=$DX dy=$DY $NB"
-jq -e '.present.cameraPos.cx>0 and .present.cameraPos.cy>0' ~/.config/BillyShot/settings.json >/dev/null && ok "P24b 拖动后位置记住了 ($(jq -c .present.cameraPos ~/.config/BillyShot/settings.json))" || bad "P24b 记住位置" "$(jq -c .present.cameraPos ~/.config/BillyShot/settings.json)"
+jq -e '.present.cameraPos.cx>0 and .present.cameraPos.cy>0' ~/.config/Hopsnap/settings.json >/dev/null && ok "P24b 拖动后位置记住了 ($(jq -c .present.cameraPos ~/.config/Hopsnap/settings.json))" || bad "P24b 记住位置" "$(jq -c .present.cameraPos ~/.config/Hopsnap/settings.json)"
 chk "P24c 还在录制区域内：不提示" "$(PJ '.cam.outside')" 'false'
 CX=$(echo "$NB" | jq '.x+120'); CY=$(echo "$NB" | jq '.y+60')
 xdotool mousemove $CX $CY mousedown 1 mousemove $((CX-200)) $CY mousemove $((CX-500)) $CY mouseup 1; sleep 0.8
@@ -219,7 +219,7 @@ near() { echo "$1" | jq --argjson b "$2" '(.x-$b.x|fabs)<=2 and (.y-$b.y|fabs)<=
 chk "P25b 再打开：圆窗回到记住的位置" "$(PJ '.cam.state')|$(near "$(PJ '.cam.bounds')" "$SAVED")" '"ok"|true'
 # 悬停按钮：大小 / 形状
 R=$(EV evalCam "document.getElementById('bSize').click();1"); sleep 0.6
-chk "P26 圆窗「大小」按钮：中 → 大" "$(PJ '[.cam.bounds.width,.cam.bounds.height]')|$(jq -r .present.cameraSize ~/.config/BillyShot/settings.json)" '[340,340]|l'
+chk "P26 圆窗「大小」按钮：中 → 大" "$(PJ '[.cam.bounds.width,.cam.bounds.height]')|$(jq -r .present.cameraSize ~/.config/Hopsnap/settings.json)" '[340,340]|l'
 R=$(EV evalCam "document.getElementById('bShape').click();1"); sleep 0.6
 chk "P26b 圆窗「形状」按钮：圆形 → 圆角方形 4:3" "$(PJ '[.cam.bounds.width,.cam.bounds.height]')|$(EV evalCam "document.body.classList.contains('rounded')")" '[453,340]|true'
 R=$(EV evalCam "document.getElementById('bShape').click();document.getElementById('bSize').click();1"); sleep 0.6

@@ -47,7 +47,7 @@ function defaults() {
       autoSave: false,         // 完成截图时同时自动保存到文件夹
       imageFormat: 'png',      // png | jpg
       jpgQuality: 92,
-      saveDir: path.join(pics, 'BillyShot'),
+      saveDir: path.join(pics, 'Hopsnap'),
       historyMax: 30,
     },
     record: {
@@ -64,7 +64,7 @@ function defaults() {
       bitrate: 0,             // Mbps，0 = 自动
       gifFps: 12,
       gifMaxWidth: 960,
-      saveDir: path.join(vids, 'BillyShot'),
+      saveDir: path.join(vids, 'Hopsnap'),
     },
     sound: {
       volume: 70,             // 0-100
@@ -77,12 +77,16 @@ function defaults() {
       language: 'auto',       // auto（跟随系统）| zh | en
       launchAtLogin: false,
       firstRun: true,
-      logo: 'portrait',       // 应用图标：portrait（头像版）| purple（紫色玻璃版）
+      logo: 'frog',           // 应用图标：2.0 起只有小青蛙一套（保留字段，便于以后加备选）
       logoMacOk: false,       // macOS：访达里的 .app 图标已成功换成自定义图标（升级后据此补回）
-      theme: 'auto',          // 主题配色：auto（跟随图标）| midnight | gold | graphite | ocean | forest | rose | paper | glass | matrix
+      theme: 'auto',          // 旧版配色字段，2.0 起不再使用（深浅色见 appearance）
       appearance: 'system',   // 深浅色：system（跟随系统）| light | dark
       axAskedVer: '',         // macOS：这个版本已经弹过一次「辅助功能」系统授权框（每个版本最多一次）
       macMoveAsk: true,       // macOS：不在「应用程序」文件夹运行时，启动时建议移过去
+      permAutoOpen: true,     // macOS：启动时没有屏幕录制权限就自动打开权限助手（点过「稍后再说」后为 false）
+      updateCheck: true,      // 每天问一次 GitHub 有没有新版本（只请求版本号，不上传任何内容）
+      updateCheckedAt: 0,     // 上次检查时间
+      updateNotified: '',     // 已经提醒过的版本号（每个新版本只通知一次）
     },
   };
 }

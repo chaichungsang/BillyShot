@@ -12,9 +12,9 @@ function createPresent(deps) {
   const onChange = deps.onChange || (() => {});
   const raiseOthers = deps.raiseOthers || (() => {});
   const settingsChanged = deps.settingsChanged || (() => {});
-  const askAx = deps.askAx || null;   // Mac：请系统把 BillyShot 加进「辅助功能」列表（每个版本最多弹一次）
+  const askAx = deps.askAx || null;   // Mac：请系统把 Hopsnap 加进「辅助功能」列表（每个版本最多弹一次）
   const t = deps.t || ((x) => x); // 界面语言（主进程 i18n）
-  const test = !!process.env.BILLYSHOT_TEST;
+  const test = !!process.env.HOPSNAP_TEST;
   // Windows / macOS：不可聚焦，点不到也不会抢走焦点。Linux（只用于开发测试）上不可聚焦的窗口会脱离窗口管理器、
   // 永远压在最上面，层级没法调整，所以 Linux 上保持可聚焦（仍然鼠标穿透、显示时不激活）
   const noFocus = process.platform !== 'linux';
@@ -105,7 +105,7 @@ function createPresent(deps) {
       log('present layer gone', info);
       if (layers.get(d.id) === win) { layers.delete(d.id); try { win.destroy(); } catch {} setTimeout(update, 500); }
     });
-    if (process.env.BILLYSHOT_DEBUG) win.webContents.on('console-message', (e) => console.log('[present]', e.message));
+    if (process.env.HOPSNAP_DEBUG) win.webContents.on('console-message', (e) => console.log('[present]', e.message));
     return win;
   }
   // 摄像头圆窗、录屏控制条要在演示层上面（聚光灯不能把它们压暗）
@@ -161,7 +161,7 @@ function createPresent(deps) {
     return nsLib;
   }
   function canPatch() {
-    if (process.env.BILLYSHOT_TEST_NOPATCH || !screenshotsLib() || patchBusy >= 2) return false;
+    if (process.env.HOPSNAP_TEST_NOPATCH || !screenshotsLib() || patchBusy >= 2) return false;
     if (isMac) { try { return systemPreferences.getMediaAccessStatus('screen') === 'granted'; } catch { return false; } }
     return true;
   }
@@ -221,7 +221,7 @@ function createPresent(deps) {
         // 没授权：提示一次（系统授权框每个版本最多弹一次，见 main.js askAccessibilityOnce），
         // 然后静默等待；用户打开开关后自动开始显示波纹，不用重开程序
         if (!axWarned) {
-          notify(t('点击波纹需要「辅助功能」权限'), t('系统设置 → 隐私与安全性 → 辅助功能 里勾选 BillyShot。鼠标光圈和聚光灯不受影响。'));
+          notify(t('点击波纹需要「辅助功能」权限'), t('系统设置 → 隐私与安全性 → 辅助功能 里勾选 Hopsnap。鼠标光圈和聚光灯不受影响。'));
           if (askAx) askAx();
         }
         axWarned = true;
@@ -338,7 +338,7 @@ function createPresent(deps) {
     });
     win.on('closed', () => { if (cam === me) { cam = null; settle(me, false); onChange(); } });
     win.webContents.on('render-process-gone', () => { if (cam === me) closeCamera(); });
-    if (process.env.BILLYSHOT_DEBUG) win.webContents.on('console-message', (e) => console.log('[camera]', e.message));
+    if (process.env.HOPSNAP_DEBUG) win.webContents.on('console-message', (e) => console.log('[camera]', e.message));
     return me;
   }
   // 显示圆窗：显示后再设一次位置大小（Windows 不同缩放的屏幕上，隐藏窗口第一次显示时尺寸可能不对）

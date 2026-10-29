@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Hopsnap · 权限</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'">
+<style>
+  @font-face { font-family: "Nunito"; src: url("../../assets/fonts/Nunito.ttf") format("truetype"); font-weight: 200 1000; }
+  :root {
+    --accent: #23A85F; --accent-ink: #15804A; --accent-soft: #E3F6EB; --on-accent: #fff;
+    --bg: #FAF6EC; --panel: #FFFFFF; --line: #ECE5D4; --text: #1F2A24; --sub: #6B746E; --mute: #9AA39D; --hover: #F5F0E4; --field-line: #E2DBCA;
+    --warn: #E08E0B; --warn-soft: #FFF4DF; --ok: #23A85F; --sys-blue: #2F7CF6;
+    --font-head: "Nunito", -apple-system, "SF Pro Text", "PingFang SC", sans-serif;
+    --font-body: -apple-system, "SF Pro Text", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --accent: #2FBF71; --accent-ink: #8AE6B0; --accent-soft: rgba(59,203,124,.14); --on-accent: #0B2A18;
+      --bg: #121B16; --panel: #192420; --line: #27352E; --text: #ECF2EE; --sub: #9DAAA2; --mute: #6C7872; --hover: #202C26; --field-line: #2E3D35;
+      --warn: #F5B641; --warn-soft: rgba(245,165,36,.12); --ok: #4BD689;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { display: flex; flex-direction: column; font: 13.5px/1.55 var(--font-body); color: var(--text); background: var(--bg); -webkit-font-smoothing: antialiased; user-select: none; overflow: hidden; }
+  header { height: 40px; flex: none; -webkit-app-region: drag; }
+  main { flex: 1; padding: 0 28px 16px; overflow: auto; }
+  footer { flex: none; display: flex; justify-content: center; padding: 6px 0 14px; }
+  button, a, summary { -webkit-app-region: no-drag; }
+
+  .hero { display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 14px; }
+  .mascot { width: 84px; height: 84px; }
+  .mascot svg { display: block; width: 100%; height: 100%; }
+  h1 { font: 800 20px/1.25 var(--font-head); margin: 8px 0 4px; letter-spacing: -.01em; }
+  .hero p { margin: 0; color: var(--sub); max-width: 330px; }
+
+  .step { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 12px 14px 14px; margin-bottom: 10px; }
+  .step-h { display: flex; align-items: center; gap: 10px; }
+  .num { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-ink); font: 800 12.5px/24px var(--font-head); text-align: center; flex: none; }
+  .step-h b { font-size: 14.5px; }
+  .tag { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; background: var(--hover); color: var(--sub); }
+  .step-h .st { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--sub); }
+  .step-h .st i { width: 8px; height: 8px; border-radius: 50%; background: var(--mute); }
+  .step-h .st em { font-style: normal; text-transform: capitalize; }
+  .step[data-state="ok"] .st i { background: var(--ok); } .step[data-state="ok"] .st { color: var(--ok); }
+  .step[data-state="relaunch"] .st i { background: var(--ok); }
+  .step[data-state="ok"] .num { background: var(--accent); color: var(--on-accent); }
+  .step .body { margin-top: 10px; }
+  .step p { margin: 0; color: var(--sub); }
+  .cap { font-size: 12.5px; }
+
+  button { font: 600 13px/1 var(--font-body); height: 36px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--field-line); background: var(--panel); color: var(--text); cursor: pointer; }
+  button:hover { background: var(--hover); border-color: var(--mute); }
+  button:active { transform: scale(.98); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  button.primary:hover { background: var(--accent-ink); border-color: var(--accent-ink); color: #fff; }
+  button.lg { width: 100%; height: 42px; font-size: 14px; font-weight: 700; }
+  a { color: var(--accent-ink); text-decoration: none; cursor: pointer; font-weight: 600; }
+  a:hover { text-decoration: underline; }
+
+  /* 模拟系统设置里的那一行：找到 Hopsnap，把开关打开 */
+  .mock { margin: 10px 0 6px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--bg); }
+  .mock-row { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; background: var(--panel); }
+  .mock-row.dim { opacity: .45; }
+  .mock-row + .mock-row { border-top: 1px solid var(--line); }
+  .mock-row img { width: 24px; height: 24px; border-radius: 6px; }
+  .mock-row .fake { width: 24px; height: 24px; border-radius: 6px; background: var(--line); }
+  .mock-row .bar { height: 10px; width: 90px; border-radius: 5px; background: var(--line); }
+  .mock-row b { font-size: 13px; font-weight: 600; }
+  .mock-sw { margin-left: auto; width: 38px; height: 22px; border-radius: 11px; background: var(--field-line); position: relative; animation: sw 3s ease-in-out infinite; }
+  .mock-sw i { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); animation: knob 3s ease-in-out infinite; }
+  .mock-sw.static { animation: none; background: var(--field-line); } .mock-sw.static i { animation: none; }
+  @keyframes sw { 0%, 35% { background: var(--field-line); } 50%, 85% { background: var(--sys-blue); } 100% { background: var(--field-line); } }
+  @keyframes knob { 0%, 35% { left: 2px; } 50%, 85% { left: 18px; } 100% { left: 2px; } }
+  .hand { position: absolute; right: -4px; bottom: -14px; width: 18px; height: 18px; }
+
+  .wait { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12.5px; flex-wrap: wrap; }
+  .wait .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); animation: pulse 1.2s ease-in-out infinite; flex: none; }
+  @keyframes pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+
+  /* 第 1 步的三种状态：off（等开关）/ relaunch（开了，重开）/ ok */
+  .step[data-state="off"] .on-relaunch, .step[data-state="off"] .on-ok { display: none; }
+  .step[data-state="relaunch"] .on-off, .step[data-state="relaunch"] .on-ok { display: none; }
+  .step[data-state="ok"] .on-off, .step[data-state="ok"] .on-relaunch { display: none; }
+  .ok-row { display: flex; align-items: center; gap: 8px; color: var(--ok); font-weight: 600; }
+  .ok-row svg { width: 18px; height: 18px; }
+  .relaunch-row { display: flex; align-items: center; gap: 12px; }
+  .relaunch-row p { flex: 1; color: var(--text); }
+
+  /* 第 2 步：need（用了鼠标快捷键 / 点击波纹，建议开）/ opt（没用到）/ ok */
+  #stepAx[data-state="opt"] .body { display: none; }
+  #stepAx[data-state="opt"] { padding-bottom: 14px; }
+  #stepAx[data-state="ok"] .body { display: none; }
+  #stepAx .body { display: flex; align-items: center; gap: 12px; }
+  #stepAx .body p { flex: 1; }
+  #stepAx .tag.need { background: var(--warn-soft); color: var(--warn); }
+
+  details.more { margin-top: 2px; color: var(--sub); font-size: 12.5px; }
+  details.more summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 6px; color: var(--sub); font-weight: 600; }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more summary::before { content: ""; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform .15s; margin-right: 2px; }
+  details.more[open] summary::before { transform: rotate(45deg); }
+  details.more .inner { margin-top: 8px; padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+  details.more .inner p { margin: 0 0 8px; }
+  details.more .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  details.more button { height: 32px; font-size: 12.5px; padding: 0 14px; }
+  .note { color: var(--accent-ink); font-weight: 600; min-height: 1.2em; margin-top: 6px; }
+
+  body[data-mode="ok"] .step, body[data-mode="ok"] details.more { display: none; }
+  body[data-mode="ok"] .hero { margin-top: 24px; }
+  body:not([data-mode="ok"]) #closeBtn { display: none; }
+  body[data-mode="ok"] #later { display: none; }
+  .kbd { display: inline-block; font: 700 12px/20px var(--font-head); padding: 0 8px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink); margin: 0 2px; }
+</style>
+</head>
+<body data-mode="off">
+<header></header>
+<main><div id="content">
+  <div class="hero">
+    <span class="mascot" id="frog"></span>
+    <h1 id="title">Hopsnap 需要看到屏幕才能截图</h1>
+    <p id="sub">只需设置一次：在系统设置里打开开关，再重新打开 Hopsnap 就好。</p>
+  </div>
+
+  <section class="step" id="stepScreen" data-state="off">
+    <div class="step-h"><span class="num">1</span><b>屏幕录制</b><span class="tag">必需</span><span class="st"><i></i><em id="stScreen">未允许</em></span></div>
+    <div class="body on-off">
+      <button class="primary lg" id="openScreen">打开系统设置</button>
+      <div class="mock">
+        <div class="mock-row dim"><span class="fake"></span><span class="bar"></span><span class="mock-sw static"><i></i></span></div>
+        <div class="mock-row"><img src="../../assets/logos/frog/icon256.png" alt=""><b class="brand-en">Hopsnap</b><span class="mock-sw"><i></i></span></div>
+        <div class="mock-row dim"><span class="fake"></span><span class="bar" style="width:60px"></span><span class="mock-sw static"><i></i></span></div>
+      </div>
+      <p class="cap brand-en" id="capFind"></p>
+      <div class="wait"><i class="dot"></i><span>等你打开开关…</span><a id="already">已经打开了？重新打开 Hopsnap</a></div>
+    </div>
+    <div class="body on-relaunch relaunch-row">
+      <p>开关打开了！重新打开 Hopsnap 就能用</p>
+      <button class="primary" id="relaunch">重新打开 Hopsnap</button>
+    </div>
+    <div class="body on-ok ok-row"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="currentColor" opacity=".15"/><path d="M6 10.5l2.6 2.5L14 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>已允许，可以截图和录屏了</span></div>
+  </section>
+
+  <section class="step" id="stepAx" data-state="opt">
+    <div class="step-h"><span class="num">2</span><b>辅助功能</b><span class="tag" id="axTag">可选</span><span class="st"><i></i><em id="stAx">未允许</em></span></div>
+    <div class="body">
+      <p class="cap">鼠标侧键截图、点击波纹才需要；开了马上生效</p>
+      <button id="openAx">打开设置</button>
+    </div>
+  </section>
+
+  <details class="more">
+    <summary>还是不行？</summary>
+    <div class="inner">
+      <p>开关开着却一直提示，多半是旧版本留下的授权记录。「修复权限」会清掉它，然后在系统设置里再打开一次开关。</p>
+      <div class="btns"><button id="repair">修复权限</button><button id="diag">复制诊断信息</button></div>
+      <p class="cap brand-en" id="capPlus"></p>
+      <div class="note" id="note"></div>
+    </div>
+  </details>
+</div></main>
+<footer><a id="later">稍后再说</a><button id="closeBtn" class="primary">完成</button></footer>
+<script src="frog.js"></script>
+<script src="../i18n.js"></script>
+<script src="perm.js"></script>
+</body>
+</html>

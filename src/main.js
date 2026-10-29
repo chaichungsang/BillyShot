@@ -1,4 +1,4 @@
-// BillyShot 主进程：托盘、快捷键、截图覆盖层、贴图、录屏
+// Hopsnap 主进程：托盘、快捷键、截图覆盖层、贴图、录屏
 const {
   app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, dialog, shell,
   screen, desktopCapturer, session, Notification, systemPreferences, nativeTheme, globalShortcut,
@@ -10,6 +10,7 @@ const hotkeys = require('./hotkeys');
 const { captureDisplay, cursorDisplay } = require('./capture');
 const clip = require('./clip');
 const i18n = require('./i18n');
+const update = require('./update');
 const t = i18n.t;
 const { createPresent } = require('./present');
 const { finalizeMp4 } = require('./mp4fix');
@@ -25,17 +26,17 @@ app.commandLine.appendSwitch('enable-features', [
   'MacLoopbackAudioForScreenShare', 'MacSckSystemAudioLoopbackOverride', 'PulseaudioLoopbackForScreenShare',
 ].join(','));
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
-if (process.env.BILLYSHOT_TEST) app.commandLine.appendSwitch('no-sandbox');
+if (process.env.HOPSNAP_TEST) app.commandLine.appendSwitch('no-sandbox');
 // 自动化测试：用 Chromium 的虚拟摄像头 / 麦克风（只在未打包的开发环境生效）
-if (process.env.BILLYSHOT_TEST && process.env.BILLYSHOT_FAKE_MEDIA && !app.isPackaged) {
+if (process.env.HOPSNAP_TEST && process.env.HOPSNAP_FAKE_MEDIA && !app.isPackaged) {
   app.commandLine.appendSwitch('use-fake-device-for-media-stream');
   app.commandLine.appendSwitch('use-fake-ui-for-media-stream');
 }
-// 自动化测试：云端测试机没有显卡，用软件 WebGL 跑水波纹（BILLYSHOT_TEST_NOGL=1 时不开，用来测「没有 WebGL 时退回单圈」）
-if (process.env.BILLYSHOT_TEST && !process.env.BILLYSHOT_TEST_NOGL && !app.isPackaged) app.commandLine.appendSwitch('enable-unsafe-swiftshader');
+// 自动化测试：云端测试机没有显卡，用软件 WebGL 跑水波纹（HOPSNAP_TEST_NOGL=1 时不开，用来测「没有 WebGL 时退回单圈」）
+if (process.env.HOPSNAP_TEST && !process.env.HOPSNAP_TEST_NOGL && !app.isPackaged) app.commandLine.appendSwitch('enable-unsafe-swiftshader');
 
 if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }
-if (isWin) app.setAppUserModelId('com.billyshot.app');
+if (isWin) app.setAppUserModelId('com.hopsnap.app');
 
 let settings;
 let tray = null;
@@ -55,9 +56,9 @@ const liveNotifications = new Set();
 let logFile = null;
 function log(...args) {
   const line = `[${new Date().toISOString()}] ${args.map((a) => (a instanceof Error ? (a.stack || a.message) : typeof a === 'string' ? a : JSON.stringify(a))).join(' ')}\n`;
-  if (process.env.BILLYSHOT_DEBUG) process.stdout.write(line);
+  if (process.env.HOPSNAP_DEBUG) process.stdout.write(line);
   try {
-    if (!logFile) { const dir = path.join(app.getPath('userData'), 'logs'); fs.mkdirSync(dir, { recursive: true }); logFile = path.join(dir, 'billyshot.log'); }
+    if (!logFile) { const dir = path.join(app.getPath('userData'), 'logs'); fs.mkdirSync(dir, { recursive: true }); logFile = path.join(dir, 'hopsnap.log'); }
     if (fs.existsSync(logFile) && fs.statSync(logFile).size > 2 * 1024 * 1024) fs.renameSync(logFile, logFile + '.old');
     fs.appendFileSync(logFile, line);
   } catch {}
@@ -70,12 +71,12 @@ for (const k of ['error', 'warn']) {
 let lastErrBox = 0;
 function reportError(title, err) {
   log('ERROR', title, err);
-  if (process.env.BILLYSHOT_TEST) { console.log('REPORTED_ERROR', title, (err && err.message) || err); return; }
+  if (process.env.HOPSNAP_TEST) { console.log('REPORTED_ERROR', title, (err && err.message) || err); return; }
   if (Date.now() - lastErrBox < 3000) return;
   lastErrBox = Date.now();
   try { dialog.showErrorBox(title, `${(err && err.message) || err}\n\n${t('（详细信息已记录到日志：设置 → 关于 → 打开日志）')}`); } catch {}
 }
-process.on('uncaughtException', (err) => reportError(t('BillyShot 遇到问题'), err));
+process.on('uncaughtException', (err) => reportError(t('Hopsnap 遇到问题'), err));
 process.on('unhandledRejection', (err) => log('unhandledRejection', err));
 
 // ---------------------------------------------------------------- 工具函数
@@ -114,11 +115,11 @@ async function renameRetry(from, to) {
 // 免安装版（zip）没有开始菜单快捷方式，Windows 不会显示系统通知 → 改用托盘气泡
 function isPortableWin() {
   if (!isWin || !app.isPackaged) return false;
-  try { return !fs.existsSync(path.join(path.dirname(process.execPath), 'Uninstall BillyShot.exe')); } catch { return false; }
+  try { return !fs.existsSync(path.join(path.dirname(process.execPath), 'Uninstall Hopsnap.exe')); } catch { return false; }
 }
 function notify(title, body, onClick) {
   log('notify', title, body || '');
-  if (process.env.BILLYSHOT_TEST) console.log('NOTIFY', title, '|', body || '');
+  if (process.env.HOPSNAP_TEST) console.log('NOTIFY', title, '|', body || '');
   try {
     if (isPortableWin() && tray && !tray.isDestroyed()) {
       tray.displayBalloon({ title, content: body || ' ', iconType: 'info', noSound: !((settings && settings.get().sound) || {}).notify });
@@ -152,8 +153,8 @@ function imageBuffer(pngBuf) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // 带重试的写文件：Windows 上杀毒软件/索引服务可能短暂锁住文件；
-// 被「受控文件夹访问」拦截时，可回退到用户主目录下的 BillyShot 文件夹
-function fallbackDir() { return ensureDir(path.join(app.getPath('home'), 'BillyShot')); }
+// 被「受控文件夹访问」拦截时，可回退到用户主目录下的 Hopsnap 文件夹
+function fallbackDir() { return ensureDir(path.join(app.getPath('home'), 'Hopsnap')); }
 async function safeWrite(file, buf, allowFallback = true) {
   let lastErr;
   for (let i = 0; i < 5; i++) {
@@ -175,7 +176,7 @@ async function safeClip(png) {
 function writableDir(dir) {
   try {
     ensureDir(dir);
-    const probe = path.join(dir, `.billyshot-${process.pid}-${Date.now()}.tmp`);
+    const probe = path.join(dir, `.hopsnap-${process.pid}-${Date.now()}.tmp`);
     fs.writeFileSync(probe, 'x'); fs.unlinkSync(probe);
     return true;
   } catch (e) { log('dir not writable', dir, e.message); return false; }
@@ -210,7 +211,7 @@ function autoSaveShot(png) {
   setTimeout(async () => {
     try {
       const { buf, ext } = imageBuffer(png);
-      const saved = await safeWrite(uniquePath(ensureDir(s.saveDir), `BillyShot_${stamp()}`, ext), buf, true);
+      const saved = await safeWrite(uniquePath(ensureDir(s.saveDir), `Hopsnap_${stamp()}`, ext), buf, true);
       if (!saved.ok) { log('autosave failed', saved.error); notify(t('截图自动保存失败'), saved.error || ''); }
       else if (saved.fallback) notify(t('截图已改存到备用文件夹'), t('原文件夹无法写入，已保存到 {file}', { file: saved.file }));
     } catch (e) { log('autosave error', e); }
@@ -254,7 +255,7 @@ function historyPng(id) { return fs.readFileSync(path.join(historyDir(), `${Stri
 // ---------------------------------------------------------------- 界面语言
 // general.language: 'auto'（跟随系统）| 'zh' | 'en'
 function systemLangs() {
-  if (process.env.BILLYSHOT_SYSLANG) return [process.env.BILLYSHOT_SYSLANG]; // 测试用
+  if (process.env.HOPSNAP_SYSLANG) return [process.env.HOPSNAP_SYSLANG]; // 测试用
   try { const l = app.getPreferredSystemLanguages(); if (l && l.length) return l; } catch {}
   try { return [app.getLocale()]; } catch { return []; }
 }
@@ -278,9 +279,10 @@ function refreshLanguageUi() {
     setTimeout(wait, 500);
   }
   if (settingsWin && !settingsWin.isDestroyed()) {
-    settingsWin.setTitle(t('BillyShot 设置'));
+    settingsWin.setTitle(t('Hopsnap 设置'));
     settingsWin.loadFile(R('renderer', 'settings.html'), { query: themeQuery('general') });
   }
+  if (permWin && !permWin.isDestroyed()) { permWin.setTitle(t('Hopsnap · 权限')); permWin.loadFile(R('renderer', 'perm.html')); }
 }
 function setLanguage(v) {
   const before = i18n.getLang();
@@ -292,15 +294,14 @@ function setLanguage(v) {
 // ---------------------------------------------------------------- 托盘
 function trayIcon() {
   const img = nativeImage.createFromPath(logoFile(isMac ? 'trayMac.png' : 'tray.png'));
-  if (isMac && logoName() === 'purple') img.setTemplateImage(true); // 紫色版在菜单栏用黑白模板图标，头像版用彩色圆形头像
+  if (isMac) img.setTemplateImage(true); // 菜单栏用黑白模板图（小青蛙剪影），系统按深浅色自动反色
   return img;
 }
 
-// ---------------------------------------------------------------- 应用图标（头像版 / 紫色玻璃版，设置 → 常规 可切换）
-// 打包进 exe / .app 的是头像版；选紫色版时在运行中替换：托盘、窗口、通知、程序坞，
-// Windows 的桌面 / 开始菜单 / 任务栏快捷方式，以及 macOS 访达里的 .app 图标。
-const LOGOS = ['portrait', 'purple'];
-const BUILTIN_LOGO = 'portrait';
+// ---------------------------------------------------------------- 应用图标（2.0 起只有一套：小青蛙，assets/logos/frog）
+// 下面的快捷方式 / 访达图标逻辑保留，以后要加备选图标时直接往 LOGOS 里加目录名即可。
+const LOGOS = ['frog'];
+const BUILTIN_LOGO = 'frog';
 function logoName() { const l = settings && settings.get().general.logo; return LOGOS.includes(l) ? l : BUILTIN_LOGO; }
 function logoFile(f, name = logoName()) { return path.join(ASSETS, 'logos', name, f); }
 // 资源管理器 / 访达读不到 asar 里的文件 → 用 asarUnpack 解出来的副本
@@ -308,10 +309,10 @@ function unpackedPath(p) { return p.replace(/app\.asar([\\/])/, 'app.asar.unpack
 
 function winShortcutPaths() {
   const appData = app.getPath('appData');
-  const list = [path.join(app.getPath('desktop'), 'BillyShot.lnk'),
-    path.join(appData, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'BillyShot.lnk'),
-    path.join(appData, 'Microsoft', 'Internet Explorer', 'Quick Launch', 'User Pinned', 'TaskBar', 'BillyShot.lnk')];
-  try { const pub = path.join(process.env.PUBLIC || 'C:\\Users\\Public', 'Desktop', 'BillyShot.lnk'); list.push(pub); } catch {}
+  const list = [path.join(app.getPath('desktop'), 'Hopsnap.lnk'),
+    path.join(appData, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Hopsnap.lnk'),
+    path.join(appData, 'Microsoft', 'Internet Explorer', 'Quick Launch', 'User Pinned', 'TaskBar', 'Hopsnap.lnk')];
+  try { const pub = path.join(process.env.PUBLIC || 'C:\\Users\\Public', 'Desktop', 'Hopsnap.lnk'); list.push(pub); } catch {}
   return list;
 }
 // Windows：把指向本程序的快捷方式图标改成所选版本（头像版 = exe 自带图标）。已经一致的不动。
@@ -362,7 +363,7 @@ async function applyLogo({ system = false } = {}) {
   try { if (tray && !tray.isDestroyed()) tray.setImage(trayIcon()); } catch (e) { log('tray icon', e.message); }
   try { if (settingsWin && !settingsWin.isDestroyed() && !isMac) settingsWin.setIcon(logoFile('icon.png')); } catch {}
   try { if (isMac && app.dock) app.dock.setIcon(nativeImage.createFromPath(logoFile('mac.png'))); } catch {}
-  if (process.env.BILLYSHOT_TEST) console.log('LOGO', name);
+  if (process.env.HOPSNAP_TEST) console.log('LOGO', name);
   const out = { logo: name, shortcuts: null, finder: null };
   if (!system) return out;
   if (isWin) out.shortcuts = applyWinShortcutIcons(name);
@@ -373,17 +374,14 @@ async function applyLogo({ system = false } = {}) {
   return out;
 }
 
-// ---------------------------------------------------------------- 主题配色（设置 → 常规 → 主题配色）
-// general.theme: 'auto'（跟随图标：头像版 → 黑金，紫色版 → 午夜紫）| 下面任意一个；general.appearance: system | light | dark
-const THEMES = ['midnight', 'gold', 'graphite', 'ocean', 'forest', 'rose', 'paper', 'glass', 'matrix'];
-// 设置窗口的底色（加载前 / 标题栏按钮区），[浅色, 深色]；要和 themes.css 里的 --bg 一致
-const THEME_BG = {
-  midnight: ['#f6f6f8', '#131317'], gold: ['#f7f5f1', '#121110'], graphite: ['#f4f4f5', '#101012'], ocean: ['#f4f7fb', '#0f141b'],
-  forest: ['#f4f8f6', '#0f1412'], rose: ['#fbf6f7', '#151012'], paper: ['#f6f6f8', '#1b1b21'], glass: ['#eef0f7', '#0d0f17'], matrix: ['#020804', '#020804'],
-};
-function themeSetting() { const v = settings && settings.get().general.theme; return THEMES.includes(v) ? v : 'auto'; }
-function themeName() { const v = themeSetting(); return v !== 'auto' ? v : (logoName() === 'purple' ? 'midnight' : 'gold'); }
-function themeDark(theme = themeName()) { return theme === 'matrix' || nativeTheme.shouldUseDarkColors; }
+// ---------------------------------------------------------------- 主题（2.0 起只有一套「呱咔」配色，深浅色由 general.appearance 决定：system | light | dark）
+// 旧版的 general.theme（9 套配色）不再使用；下面的 glass 重建逻辑保留但不会再触发。
+const THEMES = ['frog'];
+// 设置窗口的底色（加载前 / 标题栏按钮区），[浅色, 深色]；要和 settings.css 里的 --bg 一致
+const THEME_BG = { frog: ['#FAF6EC', '#121B16'] };
+function themeSetting() { return 'frog'; }
+function themeName() { return 'frog'; }
+function themeDark() { return nativeTheme.shouldUseDarkColors; }
 function themeBg(theme = themeName()) { return THEME_BG[theme][themeDark(theme) ? 1 : 0]; }
 // 系统毛玻璃：Windows 11 22H2 起（亚克力）、macOS（vibrancy）；其他系统用 CSS 模拟
 function canMaterial() { return isMac || (isWin && winBuild >= 22621); }
@@ -399,15 +397,15 @@ function styleSettingsWin(win) {
     if (isWin && winBuild >= 22621) win.setBackgroundMaterial(glass ? 'acrylic' : 'none');
     if (isMac) win.setVibrancy(glass ? 'under-window' : null);
     win.setBackgroundColor(glass ? '#00000000' : themeBg(theme));
-    if (!isMac && win.setTitleBarOverlay) win.setTitleBarOverlay({ color: glass ? '#00000000' : themeBg(theme), symbolColor: themeDark(theme) ? '#c9c9d4' : '#55555f', height: 36 });
+    if (!isMac && win.setTitleBarOverlay) win.setTitleBarOverlay({ color: glass ? '#00000000' : themeBg(theme), symbolColor: themeDark(theme) ? '#B9C6BE' : '#5C6660', height: 36 });
   } catch (e) { log('theme window', e.message); }
   return glass;
 }
 // Mac 的毛玻璃窗口必须在创建时就是透明的。1.3.3 是先建不透明窗口、换到「透明玻璃」时再改成透明：
 // macOS 上这样改，窗口底层仍按不透明处理，透明的地方每一帧都不清空 → 滚动后内容重影、上一个主题的颜色残留。
 // 所以在 Mac 上切入 / 切出「透明玻璃」时重建设置窗口（位置、大小、当前页、滚动位置不变）。
-// BILLYSHOT_TEST_MACGLASS：只给 Linux 自动化测试用，走同样的重建流程（Linux 没有系统毛玻璃）。
-const glassRebuild = () => isMac || !!(process.env.BILLYSHOT_TEST && process.env.BILLYSHOT_TEST_MACGLASS);
+// HOPSNAP_TEST_MACGLASS：只给 Linux 自动化测试用，走同样的重建流程（Linux 没有系统毛玻璃）。
+const glassRebuild = () => isMac || !!(process.env.HOPSNAP_TEST && process.env.HOPSNAP_TEST_MACGLASS);
 const glassWinWanted = () => glassRebuild() && themeName() === 'glass';
 const settingsNeedsRebuild = (win) => glassRebuild() && !!win.glassBuilt !== glassWinWanted();
 let settingsRebuild = null;
@@ -444,7 +442,7 @@ function applyTheme() {
     }
   }
   if (overlayWin && !overlayWin.isDestroyed()) overlayWin.webContents.send('overlay:theme', theme);
-  if (process.env.BILLYSHOT_TEST) console.log('THEME', theme, nativeTheme.themeSource);
+  if (process.env.HOPSNAP_TEST) console.log('THEME', theme, nativeTheme.themeSource);
   return theme;
 }
 function accelLabel(action) {
@@ -478,6 +476,8 @@ function buildTrayMenu() {
   if (!tray) return;
   const recording = !!rec;
   const tpl = [
+    // Mac 还没屏幕录制权限：菜单第一行就是入口，不用等用户按快捷键才发现截不了
+    ...(isMac && !macScreenOk() ? [{ label: t('⚠️ 先开一下屏幕录制权限…'), click: () => openPermWindow() }, { type: 'separator' }] : []),
     { label: `${t('截图')}\t${accelLabel('capture')}`, click: () => startCapture('shot') },
     recording
       ? { label: t('■ 停止录制'), click: () => stopRecording() }
@@ -486,10 +486,10 @@ function buildTrayMenu() {
     {
       label: t('演示'),
       submenu: [
-        { label: `${t('光晕')}\t${accelLabel('presentMode')}`, type: 'checkbox', checked: presentHaloOn(), click: (m) => setPresentHalo(m.checked) },
-        { label: t('水波纹'), type: 'checkbox', checked: presentClicksOn(), click: (m) => setPresentClicks(m.checked) },
+        { label: `${t('鼠标光圈')}\t${accelLabel('presentMode')}`, type: 'checkbox', checked: presentHaloOn(), click: (m) => setPresentHalo(m.checked) },
+        { label: t('点击波纹'), type: 'checkbox', checked: presentClicksOn(), click: (m) => setPresentClicks(m.checked) },
         { label: `${t('聚光灯')}\t${accelLabel('spotlight')}`, type: 'checkbox', checked: !!(present && present.isSpot()), click: (m) => present && present.setSpot(m.checked) },
-        { label: t('摄像头泡'), type: 'checkbox', checked: !!(present && present.camOn()), click: (m) => toggleCamera(m.checked) },
+        { label: t('摄像头'), type: 'checkbox', checked: !!(present && present.camOn()), click: (m) => toggleCamera(m.checked) },
       ],
     },
     {
@@ -503,12 +503,14 @@ function buildTrayMenu() {
       ],
     },
     { label: t('设置…'), click: () => openSettings('general') },
+    // 有新版本：菜单里多一行，点了去下载页；不弹窗打扰
+    ...(updateInfo && updateInfo.hasUpdate ? [{ label: t('有新版本 {v}，去下载…', { v: updateInfo.latest }), click: () => shell.openExternal(updateInfo.url) }] : []),
     { label: t('退出'), click: () => { app.isQuitting = true; app.quit(); } },
   ];
   lastTrayTpl = tpl;
   trayMenu = Menu.buildFromTemplate(tpl);
   tray.setContextMenu(trayMenu);
-  tray.setToolTip(recording ? t('BillyShot — 录制中') : t('BillyShot 截图录屏'));
+  tray.setToolTip(recording ? t('Hopsnap — 录制中') : t('Hopsnap 截图录屏'));
 }
 function createTray() {
   tray = new Tray(trayIcon());
@@ -543,7 +545,7 @@ function applyHotkeys() {
   });
   if (hadEsc && overlayBusy) holdEsc();
   if (hadKeys && overlayBusy) holdKeys();
-  // 设了鼠标快捷键但 Mac 还没授权「辅助功能」：让系统把 BillyShot 加进列表（每个版本最多弹一次）
+  // 设了鼠标快捷键但 Mac 还没授权「辅助功能」：让系统把 Hopsnap 加进列表（每个版本最多弹一次）
   if (Object.values(hotkeyStatus).some((st) => st && st.mouse === 'needPermission')) askAccessibilityOnce();
   if (tray) buildTrayMenu();
   return hotkeyStatus;
@@ -554,7 +556,7 @@ const HOTKEY_NAMES = { capture: '截图', captureFull: '全屏截图', recordReg
 const CAPTURE_ALTS = isMac ? ['Control+Shift+A', 'Command+Shift+X', 'F1'] : ['Ctrl+Alt+A', 'Ctrl+Shift+A', 'Alt+Q', 'F1'];
 function failedHotkeys() { return Object.keys(hotkeyStatus).filter((a) => (hotkeyStatus[a] || {}).keyboard === 'fail'); }
 function checkHotkeyConflicts(attempt = 0) {
-  const delays = process.env.BILLYSHOT_TEST ? [1500, 3000] : [3000, 10000];
+  const delays = process.env.HOPSNAP_TEST ? [1500, 3000] : [3000, 10000];
   if (!failedHotkeys().length) return;
   if (attempt < delays.length) {
     // 开机时别的软件可能只是先抢到、随后释放，先等一会儿重试
@@ -620,7 +622,7 @@ function createOverlay(d = cursorDisplay()) {
     holdEsc(); holdKeys();
     setTimeout(() => { if (overlayWin && overlayBusy && !overlayWin.inDialog && overlayWin.isVisible()) { overlayWin.focus(); overlayWin.webContents.focus(); } }, 60);
   });
-  if (process.env.BILLYSHOT_DEBUG) overlayWin.webContents.on('console-message', (e) => console.log('[overlay]', e.message));
+  if (process.env.HOPSNAP_DEBUG) overlayWin.webContents.on('console-message', (e) => console.log('[overlay]', e.message));
 }
 
 // 截图期间临时注册 Esc，保证就算覆盖层没拿到焦点也能退出
@@ -650,9 +652,9 @@ function releaseKeys() {
 
 // ---------------------------------------------------------------- macOS 权限（1.3.5）
 // 屏幕录制（截图、全屏截图、录屏共用）。注意两点：
-//  · 在系统设置里打开开关后，正在运行的 BillyShot 仍按「未授权」处理，必须真正退出再打开（只关窗口不算，它还在菜单栏里）。
-//    所以提示框里直接给「重新打开 BillyShot」按钮。
-//  · 开关开着却一直不认：多半是系统里留着旧版本（不同签名）的授权记录。「修复权限」用 tccutil 清掉 BillyShot 的旧记录，
+//  · 在系统设置里打开开关后，正在运行的 Hopsnap 仍按「未授权」处理，必须真正退出再打开（只关窗口不算，它还在菜单栏里）。
+//    所以提示框里直接给「重新打开 Hopsnap」按钮。
+//  · 开关开着却一直不认：多半是系统里留着旧版本（不同签名）的授权记录。「修复权限」用 tccutil 清掉 Hopsnap 的旧记录，
 //    再重新请求一次，用户重新打开开关即可。
 const MAC_PANES = {
   screen: 'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture',
@@ -661,7 +663,41 @@ const MAC_PANES = {
 };
 const macScreenOk = () => { try { return systemPreferences.getMediaAccessStatus('screen') === 'granted'; } catch { return false; } };
 let screenRequested = false;
-// 让系统把 BillyShot 加进「屏幕与系统录音」列表（没有记录时系统会弹一次自己的授权框；有记录时什么都不弹）
+let screenAtLaunch = null;   // 启动时屏幕录制是否已授权：中途才打开的开关要重开 Hopsnap 才生效
+let permWin = null;
+// 权限助手窗口：代替原来 4 个按钮的系统对话框。一步一步带用户开开关，每秒检查状态，开了自动进入下一步
+function openPermWindow() {
+  if (!isMac) return null;
+  if (permWin && !permWin.isDestroyed()) { permWin.show(); permWin.focus(); return permWin; }
+  const W = 440, H = 660;
+  const wa = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
+  const win = permWin = new BrowserWindow({
+    width: W, height: H, x: Math.round(wa.x + wa.width - W - 24), y: Math.round(wa.y + (wa.height - H) / 2),   // 靠右，给中间的系统设置让位
+    resizable: false, minimizable: false, maximizable: false, fullscreenable: false, show: false, alwaysOnTop: true,
+    title: t('Hopsnap · 权限'), backgroundColor: themeBg(), titleBarStyle: 'hidden', trafficLightPosition: { x: 16, y: 16 },
+    webPreferences: { preload: R('preload.js'), spellcheck: false },
+  });
+  win.setAlwaysOnTop(true, 'floating');   // 浮在系统设置上面，用户切到系统设置也看得到
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  win.setMenu(null);
+  win.loadFile(R('renderer', 'perm.html'));
+  win.once('ready-to-show', () => { if (!win.isDestroyed()) win.show(); });
+  win.on('closed', () => { if (permWin === win) permWin = null; });
+  return win;
+}
+function closePermWindow() { if (permWin && !permWin.isDestroyed()) permWin.close(); }
+// 页面按当前步骤报内容高度，窗口跟着收放（「全部就绪」只有一句话，不该留一大片空白）
+ipcMain.on('perm:height', (e, h) => {
+  if (!permWin || permWin.isDestroyed() || e.sender !== permWin.webContents) return;
+  const [w, cur] = permWin.getSize();
+  const wa = screen.getDisplayMatching(permWin.getBounds()).workArea;
+  const want = Math.max(360, Math.min(wa.height - 40, 820, Math.round(h)));
+  if (Math.abs(cur - want) > 4) {
+    const [x, y] = permWin.getPosition();
+    permWin.setBounds({ x, y: Math.max(wa.y + 20, Math.min(y, wa.y + wa.height - want - 20)), width: w, height: want }, true);   // 变高时别伸出屏幕底部
+  }
+});
+// 让系统把 Hopsnap 加进「屏幕与系统录音」列表（没有记录时系统会弹一次自己的授权框；有记录时什么都不弹）
 async function requestScreenAccess() {
   screenRequested = true;
   try { await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1, height: 1 } }); } catch {}
@@ -675,13 +711,17 @@ function askAccessibilityOnce() {
   settings.set({ general: { axAskedVer: v } });
   try { systemPreferences.isTrustedAccessibilityClient(true); } catch {}
 }
+let permOverride = null;   // 仅测试钩子用
 function macPermState() {
   if (!isMac) return { mac: false };
   const st = (k) => { try { return systemPreferences.getMediaAccessStatus(k); } catch { return 'unknown'; } };
+  if (permOverride) return { mac: true, screen: 'denied', accessibility: 'denied', camera: 'not-determined', microphone: 'not-determined', axNeeded: false, needRelaunch: false, ...permOverride };
   return {
     mac: true, screen: st('screen'), accessibility: hotkeys.axTrusted() ? 'granted' : 'denied', camera: st('camera'), microphone: st('microphone'),
     // 用了鼠标快捷键 / 点击波纹才需要辅助功能；不需要时设置页不标红
     axNeeded: Object.values(settings.get().hotkeys).some((h) => h && h.mouse) || !!settings.get().present.clicks,
+    // 这次启动时还没授权、中途才打开的开关：系统只认重新打开后的进程
+    needRelaunch: screenAtLaunch === false && st('screen') === 'granted',
     inApplications: (() => { try { return app.isInApplicationsFolder(); } catch { return null; } })(),
     translocated: /\/AppTranslocation\//.test(process.execPath),
   };
@@ -708,29 +748,30 @@ function runTool(file, args, timeout = 8000) {
       resolve({ ok: !err, out: String(out || '').trim(), err: String(errOut || (err && err.message) || '').trim() }));
   });
 }
-// 清掉 BillyShot 在系统里的旧授权记录（只影响 BillyShot 自己）
+// 清掉 Hopsnap 在系统里的旧授权记录（只影响 Hopsnap 自己）
 async function resetMacPerms(services) {
-  const id = 'com.billyshot.app';
+  const id = 'com.hopsnap.app';
   const res = {};
   for (const s of services) res[s] = await runTool('/usr/bin/tccutil', ['reset', s, id]);
   log('tccutil reset', JSON.stringify(res));
   return res;
 }
-// 「修复权限」：清旧记录 → 重新请求（BillyShot 重新出现在列表里）→ 打开系统设置 → 提示打开开关后重新打开 BillyShot
-async function repairMacPerms(parent) {
-  // 辅助功能已经正常的不动（不然鼠标快捷键会被清掉）；清了的话马上请系统把 BillyShot 加回列表
+// 「修复权限」：清旧记录 → 重新请求（Hopsnap 重新出现在列表里）→ 打开系统设置 → 提示打开开关后重新打开 Hopsnap
+async function repairMacPerms(parent, quiet = false) {
+  // 辅助功能已经正常的不动（不然鼠标快捷键会被清掉）；清了的话马上请系统把 Hopsnap 加回列表
   const axOk = hotkeys.axTrusted();
   const res = await resetMacPerms(axOk ? ['ScreenCapture'] : ['ScreenCapture', 'Accessibility']);
   const failed = Object.values(res).some((r) => !r.ok);
   if (!axOk) { try { systemPreferences.isTrustedAccessibilityClient(true); } catch {} }
   await requestScreenAccess();
   shell.openExternal(MAC_PANES.screen);
+  if (quiet) return { ok: !failed, res };   // 权限助手里调用：结果显示在助手窗口里，不弹系统对话框
   const r = await dialog.showMessageBox(parent || undefined, {
-    type: failed ? 'warning' : 'info', buttons: [t('重新打开 BillyShot'), t('稍后')], defaultId: 0, cancelId: 1,
-    message: failed ? t('没能自动清除旧的授权记录') : t('已清除 BillyShot 旧的授权记录'),
+    type: failed ? 'warning' : 'info', buttons: [t('重新打开 Hopsnap'), t('稍后')], defaultId: 0, cancelId: 1,
+    message: failed ? t('没能自动清除旧的授权记录') : t('已清除 Hopsnap 旧的授权记录'),
     detail: failed
-      ? t('请在系统设置的「屏幕与系统录音」和「辅助功能」里选中 BillyShot，点下面的「−」删掉，再点「+」重新添加 BillyShot 并打开开关，然后点「重新打开 BillyShot」。')
-      : t('请在系统设置的「屏幕与系统录音」里打开 BillyShot（用鼠标快捷键 / 点击波纹的话，「辅助功能」也要打开），然后点「重新打开 BillyShot」。'),
+      ? t('请在系统设置的「屏幕与系统录音」和「辅助功能」里选中 Hopsnap，点下面的「−」删掉，再点「+」重新添加 Hopsnap 并打开开关，然后点「重新打开 Hopsnap」。')
+      : t('请在系统设置的「屏幕与系统录音」里打开 Hopsnap（用鼠标快捷键 / 点击波纹的话，「辅助功能」也要打开），然后点「重新打开 Hopsnap」。'),
   });
   if (r.response === 0) relaunchApp();
   return { ok: !failed, res };
@@ -757,35 +798,64 @@ async function ensureScreenPerm() {
   // 第一次（这次启动内）先请求一下：没有记录的话系统会弹自己的授权框
   if (!screenRequested && await requestScreenAccess()) return true;
   log('screen permission missing', JSON.stringify(macPermState()));
-  const r = await dialog.showMessageBox({
-    type: 'info', buttons: [t('打开系统设置'), t('重新打开 BillyShot'), t('修复权限'), t('取消')], defaultId: 0, cancelId: 3,
-    message: t('需要「屏幕录制」权限'),
-    detail: t('请在 系统设置 → 隐私与安全性 → 屏幕与系统录音 中打开 BillyShot，然后点「重新打开 BillyShot」（只关掉窗口不算，要退出再打开才生效）。\n\n如果开关已经是打开的还一直提示，点「修复权限」：清掉旧版本留下的授权记录，再重新打开一次开关就好。'),
-  });
-  if (r.response === 0) shell.openExternal(MAC_PANES.screen);
-  if (r.response === 1) relaunchApp();
-  if (r.response === 2) repairMacPerms();
+  openPermWindow();
   return false;
 }
-// 启动时：记录权限状态；不在「应用程序」文件夹里运行时建议移过去（在下载文件夹 / 隔离状态下运行，授权容易对不上）
+// ---------------------------------------------------------------- 检查更新（2.0）
+// 每天最多问 GitHub 一次；有新版本：托盘多一行 + 每个版本通知一次。「关于」页可以手动查，常规页可以关掉自动检查。
+let updateInfo = null;
+async function checkUpdate(manual = false) {
+  const r = await update.check();
+  log('update check', JSON.stringify(r));
+  if (r.ok) {
+    settings.set({ general: { updateCheckedAt: Date.now() } });
+    updateInfo = r;
+    buildTrayMenu();
+    if (r.hasUpdate && !manual && settings.get().general.updateNotified !== r.latest) {
+      settings.set({ general: { updateNotified: r.latest } });
+      notify(t('Hopsnap 有新版本 {v}', { v: r.latest }), t('点击查看更新内容和下载'), () => shell.openExternal(r.url));
+    }
+  }
+  return r;
+}
+function scheduleUpdateCheck() {
+  if (!app.isPackaged || process.env.HOPSNAP_TEST) return;
+  const tick = () => {
+    const g = settings.get().general;
+    if (!g.updateCheck) return;
+    if (Date.now() - (g.updateCheckedAt || 0) < 24 * 3600 * 1000) return;
+    checkUpdate(false).catch((e) => log('update check failed', e.message));
+  };
+  setTimeout(tick, 30 * 1000);               // 启动 30 秒后
+  setInterval(tick, 6 * 3600 * 1000);        // 之后每 6 小时看一眼（常驻不退出的机器）
+}
+
+// 启动时：记录权限状态；不在「应用程序」文件夹里运行时建议移过去（在下载文件夹 / 隔离状态下运行，授权容易对不上）；
+// 还没有屏幕录制权限就直接打开权限助手（用户点过「稍后再说」的话，启动时不再主动弹，截图时还是会弹）
 async function macStartupChecks() {
   if (!isMac) return;
   setTimeout(() => { macDiag(false).then((d) => log('mac permissions', JSON.stringify(d))).catch((e) => log('mac diag failed', e.message)); }, 3000);
-  if (!app.isPackaged || process.env.BILLYSHOT_TEST) return;
+  if (!app.isPackaged || process.env.HOPSNAP_TEST) return;
   let inApps = true; try { inApps = app.isInApplicationsFolder(); } catch {}
-  if (inApps || !settings.get().general.macMoveAsk) return;
-  const r = await dialog.showMessageBox({
-    type: 'question', buttons: [t('移到「应用程序」'), t('不移'), t('不再提示')], defaultId: 0, cancelId: 1,
-    message: t('把 BillyShot 移到「应用程序」文件夹？'),
-    detail: t('现在 BillyShot 不在「应用程序」文件夹里运行。直接从下载文件夹打开时，macOS 的屏幕录制 / 辅助功能授权容易对不上、反复要求授权。'),
-  });
-  if (r.response === 2) settings.set({ general: { macMoveAsk: false } });
-  if (r.response !== 0) return;
-  if (rec) { notify(t('没能移动 BillyShot'), t('正在录屏，结束后再重新打开')); return; }
-  let moved = false;
-  try { moved = app.moveToApplicationsFolder(); } catch (e) { log('move to Applications failed', e.message); }
-  // 成功时 Electron 会自己退出并从「应用程序」重新打开；失败（例如取消了管理员密码）才会走到这里
-  if (!moved) notify(t('没能移动 BillyShot'), t('请手动把 BillyShot 拖进「应用程序」文件夹，再从那里打开。'));
+  if (!inApps && settings.get().general.macMoveAsk) {
+    const r = await dialog.showMessageBox({
+      type: 'question', buttons: [t('移到「应用程序」'), t('不移'), t('不再提示')], defaultId: 0, cancelId: 1,
+      message: t('把 Hopsnap 移到「应用程序」文件夹？'),
+      detail: t('现在 Hopsnap 不在「应用程序」文件夹里运行。直接从下载文件夹打开时，macOS 的屏幕录制 / 辅助功能授权容易对不上、反复要求授权。'),
+    });
+    if (r.response === 2) settings.set({ general: { macMoveAsk: false } });
+    if (r.response === 0) {
+      if (rec) { notify(t('没能移动 Hopsnap'), t('正在录屏，结束后再重新打开')); return; }
+      let moved = false;
+      try { moved = app.moveToApplicationsFolder(); } catch (e) { log('move to Applications failed', e.message); }
+      // 成功时 Electron 会自己退出并从「应用程序」重新打开；失败（例如取消了管理员密码）才会走到这里
+      if (!moved) notify(t('没能移动 Hopsnap'), t('请手动把 Hopsnap 拖进「应用程序」文件夹，再从那里打开。'));
+      return;
+    }
+  }
+  if (macScreenOk() || settings.get().general.permAutoOpen === false) return;
+  await requestScreenAccess();   // 第一次：系统会弹自己的授权框，把 Hopsnap 加进列表
+  if (!macScreenOk()) openPermWindow();
 }
 
 async function startCapture(mode = 'shot') {
@@ -809,7 +879,7 @@ async function startCapture(mode = 'shot') {
       captureDisplay(display, { withWindows: settings.get().capture.windowDetect }),
       overlayReady,
     ]);
-    if (process.env.BILLYSHOT_DEBUG) console.log('grab took', Date.now() - tc, 'ms');
+    if (process.env.HOPSNAP_DEBUG) console.log('grab took', Date.now() - tc, 'ms');
     const cursor = screen.getCursorScreenPoint();
     overlaySession = { display, mode };
     const b = display.bounds;
@@ -830,7 +900,7 @@ async function startCapture(mode = 'shot') {
     });
     const pinfo = await painted;
     if (pinfo && pinfo.ok === false) throw new Error(t('截图画面加载失败：') + (pinfo.error || ''));
-    if (process.env.BILLYSHOT_DEBUG) console.log('capture ready in', Date.now() - t0, 'ms', cap.image.kind, cap.image.width, cap.image.height, 'windows', cap.windows.length);
+    if (process.env.HOPSNAP_DEBUG) console.log('capture ready in', Date.now() - t0, 'ms', cap.image.kind, cap.image.width, cap.image.height, 'windows', cap.windows.length);
     overlayWin.setAlwaysOnTop(true, 'screen-saver');
     if (!isWin) overlayWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true });
     overlayWin.show();
@@ -896,7 +966,7 @@ ipcMain.handle('overlay:finish', async (_e, payload) => {
       let r;
       try {
         r = await dialog.showSaveDialog(overlayWin, {
-          defaultPath: uniquePath(dir, `BillyShot_${stamp()}`, ext),
+          defaultPath: uniquePath(dir, `Hopsnap_${stamp()}`, ext),
           filters: [{ name: 'PNG', extensions: ['png'] }, { name: 'JPG', extensions: ['jpg', 'jpeg'] }],
         });
       } finally { if (overlayWin && !overlayWin.isDestroyed()) overlayWin.inDialog = false; }
@@ -1037,7 +1107,7 @@ ipcMain.on('pin:menu', (e) => {
   Menu.buildFromTemplate([
     { label: t('复制'), click: () => copyOrWarn(w.pinData.png) },
     { label: t('另存为…'), click: async () => {
-      const r = await dialog.showSaveDialog(w, { defaultPath: uniquePath(ensureDir(settings.get().capture.saveDir), `BillyShot_${stamp()}`, 'png') });
+      const r = await dialog.showSaveDialog(w, { defaultPath: uniquePath(ensureDir(settings.get().capture.saveDir), `Hopsnap_${stamp()}`, 'png') });
       if (!r.canceled && r.filePath) { const saved = await safeWrite(r.filePath, w.pinData.png, false); if (!saved.ok) reportError(t('保存失败'), t('无法写入 {file}\n{err}', { file: r.filePath, err: saved.error })); }
     } },
     { label: t('原始大小'), click: () => { const b = w.getBounds(); w.setBounds({ x: b.x, y: b.y, width: w.pinData.baseW, height: w.pinData.baseH }); e.sender.send('pin:scale', 100); } },
@@ -1067,11 +1137,11 @@ function openSettings(tab = 'general', re = null) {
   const glass = glassWinWanted();
   const win = settingsWin = new BrowserWindow({
     ...(re && re.bounds ? re.bounds : { width: 980, height: 680 }),
-    minWidth: 820, minHeight: 540, show: false, title: t('BillyShot 设置'),
+    minWidth: 820, minHeight: 540, show: false, title: t('Hopsnap 设置'),
     icon: logoFile('icon.png'), autoHideMenuBar: true, backgroundColor: glass ? '#00000000' : themeBg(),
     ...(glass ? { transparent: true, hasShadow: true, ...(isMac ? { vibrancy: 'under-window', visualEffectState: 'active' } : {}) } : {}),
     titleBarStyle: 'hidden',
-    ...(isMac ? { trafficLightPosition: { x: 16, y: 16 } } : { titleBarOverlay: { color: themeBg(), symbolColor: themeDark() ? '#c9c9d4' : '#55555f', height: 36 } }),
+    ...(isMac ? { trafficLightPosition: { x: 16, y: 16 } } : { titleBarOverlay: { color: themeBg(), symbolColor: themeDark() ? '#B9C6BE' : '#5C6660', height: 36 } }),
     webPreferences: { preload: R('preload.js'), spellcheck: false, autoplayPolicy: 'no-user-gesture-required' },
   });
   win.glassBuilt = glass;
@@ -1149,8 +1219,8 @@ ipcMain.handle('settings:theme', (_e, name) => {
 });
 function setLaunchAtLogin(on) {
   try {
-    // Windows 注册表启动项名称固定为 BillyShot（卸载程序按这个名字清理）
-    app.setLoginItemSettings({ openAtLogin: on, openAsHidden: true, ...(isWin ? { name: 'BillyShot' } : {}) });
+    // Windows 注册表启动项名称固定为 Hopsnap（卸载程序按这个名字清理）
+    app.setLoginItemSettings({ openAtLogin: on, openAsHidden: true, ...(isWin ? { name: 'Hopsnap' } : {}) });
     if (isWin && !on) app.setLoginItemSettings({ openAtLogin: false }); // 清理旧版本用默认名称写入的启动项
   } catch (e) { log('login item failed', e); }
 }
@@ -1178,7 +1248,7 @@ ipcMain.handle('history:clear', () => { for (const it of listHistory(false)) rem
 ipcMain.handle('history:save', async (e, id) => {
   try {
     const png = historyPng(id);
-    const r = await dialog.showSaveDialog(BrowserWindow.fromWebContents(e.sender), { defaultPath: uniquePath(ensureDir(settings.get().capture.saveDir), `BillyShot_${stamp()}`, 'png') });
+    const r = await dialog.showSaveDialog(BrowserWindow.fromWebContents(e.sender), { defaultPath: uniquePath(ensureDir(settings.get().capture.saveDir), `Hopsnap_${stamp()}`, 'png') });
     if (r.canceled || !r.filePath) return { ok: false, canceled: true };
     const saved = await safeWrite(r.filePath, png, false);
     return saved.ok ? { ok: true, file: saved.file } : { ok: false, error: saved.error };
@@ -1188,13 +1258,18 @@ ipcMain.handle('app:action', async (_e, name) => {
   if (name === 'capture') setTimeout(() => startCapture('shot'), 250);
   if (name === 'record') setTimeout(() => startCapture('record'), 250);
   if (name === 'recordFull') setTimeout(() => startFullRecording(), 250);
-  // 先请求一次，保证 BillyShot 出现在系统设置的列表里，再打开对应页面
+  // 先请求一次，保证 Hopsnap 出现在系统设置的列表里，再打开对应页面
   if (name === 'macScreenPerm') { if (isMac && !macScreenOk()) await requestScreenAccess(); shell.openExternal(MAC_PANES.screen); }
   if (name === 'macPermState') return macPermState();
   if (name === 'macPermRepair') return isMac ? repairMacPerms(settingsWin) : null;
+  if (name === 'macPermRepairQuiet') return isMac ? repairMacPerms(permWin, true) : null;
+  if (name === 'macPermHelper') { openPermWindow(); return true; }
+  if (name === 'checkUpdate') return checkUpdate(true);
+  if (name === 'openReleases') { if (updateInfo && updateInfo.url) shell.openExternal(updateInfo.url); else if (update.PAGE) shell.openExternal(update.PAGE); return true; }
+  if (name === 'macPermLater') { settings.set({ general: { permAutoOpen: false } }); closePermWindow(); return true; }
   if (name === 'macRelaunch') { relaunchApp(); return true; }
   if (name === 'macDiag') { const d = await macDiag(); require('electron').clipboard.writeText(JSON.stringify(d, null, 2)); return d; }
-  if (name === 'openLogs') { log('open logs'); shell.showItemInFolder(logFile || path.join(app.getPath('userData'), 'logs', 'billyshot.log')); }
+  if (name === 'openLogs') { log('open logs'); shell.showItemInFolder(logFile || path.join(app.getPath('userData'), 'logs', 'hopsnap.log')); }
   if (name === 'macAccessPerm') { if (isMac && !hotkeys.axTrusted()) { try { systemPreferences.isTrustedAccessibilityClient(true); } catch {} } shell.openExternal(MAC_PANES.accessibility); }
   if (name === 'macCameraPerm') shell.openExternal(MAC_PANES.camera);
   if (name === 'cameraPreview') return toggleCamera(!(present && present.camOn())).then(() => presentState());
@@ -1262,7 +1337,7 @@ async function startRecording(display, rect, req) {
     const abs = { x: b.x + rect.x, y: b.y + rect.y, width: rect.w, height: rect.h };
     const { dir, fallback } = videoSaveDir();
     Object.assign(cur, {
-      starting: false, rect, format, file: uniqueRecPath(dir, `BillyShot_${stamp()}`, format === 'gif' ? 'gif' : 'mp4'),
+      starting: false, rect, format, file: uniqueRecPath(dir, `Hopsnap_${stamp()}`, format === 'gif' ? 'gif' : 'mp4'),
       fd: null, bytes: 0, writeErr: null, fallback, startedAt: 0, paused: false, frameWin: null, barWin: null, recWin: null,
       abs, extraWarn: [], camDone: true,
     });
@@ -1288,7 +1363,7 @@ async function startRecording(display, rect, req) {
     cur.frameWin.once('ready-to-show', () => { if (rec === cur && cur.frameWin && !cur.frameWin.isDestroyed()) cur.frameWin.showInactive(); });
 
     // 控制条
-    const barW = 430, barH = 46;
+    const barW = 500, barH = 48;
     const wa = display.workArea || b; // 工作区 = 屏幕去掉任务栏
     let bx = Math.round(abs.x + abs.width / 2 - barW / 2), by = abs.y + abs.height + pad + 8;
     if (by + barH > wa.y + wa.height) by = abs.y - pad - 8 - barH;
@@ -1338,10 +1413,10 @@ async function startRecording(display, rect, req) {
 
     // 隐藏的录制窗口（负责采集与编码）
     cur.recWin = new BrowserWindow({
-      show: !!process.env.BILLYSHOT_SHOW_RECORDER, width: 400, height: 300, skipTaskbar: true,
+      show: !!process.env.HOPSNAP_SHOW_RECORDER, width: 400, height: 300, skipTaskbar: true,
       webPreferences: { preload: R('preload.js'), backgroundThrottling: false },
     });
-    cur.recWin.webContents.on('console-message', (e) => { if (process.env.BILLYSHOT_DEBUG || /error|fail/i.test(e.message)) log('[recorder]', e.message); });
+    cur.recWin.webContents.on('console-message', (e) => { if (process.env.HOPSNAP_DEBUG || /error|fail/i.test(e.message)) log('[recorder]', e.message); });
     cur.recWin.webContents.on('render-process-gone', (_e, d) => {
       log('recorder renderer gone', d);
       if (rec === cur) finishRecording(cur.bytes ? 'ok' : 'error', t('录制进程意外退出'));
@@ -1468,7 +1543,7 @@ ipcMain.on('recbar:done', (e, action) => {
   const file = doneBar.file;
   if (action === 'folder' && file) shell.showItemInFolder(file);
   if (action === 'play' && file) shell.openPath(file).then((err) => { if (err) log('open video failed', err); });
-  if (process.env.BILLYSHOT_TEST) console.log('DONEBAR', action, file || '');
+  if (process.env.HOPSNAP_TEST) console.log('DONEBAR', action, file || '');
   closeDoneBar();
 });
 function maybeGo() {
@@ -1558,7 +1633,7 @@ async function saveRecording(r, partial, msg, bar) {
   const ext = path.extname(r.file).slice(1);
   let durationMs = 0;
   // MP4：把录制时的分段格式整理成普通 MP4（资源管理器能显示时长 / 缩略图，播放器能拖进度条，剪辑软件能导入）
-  if (ext === 'mp4' && !(process.env.BILLYSHOT_TEST && process.env.BILLYSHOT_NO_FINALIZE)) {
+  if (ext === 'mp4' && !(process.env.HOPSNAP_TEST && process.env.HOPSNAP_NO_FINALIZE)) {
     try {
       const t0 = Date.now();
       const res = await finalizeMp4(tmp, (p) => sendTo(bar, 'recbar:state', { state: 'finalizing', pct: p }));
@@ -1574,16 +1649,16 @@ async function saveRecording(r, partial, msg, bar) {
   try { bytes = fs.statSync(file).size; } catch {}
   if (partial) {
     notify(t('录屏中断，已保存录到的部分'), t('{name}（{key}）', { name: path.basename(file), key: msg || t('编码器出错') }), () => shell.showItemInFolder(file));
-    if (process.env.BILLYSHOT_TEST) console.log('REC_PARTIAL_KEPT', file);
+    if (process.env.HOPSNAP_TEST) console.log('REC_PARTIAL_KEPT', file);
   } else {
     const where = r.fallback ? t('（视频文件夹被系统保护，已改存到 {dir}）', { dir: path.dirname(file) }) : t('（点击打开文件夹）');
     notify(r.format === 'gif' ? t('GIF 录制完成') : t('录屏完成'), `${path.basename(file)}${where}`, () => shell.showItemInFolder(file));
-    if (r.fallback && !process.env.BILLYSHOT_TEST) {
+    if (r.fallback && !process.env.HOPSNAP_TEST) {
       dialog.showMessageBox({ type: 'info', message: t('录屏已保存'), detail: t('原保存位置无法写入（可能被 Windows「受控文件夹访问」或杀毒软件拦截），文件已保存到：\n{file}\n\n可以在 设置 → 录屏 → 保存位置 换一个文件夹。', { file }), buttons: [t('打开文件夹'), t('好')] })
         .then((x) => { if (x.response === 0) shell.showItemInFolder(file); }).catch(() => {});
     }
   }
-  if (process.env.BILLYSHOT_TEST) console.log('REC_SAVED', JSON.stringify({ file, bytes, durationMs, partial }));
+  if (process.env.HOPSNAP_TEST) console.log('REC_SAVED', JSON.stringify({ file, bytes, durationMs, partial }));
   if (bar && doneBar && doneBar.win === bar && !bar.isDestroyed()) {
     doneBar.file = file;
     sendTo(bar, 'recbar:state', { state: 'done', name: path.basename(file), bytes, duration: durationMs, partial, gif: r.format === 'gif' });
@@ -1592,7 +1667,7 @@ async function saveRecording(r, partial, msg, bar) {
 
 // 启动时：上次录到一半程序被关掉 / 电脑断电，留下的 .part 整理好改回正式文件名
 async function recoverRecordings() {
-  const dirs = [...new Set([settings.get().record.saveDir, path.join(app.getPath('home'), 'BillyShot')].map((d) => path.resolve(d)))];
+  const dirs = [...new Set([settings.get().record.saveDir, path.join(app.getPath('home'), 'Hopsnap'), path.join(app.getPath('home'), 'BillyShot')].map((d) => path.resolve(d)).filter((d) => fs.existsSync(d)))];
   for (const dir of dirs) {
     let names = [];
     try { names = fs.readdirSync(dir).filter((n) => /\.(mp4|webm|gif)\.part$/i.test(n)); } catch { continue; }
@@ -1630,8 +1705,8 @@ function setupDisplayMediaHandler() {
 // ---------------------------------------------------------------- 测试钩子（仅自动化测试使用）
 function setupTestHooks() {
   // 只在开发环境（未打包）且显式设置环境变量时启用，正式安装包里永远不会运行
-  if (!process.env.BILLYSHOT_TEST || app.isPackaged) return;
-  const file = process.env.BILLYSHOT_TEST_CMD || path.join(os.tmpdir(), 'billyshot-cmd.json');
+  if (!process.env.HOPSNAP_TEST || app.isPackaged) return;
+  const file = process.env.HOPSNAP_TEST_CMD || path.join(os.tmpdir(), 'hopsnap-cmd.json');
   setInterval(async () => {
     if (!fs.existsSync(file)) return;
     let cmd; try { cmd = JSON.parse(fs.readFileSync(file, 'utf8')); fs.unlinkSync(file); } catch { return; }
@@ -1643,10 +1718,12 @@ function setupTestHooks() {
       if (cmd.cmd === 'recordFull') startFullRecording();
       if (cmd.cmd === 'stop') stopRecording();
       if (cmd.cmd === 'settings') openSettings(cmd.tab || 'general');
+      if (cmd.cmd === 'perm') openPermWindow();
+      if (cmd.cmd === 'fakePerm') { screenAtLaunch = cmd.atLaunch; permOverride = cmd.override || null; }   // 测试：模拟权限状态（启动时没权限 / 开关还没开）
       if (cmd.cmd === 'pinClipboard') pinClipboard();
       if (cmd.cmd === 'eval' && overlayWin) console.log('EVAL', JSON.stringify(await overlayWin.webContents.executeJavaScript(cmd.js)));
       if (cmd.cmd === 'evalSettings' && settingsWin) console.log('EVAL', JSON.stringify(await settingsWin.webContents.executeJavaScript(cmd.js)));
-      if (cmd.cmd === 'clipboard') { const png = await clip.readImagePng(); if (png) { fs.writeFileSync('/tmp/billyshot-clip.png', png); console.log('CLIP', JSON.stringify(nativeImage.createFromBuffer(png).getSize())); } else console.log('CLIP none'); }
+      if (cmd.cmd === 'clipboard') { const png = await clip.readImagePng(); if (png) { fs.writeFileSync('/tmp/hopsnap-clip.png', png); console.log('CLIP', JSON.stringify(nativeImage.createFromBuffer(png).getSize())); } else console.log('CLIP none'); }
       if (cmd.cmd === 'double') { startFullRecording(); setTimeout(() => startFullRecording(), cmd.gap || 30); }
       if (cmd.cmd === 'recAction') ipcMain.emit('recbar:action', {}, cmd.action);
       if (cmd.cmd === 'setSettings') { settings.set(cmd.patch); if (cmd.patch && cmd.patch.present && present) present.applySettings(); console.log('SETTINGS OK'); }
@@ -1716,9 +1793,27 @@ function setupTestHooks() {
 }
 
 // ---------------------------------------------------------------- 启动
+// 1.x 叫 BillyShot：第一次以呱咔 / Hopsnap 启动时，把旧的设置和截图历史搬过来（旧文件夹不动）
+function migrateLegacyData() {
+  try {
+    const cur = app.getPath('userData');
+    if (fs.existsSync(path.join(cur, 'settings.json'))) return;
+    // 2.0 内测期短暂叫过 Snapfrog；1.x 叫 BillyShot
+    const old = ['Snapfrog', 'BillyShot'].map((n) => path.join(app.getPath('appData'), n)).find((d) => fs.existsSync(path.join(d, 'settings.json')));
+    if (!old) return;
+    fs.mkdirSync(cur, { recursive: true });
+    fs.copyFileSync(path.join(old, 'settings.json'), path.join(cur, 'settings.json'));
+    const oh = path.join(old, 'history');
+    if (fs.existsSync(oh)) fs.cpSync(oh, path.join(cur, 'history'), { recursive: true });
+    console.log('migrated settings from', old);
+  } catch (e) { console.error('migrate legacy data failed', e); }
+}
+
 app.whenReady().then(() => {
+  migrateLegacyData();
   settings = new Settings();
-  log('BillyShot start', app.getVersion(), process.platform, os.release(), process.arch);
+  log('Hopsnap start', app.getVersion(), process.platform, os.release(), process.arch);
+  if (isMac) screenAtLaunch = macScreenOk();
   applyLanguage();
   applyAppearance();
   nativeTheme.on('updated', () => applyTheme());
@@ -1744,6 +1839,7 @@ app.whenReady().then(() => {
     if (settingsWin && !settingsWin.isDestroyed()) settingsWin.webContents.send('settings:changed');
   });
   setTimeout(() => { macStartupChecks().catch((e) => log('mac startup checks', e.message)); }, 1200);
+  scheduleUpdateCheck();
   // 选了紫色版：升级安装会把快捷方式 / .app 图标还原成头像版 → 启动时补回（已一致则什么都不做）
   applyLogo();
   setTimeout(() => {
@@ -1771,7 +1867,8 @@ app.whenReady().then(() => {
   screen.on('display-metrics-changed', (_e, _d, changed) => presentDisplays(!!(changed && changed.some((c) => c === 'bounds' || c === 'scaleFactor' || c === 'rotation'))));
   // 快捷键被占用（例如微信也用 Alt+A）：每次启动都检查并处理
   checkHotkeyConflicts();
-  if (settings.get().general.firstRun) {
+  // 第一次打开：Mac 上还没屏幕录制权限时由权限助手引路（见 macStartupChecks），开始页留到授权重开之后再出现
+  if (settings.get().general.firstRun && !(isMac && app.isPackaged && !macScreenOk())) {
     settings.set({ general: { firstRun: false } });
     openSettings('welcome');
   }

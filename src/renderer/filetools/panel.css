@@ -66,6 +66,7 @@ body.shot { background: var(--bg); }
 .done .mascot svg { width: 72px; height: 72px; display: block; }
 .done h2 { margin: 0 0 6px; font: 800 16px/1.2 var(--font-head); }
 .done p { margin: 0; color: var(--sub); font-size: 12.5px; word-break: break-all; }
+.done p.err { color: var(--danger); }
 .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
 .fields label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--sub); }
 .fields input { height: 32px; border-radius: 12px; border: 1px solid var(--field-line); background: var(--field); color: var(--text); padding: 0 8px; font: inherit; }

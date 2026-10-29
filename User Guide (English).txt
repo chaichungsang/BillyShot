@@ -10,7 +10,7 @@ and screenshot history over, keeps your save folders, and leaves the old folders
 Windows
   · Hopsnap-Setup-2.0.0.exe            double-click to install (desktop + Start menu shortcuts); installs over old versions
   · Hopsnap-2.0.0-Windows-x64-win.zip  portable, just unzip
-  · Uninstall-Hopsnap.exe              uninstall helper (see "8. Uninstall")
+  · Uninstall-Hopsnap.exe              uninstall helper (see "9. Uninstall")
   If Windows shows "Windows protected your PC", click "More info → Run anyway" (no paid code-signing certificate).
 
 Mac
@@ -48,6 +48,7 @@ Appearance: light / dark follows the system, or fix it in Settings → General. 
   Record region / stop            Alt + R            ⌃ ⌘ R
   Record full screen / stop       Alt + Shift + R    ⌃ ⌘ ⇧ R
   Pin clipboard image             Alt + P            ⌃ ⌘ P
+  File Tools                      Ctrl+Shift+Alt+F   ⌃ ⌥ F
 
   * WeChat also uses Alt+A. Hopsnap checks on every launch; if a shortcut is taken it switches to a free combination
     and notifies you (a red dot shows in Settings).
@@ -87,6 +88,9 @@ Appearance: light / dark follows the system, or fix it in Settings → General. 
   · Files go to Movies/Hopsnap (Videos\Hopsnap), screenshots to Pictures/Hopsnap — BillyShot users keep their folders.
   · After stop the bar shows "Saving…" then a green "Saved" with Open folder / Play.
   · System audio on Mac needs macOS 13+.
+  · On a Mac with a notch, the recording timer sits in the notch (or just under it). The tray icon stays.
+    The control bar hides while recording and comes back when you stop, for save and playback.
+    Displays without a notch get a black pill. Hover the notch to screenshot or start recording.
   · Audio tips: computer sound only → system audio only; your voice too → both, and wear headphones
     (otherwise speaker sound is recorded twice as echo). Don't pick "Stereo Mix" as the microphone.
 
@@ -105,7 +109,19 @@ Appearance: light / dark follows the system, or fix it in Settings → General. 
   · Mac: click ripples need Accessibility, the camera needs Camera permission (macOS asks the first time).
 
 
-6. Everything else
+6. File Tools
+-------------
+  Convert, compress images, resize, turn video into MP4, compress or trim video, make a GIF, or combine
+  images and PDFs into one PDF. Everything stays on this computer.
+  · Open from the tray menu → File → File Tools, or the shortcut above.
+  · On Mac, hold Shift and drag files: an action arc opens beside the pointer (turn it off in
+    Settings → General). No system permission is required.
+  · GIFs can be at most 15 seconds; trim a longer video first.
+  · HEIC: Mac uses the system decoder. Windows needs the HEIF Image Extensions from the Microsoft Store.
+  · Video uses LGPL ffmpeg (dynamically linked). Images use sharp / libvips.
+
+
+7. Everything else
 ------------------
   · Recent screenshots: the last 4 on the Get started page (click to copy again); all of them in Settings → Recent screenshots
   · Pins: scroll to zoom, drag to move, double-click or Esc to close, right-click for opacity / copy / save
@@ -115,7 +131,7 @@ Appearance: light / dark follows the system, or fix it in Settings → General. 
   · Free, no ads, no watermark, no account, nothing uploaded
 
 
-7. Upgrading from BillyShot
+8. Upgrading from BillyShot
 ---------------------------
   · Windows: install 2.0; settings and history migrate automatically. Uninstall the old BillyShot afterwards.
   · Mac: 2.0 has a new bundle id (com.hopsnap.app), so macOS treats it as a new app — Screen Recording must be
@@ -123,7 +139,7 @@ Appearance: light / dark follows the system, or fix it in Settings → General. 
   · Your saved screenshots and recordings are never touched.
 
 
-8. Uninstall
+9. Uninstall
 ------------
 Windows (any of these)
   · Start menu → "Uninstall Hopsnap"

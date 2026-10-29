@@ -9,9 +9,9 @@ const $ = (id) => document.getElementById(id);
 const send = (ch, ...args) => { try { if (window.api && window.api.send) window.api.send(ch, ...args); } catch {} };
 
 const ICONS = {
-  shot: '<svg viewBox="0 0 22 22" fill="none" stroke="#E8C97A" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M2.5 7V4.5a2 2 0 0 1 2-2H7M15 2.5h2.5a2 2 0 0 1 2 2V7M19.5 15v2.5a2 2 0 0 1-2 2H15M7 19.5H4.5a2 2 0 0 1-2-2V15"/><path d="M8 11h6M11 8v6"/></svg>',
-  record: '<svg viewBox="0 0 22 22" fill="none" aria-hidden="true"><rect x="2.5" y="4" width="17" height="14" rx="2" stroke="#E8C97A" stroke-width="1.6" stroke-dasharray="3 2.4"/><circle cx="11" cy="11" r="3.2" fill="#E8C97A"/></svg>',
-  recordFull: '<svg viewBox="0 0 22 22" fill="none" aria-hidden="true"><rect x="2" y="3.5" width="18" height="12.5" rx="2" stroke="#E8C97A" stroke-width="1.6"/><path d="M8 19.5h6M11 16v3.5" stroke="#E8C97A" stroke-width="1.6" stroke-linecap="round"/><circle cx="11" cy="9.75" r="2.8" fill="#E8C97A"/></svg>',
+  shot: '<svg viewBox="0 0 22 22" fill="none" stroke="#3BCB7C" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M2.5 7V4.5a2 2 0 0 1 2-2H7M15 2.5h2.5a2 2 0 0 1 2 2V7M19.5 15v2.5a2 2 0 0 1-2 2H15M7 19.5H4.5a2 2 0 0 1-2-2V15"/><path d="M8 11h6M11 8v6"/></svg>',
+  record: '<svg viewBox="0 0 22 22" fill="none" aria-hidden="true"><rect x="2.5" y="4" width="17" height="14" rx="2" stroke="#3BCB7C" stroke-width="1.6" stroke-dasharray="3 2.4"/><circle cx="11" cy="11" r="3.2" fill="#3BCB7C"/></svg>',
+  recordFull: '<svg viewBox="0 0 22 22" fill="none" aria-hidden="true"><rect x="2" y="3.5" width="18" height="12.5" rx="2" stroke="#3BCB7C" stroke-width="1.6"/><path d="M8 19.5h6M11 16v3.5" stroke="#3BCB7C" stroke-width="1.6" stroke-linecap="round"/><circle cx="11" cy="9.75" r="2.8" fill="#3BCB7C"/></svg>',
 };
 
 function tx(key, vars) {

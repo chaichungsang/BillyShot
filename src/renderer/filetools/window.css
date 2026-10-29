@@ -1,42 +1,31 @@
-/* 快捷键小窗。Windows 用系统标题栏，这里只画内容；Mac 窗口无边框，用这层自己的顶栏（标题 + 一个 ×，没有红绿灯）。 */
-:root {
-  --ft-graphite: #161514;
-  --ft-graphite-2: #1c1b1a;
-  --ft-gold: #d4a84b;
-  --ft-gold-2: #e8c97a;
-  --ft-ink: #f2eee6;
-  --ft-mute: #8c877e;
-}
-* { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; background: var(--ft-graphite); color: var(--ft-ink);
-  font: 13px/1.45 -apple-system, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif; }
-body.mac { border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 1px rgba(212, 168, 75, .28); }
-body.shot { background: #100f0e; }
+/* 文件工具小窗 = 应用层。token 来自 settings.css（先于本文件加载）。布局尺寸不动。 */
+html, body { margin: 0; height: 100%; }
+body { display: block; background: var(--bg); color: var(--text);
+  font: 13px/1.45 var(--font-body); }
+body.mac { border-radius: 16px; overflow: hidden; border: 1px solid var(--line); }
+body.shot { background: var(--bg); }
 .chrome { height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 16px; -webkit-app-region: drag; }
-.chrome b { font-size: 13px; font-weight: 650; }
-.chrome .x { margin-left: auto; -webkit-app-region: no-drag; width: 24px; height: 24px; border-radius: 6px; border: 0; background: transparent; color: var(--ft-mute); cursor: pointer; font-size: 16px; line-height: 24px; padding: 0; }
-.chrome .x:hover { color: var(--ft-gold-2); background: rgba(212, 168, 75, .12); }
+.chrome b { font: 800 13px/1 var(--font-head); }
+.chrome .x { margin-left: auto; -webkit-app-region: no-drag; width: 24px; height: 24px; border-radius: 999px; border: 0; background: transparent; color: var(--mute); cursor: pointer; font-size: 16px; line-height: 24px; padding: 0; }
+.chrome .x:hover { color: var(--accent-ink); background: var(--accent-soft); }
 body.win .chrome { display: none; }
 .pad { padding: 8px 16px 14px; }
-.drop { border: 1.5px dashed rgba(232, 201, 122, .55); border-radius: 12px; min-height: 132px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 4px; background: rgba(212, 168, 75, .04); }
-.drop strong { font-size: 14px; }
-.drop span { color: var(--ft-mute); font-size: 12px; }
-.drop.hot { background: rgba(212, 168, 75, .12); }
+.drop { border: 1.5px dashed var(--accent-line); border-radius: 18px; min-height: 132px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 4px; background: var(--accent-soft); }
+.drop strong { font: 800 14px/1.3 var(--font-head); }
+.drop span { color: var(--sub); font-size: 12px; }
+.drop.hot { background: var(--hover); border-color: var(--accent); }
 .pick { margin-top: 10px; }
-button { font: inherit; border-radius: 9px; border: 1px solid #3a3834; background: #221f1c; color: var(--ft-ink); padding: 6px 12px; cursor: pointer; }
-button.gold { background: var(--ft-gold); color: var(--ft-graphite); border-color: transparent; font-weight: 650; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .actions button { min-width: 72px; }
-.actions button small { display: block; color: var(--ft-mute); font-size: 10px; }
-.hint { margin: 12px 0 0; color: #8A847A; font-size: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.hint kbd { color: #E8E2D6; background: #1c1b1a; border: 1px solid #3A3733; border-radius: 6px; padding: 2px 7px; font: 600 12px/1.4 -apple-system, "Segoe UI", sans-serif; }
+.actions button small { display: block; color: var(--sub); font-size: 10px; }
+.hint { margin: 12px 0 0; color: var(--sub); font-size: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .recent { margin-top: 14px; }
-.recent h3 { margin: 0 0 6px; font-size: 11px; letter-spacing: .06em; color: var(--ft-mute); font-weight: 650; }
-.recent li { list-style: none; display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-top: 1px solid #2a2825; font-size: 12px; }
+.recent h3 { margin: 0 0 6px; font: 800 11px/1.3 var(--font-head); letter-spacing: .04em; color: var(--mute); }
+.recent li { list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px solid var(--line); font-size: 12px; }
 .recent ul { margin: 0; padding: 0; }
-.recent button { padding: 2px 8px; font-size: 11px; }
-.sub { margin-top: 8px; color: var(--ft-mute); font-size: 12px; }
-.winbar { display: none; height: 32px; align-items: center; padding: 0 10px; background: #1c1b1a; font-size: 12px; }
+.recent button { height: 28px; padding: 0 10px; font-size: 11px; }
+.sub { margin-top: 8px; color: var(--sub); font-size: 12px; }
+.winbar { display: none; height: 32px; align-items: center; padding: 0 10px; background: var(--panel); border-bottom: 1px solid var(--line); font-size: 12px; }
 body.shot.win .winbar { display: flex; }
-body.shot.win .winbar span { margin-left: auto; color: var(--ft-mute); }
+body.shot.win .winbar span { margin-left: auto; color: var(--mute); }

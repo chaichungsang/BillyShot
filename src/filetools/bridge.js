@@ -280,10 +280,17 @@ function createFileTools(deps) {
   // 文件工具小窗。macOS：和面板一样无边框，没有系统红绿灯（以前 hiddenInset 的灰色绿灯压在标题上），
   // 顶栏只有标题和自绘的 ×，Esc 关闭；不在前台时第一下点击就生效（acceptFirstMouse）。
   // Windows：用系统标题栏（标题和关闭按钮在内容上方，不会压住内容），渲染端不画自己的顶栏。
+  function surfaceBg() {
+    try {
+      const e = require('electron');
+      if (e && e.nativeTheme && e.nativeTheme.shouldUseDarkColors) return '#121B16';
+    } catch {}
+    return '#FAF6EC';
+  }
   function toolsWindowOptions() {
     return {
       width: 400, height: 360, show: false, title: t('文件工具'),
-      frame: !isMac, transparent: !!isMac, backgroundColor: isMac ? '#00000000' : '#161514',
+      frame: !isMac, transparent: !!isMac, backgroundColor: isMac ? '#00000000' : surfaceBg(),
       ...(isMac ? { hasShadow: true } : { titleBarStyle: 'default' }),
       acceptFirstMouse: true,
       autoHideMenuBar: true, resizable: false, fullscreenable: false,

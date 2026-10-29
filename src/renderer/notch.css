@@ -1,14 +1,14 @@
-/* BillyShot notch. Tokens from the v0.2 spec. Red is only the dot and the stop square.
-   Sizes match src/notch-logic.js SPEC (pt = CSS px in Electron DIP). */
+/* 刘海 = 工具层。黑底和 Mac 刘海融在一起。绿强调 + 1px 线，数字用 Nunito。红只给录制点。 */
+@font-face { font-family: "Nunito"; src: url("../../assets/fonts/Nunito.ttf") format("truetype"); font-weight: 200 1000; font-display: swap; }
 :root {
   --body: #000000;
-  --gold: #D4A84B;
-  --gold-soft: #E8C97A;
+  --accent: #3BCB7C;
   --panel: #161514;
   --key: #1C1B1A;
-  --text: #F2EEE6;
-  --muted: #8C877E;
-  --red: #FF3B30;
+  --text: #ECF2EE;
+  --muted: #9DAAA2;
+  --line: rgba(255, 255, 255, .1);
+  --red: #FF5A6E;
   --ear-left: 34px;
   --ear-right: 78px;
   --key-w: 84px;
@@ -24,22 +24,21 @@
 html, body {
   margin: 0; width: 100%; height: 100%; overflow: hidden;
   background: transparent; color: var(--text);
-  font-family: "SF Pro Text", "PingFang SC", -apple-system, "Helvetica Neue", sans-serif;
+  font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
   user-select: none; -webkit-font-smoothing: antialiased;
 }
 button { font: inherit; color: inherit; }
 .time {
-  display: inline-grid; font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  display: inline-grid; font-family: "Nunito", sans-serif;
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
-  font-weight: 600; font-size: 13px; letter-spacing: 0.2px; line-height: 1;
+  font-weight: 800; font-size: 13px; letter-spacing: 0.2px; line-height: 1;
   color: var(--text);
 }
 .time-slot, .time-val { grid-area: 1 / 1; }
 .time-slot { visibility: hidden; }
 .time-val { text-align: right; }
 .dot {
-  width: 8px; height: 8px; border-radius: 50%; background: var(--red);
-  box-shadow: 0 0 6px rgba(255, 59, 48, 0.65); flex: none;
+  width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex: none;
 }
 
 /* ---- hit window: ears only. The notch body stays transparent. ---- */
@@ -69,10 +68,10 @@ body[data-role="panel"][data-show="stop"] #panel { display: flex; }
 #panel[data-motion="out"] { animation: notch-out var(--close) cubic-bezier(0.4, 0, 0.2, 1) both; }
 .keys { display: flex; align-items: center; justify-content: center; gap: var(--key-gap); width: 100%; height: 100%; }
 .key {
-  width: var(--key-w); height: var(--key-h); border: 0; border-radius: var(--key-radius);
+  width: var(--key-w); height: var(--key-h); border: 1px solid var(--line); border-radius: var(--key-radius);
   background: var(--key); color: var(--text); cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.06); padding: 0 4px;
+  padding: 0 4px;
 }
 .key .ico { width: 22px; height: 22px; display: block; }
 .key .ico svg { width: 22px; height: 22px; display: block; }
@@ -81,7 +80,7 @@ body[data-role="panel"][data-show="stop"] #panel { display: flex; }
   font-size: 9px; color: var(--muted); max-width: 100%;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums;
 }
-.key:hover, .key:focus-visible { box-shadow: inset 0 0 0 1px var(--gold); outline: none; background: #262420; }
+.key:hover, .key:focus-visible { border-color: var(--accent); outline: none; background: #24302A; }
 .stop {
   display: none; align-items: center; justify-content: space-between;
   width: 100%; height: 100%; padding: 12px 16px 14px; gap: 12px;
@@ -92,29 +91,28 @@ body[data-show="stop"] .stop { display: flex; }
 .stop-title { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; }
 .stop-sub { font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stop-btn {
-  flex: none; height: 36px; padding: 0 16px 0 12px; border: 0; border-radius: 18px;
+  flex: none; height: 36px; padding: 0 16px 0 12px; border: 1px solid var(--accent); border-radius: 18px;
   background: var(--key); cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
-  font-size: 13px; font-weight: 600; box-shadow: inset 0 0 0 1px rgba(212, 168, 75, 0.6);
+  font-size: 13px; font-weight: 600;
 }
-.stop-btn:hover, .stop-btn:focus-visible { box-shadow: inset 0 0 0 1.5px var(--gold); outline: none; }
+.stop-btn:hover, .stop-btn:focus-visible { background: #24302A; outline: none; }
 .stop-sq { width: 12px; height: 12px; border-radius: 3px; background: var(--red); display: block; }
 
 /* ---- no-notch / external pill ---- */
 #pill {
   position: absolute; inset: 0; display: none; align-items: center;
   background: var(--body); border-radius: 15px; padding: 0 4px 0 12px; gap: 8px;
-  box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, .14);
 }
 body[data-role="pill"][data-show="pill"] #pill { display: flex; }
 #pill .time { font-size: 12px; }
 .pill-stop {
-  margin-left: auto; height: 22px; padding: 0 8px; border: 0; border-radius: 11px;
+  margin-left: auto; height: 22px; padding: 0 8px; border: 1px solid var(--accent); border-radius: 11px;
   background: var(--key); color: var(--text); cursor: pointer;
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 11px; font-weight: 600; white-space: nowrap;
-  box-shadow: inset 0 0 0 1px rgba(212, 168, 75, 0.6);
 }
-.pill-stop:hover, .pill-stop:focus-visible { box-shadow: inset 0 0 0 1.5px var(--gold); outline: none; }
+.pill-stop:hover, .pill-stop:focus-visible { background: #24302A; outline: none; }
 .pill-sq { width: 8px; height: 8px; border-radius: 2px; background: var(--red); display: block; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -136,24 +134,21 @@ body[data-role="pill"][data-show="pill"] #pill { display: flex; }
 }
 
 /* Preview chrome. Not part of the Mac window. */
-body.preview { background: #100e0b; overflow: auto; }
+body.preview { background: #121B16; overflow: auto; }
 #mock { display: none; }
 body.preview #mock { display: block; width: 960px; height: 520px; padding: 28px 36px; }
 .mock-tag {
   font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--gold); font-weight: 700; margin: 0 0 6px;
+  color: var(--accent); font-weight: 800; margin: 0 0 6px; font-family: "Nunito", sans-serif;
 }
 .mock-sub { margin: 0 0 18px; color: var(--muted); font-size: 13px; line-height: 1.45; }
 .mock-screen {
   position: relative; width: 880px; height: 360px; border-radius: 12px; overflow: hidden;
-  background:
-    radial-gradient(520px 240px at 18% 100%, rgba(212, 168, 75, 0.18), transparent 70%),
-    linear-gradient(160deg, #1c1a16, #0e0d0b 60%);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+  background: #192420; border: 1px solid var(--line);
 }
 .mock-menu {
   height: 32px; display: flex; align-items: center; justify-content: space-between;
-  padding: 0 16px; background: rgba(58, 52, 42, 0.72); color: #fff; font-size: 13px; font-weight: 600;
+  padding: 0 16px; background: rgba(24, 28, 26, .88); color: var(--text); font-size: 13px; font-weight: 600;
 }
 .mock-menu span { font-weight: 500; opacity: 0.9; margin-left: 14px; }
 .mock-hardware {
@@ -162,7 +157,7 @@ body.preview #mock { display: block; width: 960px; height: 520px; padding: 28px 
 }
 .mock-layer { position: absolute; inset: 0; }
 .mock-note {
-  position: absolute; left: 24px; bottom: 18px; color: var(--gold-soft); font-size: 12px; font-weight: 600;
+  position: absolute; left: 24px; bottom: 18px; color: var(--accent); font-size: 12px; font-weight: 600;
 }
 body.preview #hit,
 body.preview #chin,

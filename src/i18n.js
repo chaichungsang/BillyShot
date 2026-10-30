@@ -417,7 +417,7 @@
     '辅助功能权限（鼠标快捷键）': 'Accessibility permission (mouse shortcuts)',
     '打开日志文件': 'Open log file',
     '遇到问题时，把日志文件 hopsnap.log 发给开发者，就能看到具体原因。': 'If something goes wrong, send the log file hopsnap.log to the developer so they can see what happened.',
-    '这个项目是开源的：https://github.com/chaichungsang/BillyShot': 'This project is open source: https://github.com/chaichungsang/BillyShot',
+    '这个项目是开源的：https://github.com/chaichungsang/Hopsnap': 'This project is open source: https://github.com/chaichungsang/Hopsnap',
     '打开 GitHub': 'Open on GitHub',
     '截图：区域 / 窗口 / 全屏，原生分辨率（支持 4K、高 DPI）': 'Screenshots: region / window / full screen at native resolution (4K and high DPI)',
     '标注：矩形、椭圆、箭头、画笔、荧光笔、马赛克、文字、序号，可撤销重做、可拖动修改': 'Annotations: rectangle, ellipse, arrow, pen, highlighter, mosaic, text, numbers — with undo / redo and drag to edit',

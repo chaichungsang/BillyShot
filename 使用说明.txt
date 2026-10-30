@@ -148,7 +148,7 @@ Mac
   · 系统设置 → 隐私与安全性 里的 Hopsnap 授权可以顺手去掉
 
 
-源代码：https://github.com/chaichungsang/BillyShot（MIT）
+源代码：https://github.com/chaichungsang/Hopsnap（MIT）
   npm install
   npm start            开发运行
   npm run dist:win     Windows 安装包（Apple Silicon 的 Mac 上需要 brew install makensis）

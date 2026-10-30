@@ -1,4 +1,4 @@
-/* BillyShot 录制核心：采集屏幕 → 裁剪/缩放 → MediaRecorder(MP4) 或 GIF Worker */
+/* Hopsnap 录制核心：采集屏幕 → 裁剪/缩放 → MediaRecorder(MP4) 或 GIF Worker */
 'use strict';
 
 const log = (...a) => { console.log('[rec]', ...a); };

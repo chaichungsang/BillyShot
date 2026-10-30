@@ -2,27 +2,31 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<title>BillyShot RecFrame</title>
+<title>Hopsnap RecFrame</title>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; media-src 'self' file: data:; style-src 'self' 'unsafe-inline'">
 <style>
+  @font-face { font-family: "Nunito"; src: url("../../assets/fonts/Nunito.ttf") format("truetype"); font-weight: 200 1000; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
-  #border { position: fixed; inset: 1px; border: 2px dashed rgba(255,80,110,.95); border-radius: 3px; }
-  body.rec #border { border-style: solid; border-color: rgba(255,70,105,.95); box-shadow: 0 0 12px rgba(255,70,105,.35); }
+  #border { position: fixed; inset: 1px; border: 2px dashed rgba(255,90,110,.95); border-radius: 6px; }
+  body.rec #border { border-style: solid; border-color: rgba(255,90,110,.95); }
   body.full #border { display: none; }
   body.full.counting #border { display: block; }
-  #count { position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 128px; height: 128px; border-radius: 50%;
-    background: rgba(18,18,24,.72); color: #fff; font: 300 66px/126px "Segoe UI Variable Display", "SF Pro Display", -apple-system, "Segoe UI", sans-serif; text-align: center; display: none;
-    border: 1px solid rgba(255,255,255,.14); box-shadow: 0 0 0 6px rgba(124,124,255,.18), 0 20px 50px rgba(0,0,0,.4); backdrop-filter: blur(20px); }
+  /* 倒计时：小青蛙鼓着腮帮子憋气，数字在它肚子上 */
+  #count { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -54%); width: 168px; height: 168px; display: none; }
+  #count svg { position: absolute; left: 0; top: 0; width: 168px; height: 168px; }
+  #count b { position: absolute; left: 0; right: 0; top: 106px; text-align: center; color: #163B2A;
+    font: 800 42px/1 "Nunito", "Segoe UI Variable Display", "SF Pro Display", -apple-system, "Segoe UI", sans-serif; }
   body.counting #count { display: block; }
-  #tip { position: fixed; left: 50%; top: calc(50% + 84px); transform: translateX(-50%); color: #e9e9f0; background: rgba(18,18,24,.72);
-    font: 12px "Segoe UI", -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; padding: 4px 12px; border-radius: 12px; white-space: nowrap; display: none; border: 1px solid rgba(255,255,255,.1); }
+  #tip { position: fixed; left: 50%; top: calc(50% + 92px); transform: translateX(-50%); color: #ECF2EE; background: rgba(24,28,26,.88);
+    font: 600 12px "Segoe UI", -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; padding: 5px 13px; border-radius: 999px; white-space: nowrap; display: none; border: 1px solid rgba(255,255,255,.1); }
   body.counting #tip { display: block; }
 </style>
 </head>
 <body>
 <div id="border"></div>
-<div id="count"></div>
+<div id="count"><span id="frog"></span><b id="num"></b></div>
 <div id="tip">即将开始录制…</div>
+<script src="frog.js"></script>
 <script src="../i18n.js"></script>
 <script src="recframe.js"></script>
 </body>

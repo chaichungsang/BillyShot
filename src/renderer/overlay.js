@@ -1,4 +1,4 @@
-/* BillyShot 截图覆盖层：微信式选区 + 标注编辑 */
+/* Hopsnap 截图覆盖层：微信式选区 + 标注编辑 */
 'use strict';
 
 const $ = (id) => document.getElementById(id);
@@ -12,7 +12,7 @@ const editor = $('textEditor');
 const sizeLabel = $('sizeLabel');
 const isMac = api.platform === 'darwin';
 
-const ACCENT = '#7c7cff';
+const ACCENT = '#3BCB7C'; // 青蛙绿：选区边框、控制点、放大镜十字线
 const COLORS = ['#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#00c7be', '#007aff', '#5856d6', '#af52de', '#ffffff', '#000000'];
 const SIZES = {
   rect: [2, 4, 7], ellipse: [2, 4, 7], arrow: [2, 4, 7], pen: [2, 4, 8], marker: [12, 20, 32],
@@ -178,7 +178,7 @@ function renderNow() {
   // 边框
   const lw = 1 / r * Math.max(1, Math.round(r));
   if (hole) {
-    if (!sel) { ctx.fillStyle = 'rgba(124,124,255,0.08)'; ctx.fillRect(hole.x, hole.y, hole.w, hole.h); }
+    if (!sel) { ctx.fillStyle = 'rgba(59,203,124,0.08)'; ctx.fillRect(hole.x, hole.y, hole.w, hole.h); }
     ctx.strokeStyle = ACCENT;
     const bw = sel ? Math.max(lw, 1.5) : Math.max(lw, 2.5);
     ctx.lineWidth = bw;
@@ -771,7 +771,7 @@ function updateMagnifier() {
   mctx.fillStyle = '#000'; mctx.fillRect(0, 0, 272, 272);
   mctx.drawImage(S.img, px - (n >> 1), py - (n >> 1), n, n, 0, 0, 272, 272);
   const cell = 272 / n;
-  mctx.fillStyle = 'rgba(124,124,255,0.38)';
+  mctx.fillStyle = 'rgba(59,203,124,0.38)';
   mctx.fillRect(0, (n >> 1) * cell, 272, cell); mctx.fillRect((n >> 1) * cell, 0, cell, 272);
   mctx.strokeStyle = '#fff'; mctx.lineWidth = 2; mctx.strokeRect((n >> 1) * cell, (n >> 1) * cell, cell, cell);
   const i = (py * S.W + px) * 4;

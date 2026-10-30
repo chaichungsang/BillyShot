@@ -4,14 +4,14 @@ const $ = (id) => document.getElementById(id);
 const tr = (s) => (s && typeof tx === 'function' ? tx(s) : (s || ''));
 
 const GLYPH = {
-  'image.convert': '<svg viewBox="0 0 18 18" fill="none" stroke="#E8C97A" stroke-width="1.6" stroke-linecap="round"><path d="M4 6h8M10 3.5 12.5 6 10 8.5M14 12H6M8 9.5 5.5 12 8 14.5"/></svg>',
-  'image.compress': '<svg viewBox="0 0 18 18" fill="none" stroke="#E8C97A" stroke-width="1.6" stroke-linecap="round"><path d="M5 3v4M9 3v4M13 3v4M4 9h10M6 9l3 5 3-5"/></svg>',
-  'image.resize': '<svg viewBox="0 0 18 18" fill="none" stroke="#E8C97A" stroke-width="1.6" stroke-linecap="round"><path d="M4 7V4h3M14 7V4h-3M4 11v3h3M14 11v3h-3"/></svg>',
-  'video.mp4': '<svg viewBox="0 0 18 18" fill="none" stroke="#E8C97A" stroke-width="1.6"><rect x="2.5" y="4" width="9" height="10" rx="1.5"/><path d="M11.5 7.5 15.5 5.5v7l-4-2"/></svg>',
-  'video.compress': '<svg viewBox="0 0 18 18" fill="none" stroke="#E8C97A" stroke-width="1.6" stroke-linecap="round"><path d="M4 5h10M4 13h10M7 5l2 3 2-3M7 13l2-3 2 3"/></svg>',
-  'video.trim': '<svg viewBox="0 0 18 18" fill="none" stroke="#E8C97A" stroke-width="1.6" stroke-linecap="round"><path d="M6 3v12M12 3v12M3 6h3M12 6h3M3 12h3M12 12h3"/></svg>',
-  'video.gif': '<svg viewBox="0 0 18 18" fill="none" stroke="#E8C97A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="13" height="10" rx="1.4"/><path d="M6 4v10M12 4v10M2.5 7.2h3.5M12 7.2h3.5M2.5 10.8h3.5M12 10.8h3.5"/></svg>',
-  'pdf.make': '<svg viewBox="0 0 18 18" fill="none" stroke="#E8C97A" stroke-width="1.6"><path d="M5 2.5h5l3 3V15.5H5z"/><path d="M10 2.5V6h3"/></svg>',
+  'image.convert': '<svg viewBox="0 0 18 18" fill="none" stroke="#3BCB7C" stroke-width="1.6" stroke-linecap="round"><path d="M4 6h8M10 3.5 12.5 6 10 8.5M14 12H6M8 9.5 5.5 12 8 14.5"/></svg>',
+  'image.compress': '<svg viewBox="0 0 18 18" fill="none" stroke="#3BCB7C" stroke-width="1.6" stroke-linecap="round"><path d="M5 3v4M9 3v4M13 3v4M4 9h10M6 9l3 5 3-5"/></svg>',
+  'image.resize': '<svg viewBox="0 0 18 18" fill="none" stroke="#3BCB7C" stroke-width="1.6" stroke-linecap="round"><path d="M4 7V4h3M14 7V4h-3M4 11v3h3M14 11v3h-3"/></svg>',
+  'video.mp4': '<svg viewBox="0 0 18 18" fill="none" stroke="#3BCB7C" stroke-width="1.6"><rect x="2.5" y="4" width="9" height="10" rx="1.5"/><path d="M11.5 7.5 15.5 5.5v7l-4-2"/></svg>',
+  'video.compress': '<svg viewBox="0 0 18 18" fill="none" stroke="#3BCB7C" stroke-width="1.6" stroke-linecap="round"><path d="M4 5h10M4 13h10M7 5l2 3 2-3M7 13l2-3 2 3"/></svg>',
+  'video.trim': '<svg viewBox="0 0 18 18" fill="none" stroke="#3BCB7C" stroke-width="1.6" stroke-linecap="round"><path d="M6 3v12M12 3v12M3 6h3M12 6h3M3 12h3M12 12h3"/></svg>',
+  'video.gif': '<svg viewBox="0 0 18 18" fill="none" stroke="#3BCB7C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="13" height="10" rx="1.4"/><path d="M6 4v10M12 4v10M2.5 7.2h3.5M12 7.2h3.5M2.5 10.8h3.5M12 10.8h3.5"/></svg>',
+  'pdf.make': '<svg viewBox="0 0 18 18" fill="none" stroke="#3BCB7C" stroke-width="1.6"><path d="M5 2.5h5l3 3V15.5H5z"/><path d="M10 2.5V6h3"/></svg>',
 };
 
 let state = null;
@@ -85,7 +85,7 @@ function renderArc(payload) {
     const x2 = payload.hubx + p.x;
     const y2 = payload.huby + p.y;
     const hot = i === active;
-    return `<line x1="${payload.hubx}" y1="${payload.huby}" x2="${x2}" y2="${y2}" stroke="${hot ? 'rgba(232,201,122,.85)' : 'rgba(212,168,75,.28)'}" stroke-width="1" ${hot ? '' : 'stroke-dasharray="2 3"'} />`;
+    return `<line x1="${payload.hubx}" y1="${payload.huby}" x2="${x2}" y2="${y2}" stroke="${hot ? 'rgba(59,203,124,.9)' : 'rgba(59,203,124,.35)'}" stroke-width="1" ${hot ? '' : 'stroke-dasharray="2 3"'} />`;
   }).join('');
   svg.innerHTML = arc + lines;
 
@@ -111,7 +111,7 @@ function renderArc(payload) {
       const ring = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       ring.setAttribute('class', 'dash');
       ring.setAttribute('viewBox', '0 0 76 76');
-      ring.innerHTML = '<circle cx="38" cy="38" r="37" fill="none" stroke="#E8C97A" stroke-width="1.6" stroke-dasharray="2.2 3.2"/>';
+      ring.innerHTML = '<circle cx="38" cy="38" r="37" fill="none" stroke="#3BCB7C" stroke-width="1.6" stroke-dasharray="2.2 3.2"/>';
       btn.appendChild(ring);
     }
     btn.addEventListener('mouseenter', () => focusKey(i, true));
@@ -134,7 +134,7 @@ function arcPath(payload) {
   const x0 = payload.hubx + p0.x, y0 = payload.huby + p0.y;
   const x1 = payload.hubx + p1.x, y1 = payload.huby + p1.y;
   const large = Math.abs(a1 - a0) > 180 ? 1 : 0;
-  return `<path d="M${x0},${y0} A${payload.radius},${payload.radius} 0 ${large} 1 ${x1},${y1}" fill="none" stroke="rgba(212,168,75,.28)" stroke-width="1"/>`;
+  return `<path d="M${x0},${y0} A${payload.radius},${payload.radius} 0 ${large} 1 ${x1},${y1}" fill="none" stroke="rgba(59,203,124,.35)" stroke-width="1"/>`;
 }
 
 function focusKey(i, fromHover) {

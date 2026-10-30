@@ -1,7 +1,7 @@
 #!/bin/bash
 # 1.3.2 录屏保存测试：录制中只有 .part；保存完才出现 .mp4 / .gif；控制条显示保存进度和「已保存」；
 # MP4 整理成普通 MP4（逐包对比和原始分段 MP4 完全一样）；上次中断留下的 .part 启动时恢复
-cd /home/claude/billyshot
+cd "$(dirname "$0")/.."
 source test/env.sh
 PASS=0; FAIL=0; RESULTS=()
 ok()  { PASS=$((PASS+1)); RESULTS+=("PASS  $1"); echo "PASS  $1"; }
@@ -9,7 +9,7 @@ bad() { FAIL=$((FAIL+1)); RESULTS+=("FAIL  $1  -- $2"); echo "FAIL  $1 -- $2"; }
 chk() { if [ "$2" = "$3" ]; then ok "$1"; else bad "$1" "want=$3 got=$2"; fi; }
 EV()  { local c=$1 js=$2; local n=$(grep -c '^EVAL' /tmp/app.log); cmd "$(jq -cn --arg c "$c" --arg js "$js" '{cmd:$c,js:$js}')" 0.7; local m=$(grep -c '^EVAL' /tmp/app.log); [ "$m" -gt "$n" ] && grep '^EVAL' /tmp/app.log | tail -1 | sed 's/^EVAL //' || echo NOEVAL; }
 DB()  { local n=$(grep -c '^DONEBAR_STATE' /tmp/app.log); cmd '{"cmd":"doneBar"}' 0.5; grep '^DONEBAR_STATE' /tmp/app.log | tail -1 | sed 's/^DONEBAR_STATE //'; }
-VD=/root/Videos/BillyShot
+VD=/root/Videos/Hopsnap
 clean() { mkdir -p $VD; find $VD -maxdepth 1 -type f -delete; }
 sel() { xdotool mousemove 301 221 mousedown 1 mousemove 900 600 mousemove 1201 781 mouseup 1; sleep 0.4; }
 wiggle() { for i in $(seq 1 $1); do xdotool mousemove $((350+(i*97)%800)) $((260+(i*61)%480)); sleep 0.25; done; }
@@ -32,8 +32,8 @@ P
 }
 newest(){ ls -t $1 2>/dev/null | head -1; }
 
-rm -rf /root/.config/BillyShot; mkdir -p /root/.config/BillyShot; clean
-cat > /root/.config/BillyShot/settings.json <<J
+rm -rf /root/.config/Hopsnap; mkdir -p /root/.config/Hopsnap; clean
+cat > /root/.config/Hopsnap/settings.json <<J
 {"general":{"firstRun":false,"language":"zh"},"record":{"countdown":0,"quality":"1080","fps":30,"format":"mp4","regionFormat":"mp4","systemAudio":true,"mic":true},"sound":{"record":false,"countdown":false}}
 J
 start_x; start_app 6
@@ -107,7 +107,7 @@ EV evalBar "document.getElementById('dClose').click();1" >/dev/null
 
 # ---------------------------------------------------------------- 6 MP4 整理前后逐包一致（关掉整理录一段，拿原始分段 MP4 自己整理再比）
 kill $(cat /tmp/app.pid) 2>/dev/null; sleep 1; clean
-EXTRA_ENV="BILLYSHOT_NO_FINALIZE=1" start_app 6
+EXTRA_ENV="HOPSNAP_NO_FINALIZE=1" start_app 6
 cmd '{"cmd":"recordFull"}' 1.5; wiggle 24; cmd '{"cmd":"stop"}' 2
 RAW=$(newest "$VD/*.mp4"); cp "$RAW" /tmp/s_raw.mp4; cp "$RAW" /tmp/s_fix.mp4
 boxes /tmp/s_raw.mp4 | grep -q moof && ok "S13 原始录制是分段 MP4（有 moof）" || bad "S13 原始格式" "$(boxes /tmp/s_raw.mp4)"
@@ -134,19 +134,19 @@ DC=$(ffprobe -v error -show_entries format=duration -of csv=p=0 /tmp/s_cut.mp4)
 
 # ---------------------------------------------------------------- 7 启动时恢复上次留下的 .part
 clean
-cp /tmp/s_raw.mp4 $VD/BillyShot_20200101_000000.mp4.part
-cp /tmp/s_raw.mp4 $VD/BillyShot_20200101_000001.mp4.part; truncate -s 300000 $VD/BillyShot_20200101_000001.mp4.part
-: > $VD/BillyShot_20200101_000002.mp4.part
+cp /tmp/s_raw.mp4 $VD/Hopsnap_20200101_000000.mp4.part
+cp /tmp/s_raw.mp4 $VD/Hopsnap_20200101_000001.mp4.part; truncate -s 300000 $VD/Hopsnap_20200101_000001.mp4.part
+: > $VD/Hopsnap_20200101_000002.mp4.part
 kill $(cat /tmp/app.pid) 2>/dev/null; sleep 1; start_app 6
 L=$(ls $VD | tr '\n' ' ')
-[ -f $VD/BillyShot_20200101_000000.mp4 ] && [ -f $VD/BillyShot_20200101_000001.mp4 ] && ! echo "$L" | grep -q part && ok "S18 启动时把上次没保存完的 .part 整理好改回 .mp4，空的删掉（$L）" || bad "S18 恢复" "$L"
-[ -f $VD/BillyShot_20200101_000000.mp4 ] && ! boxes $VD/BillyShot_20200101_000000.mp4 | grep -q moof && ok "S18b 恢复的文件也整理成普通 MP4" || bad "S18b 恢复整理" "$(boxes $VD/BillyShot_20200101_000000.mp4)"
-grep -q "NOTIFY 上次的录屏没有正常结束 | 已恢复录到的部分：BillyShot_20200101_000000.mp4" /tmp/app.log && ok "S18c 恢复后通知" || bad "S18c 恢复通知" "$(grep NOTIFY /tmp/app.log | tail -2)"
+[ -f $VD/Hopsnap_20200101_000000.mp4 ] && [ -f $VD/Hopsnap_20200101_000001.mp4 ] && ! echo "$L" | grep -q part && ok "S18 启动时把上次没保存完的 .part 整理好改回 .mp4，空的删掉（$L）" || bad "S18 恢复" "$L"
+[ -f $VD/Hopsnap_20200101_000000.mp4 ] && ! boxes $VD/Hopsnap_20200101_000000.mp4 | grep -q moof && ok "S18b 恢复的文件也整理成普通 MP4" || bad "S18b 恢复整理" "$(boxes $VD/Hopsnap_20200101_000000.mp4)"
+grep -q "NOTIFY 上次的录屏没有正常结束 | 已恢复录到的部分：Hopsnap_20200101_000000.mp4" /tmp/app.log && ok "S18c 恢复后通知" || bad "S18c 恢复通知" "$(grep NOTIFY /tmp/app.log | tail -2)"
 
 # ---------------------------------------------------------------- 8 英文界面
 kill $(cat /tmp/app.pid) 2>/dev/null; sleep 1; clean
 cmd '{"cmd":"noop"}' 0
-jq '.general.language="en"' /root/.config/BillyShot/settings.json > /tmp/s.json && cp /tmp/s.json /root/.config/BillyShot/settings.json
+jq '.general.language="en"' /root/.config/Hopsnap/settings.json > /tmp/s.json && cp /tmp/s.json /root/.config/Hopsnap/settings.json
 start_app 6
 cmd '{"cmd":"recordFull"}' 1.5; wiggle 6; cmd '{"cmd":"stop"}' 2
 R=$(EV evalBar "[document.getElementById('meta').textContent,document.getElementById('dFolder').textContent.trim(),document.getElementById('dPlay').textContent.trim(),document.getElementById('dClose').title].join('|')")

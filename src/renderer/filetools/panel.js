@@ -311,12 +311,15 @@ function renderQueued() {
   foot.appendChild(button('取消', 'ghost', () => send('filetools:cancel')));
 }
 
+function frogBox(mood) {
+  const n = el('div', 'mascot');
+  if (typeof Frog !== 'undefined' && Frog.mount) Frog.mount(n, mood, 72);
+  return n;
+}
 function renderDone() {
   const body = $('body');
   const box = el('div', 'done');
-  const check = el('div', 'check');
-  check.innerHTML = '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#161514" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 9.5 17 19 7.5"/></svg>';
-  box.appendChild(check);
+  box.appendChild(frogBox('happy'));
   box.appendChild(el('h2', '', tr('完成')));
   box.appendChild(el('p', '', view.fileName || ''));
   if (view.measured && view.bytes != null && Number.isFinite(Number(view.bytes))) box.appendChild(el('p', '', bytes(view.bytes)));
@@ -326,7 +329,10 @@ function renderDone() {
 }
 
 function renderError() {
-  $('body').appendChild(el('p', 'err', tr(view.message || '没有完成')));
+  const box = el('div', 'done');
+  box.appendChild(frogBox('x'));
+  box.appendChild(el('p', 'err', tr(view.message || '没有完成')));
+  $('body').appendChild(box);
   $('foot').appendChild(button('关闭#ft', 'ghost', () => send('filetools:close-panel')));
 }
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 # 1.3.3 点击水波纹测试（WebGL 水面高光 / 阴影），以及「单圈（旧样式）」选项
-cd /home/claude/billyshot
+cd "$(dirname "$0")/.."
 source test/env.sh
 PASS=0; FAIL=0; RESULTS=()
 ok()  { PASS=$((PASS+1)); RESULTS+=("PASS  $1"); echo "PASS  $1"; }
@@ -12,22 +12,22 @@ style() { cmd "{\"cmd\":\"setSettings\",\"patch\":{\"present\":{\"rippleStyle\":
 an() { python3 test/ripple_an.py "$@"; }
 val() { echo "$1" | grep -o "$2=[-0-9]*" | cut -d= -f2; }
 SEL='select[data-k="present.rippleStyle"]'
-VD=~/Videos/BillyShot
+VD=~/Videos/Hopsnap
 fresh() {
-  rm -rf ~/.config/BillyShot; mkdir -p ~/.config/BillyShot $VD; rm -f $VD/*
-  cat > ~/.config/BillyShot/settings.json <<J
+  rm -rf ~/.config/Hopsnap; mkdir -p ~/.config/Hopsnap $VD; rm -f $VD/*
+  cat > ~/.config/Hopsnap/settings.json <<J
 {"general":{"firstRun":false,"language":"${1:-zh}"},"record":{"countdown":0,"quality":"1080","fps":30,"format":"mp4","regionFormat":"mp4"},"sound":{"record":false,"countdown":false}${2:+,$2}}
 J
 }
 # 灰色桌面（#808080），去掉背景图窗口：高光（变亮）和阴影（变暗）都量得出来；左键点桌面不会弹菜单
 gray_x() { start_x; pkill -x display 2>/dev/null; xsetroot -solid '#808080'; sleep 0.5; }
 # 关掉 app，等进程真的退出（单实例锁），避免下一次启动连到旧进程
-stop_app() { cmd '{"cmd":"quit"}' 1; [ -f /tmp/app.pid ] && kill $(cat /tmp/app.pid) 2>/dev/null; for i in $(seq 1 20); do pgrep -x electron >/dev/null || break; sleep 0.3; done; pkill -9 -x electron 2>/dev/null; rm -f /tmp/billyshot-cmd.json; sleep 0.5; }
+stop_app() { cmd '{"cmd":"quit"}' 1; [ -f /tmp/app.pid ] && kill $(cat /tmp/app.pid) 2>/dev/null; for i in $(seq 1 20); do pgrep -x electron >/dev/null || break; sleep 0.3; done; pkill -9 -x electron 2>/dev/null; rm -f /tmp/hopsnap-cmd.json; sleep 0.5; }
 # 桌面换成条纹（xcompmgr 要重启才会换背景）
 stripes_root() { pkill xcompmgr; sleep 0.3; hsetroot -tile test/stripes.png >/dev/null 2>&1; xcompmgr >/tmp/xcompmgr.log 2>&1 & sleep 0.8; }
 gray_root() { pkill xcompmgr; sleep 0.3; hsetroot -solid '#808080' >/dev/null 2>&1; xcompmgr >/tmp/xcompmgr.log 2>&1 & sleep 0.8; }
 
-rm -f /tmp/billyshot-cmd.json
+rm -f /tmp/hopsnap-cmd.json
 # ================================================================ A 老用户升级 → 默认水波纹
 fresh zh '"present":{"halo":false,"clicks":true}'
 gray_x; start_app 6
@@ -35,7 +35,7 @@ cmd '{"cmd":"present","action":"demo","on":true}' 1.5
 L=$(LAYER)
 chk "A1 老设置没有波纹样式 → 默认「水波纹」" "$(echo "$L" | jq -r '.cfg.rippleStyle')" 'water'
 chk "A1b 还没点过时不创建 WebGL（不占显存）" "$(echo "$L" | jq -r '.waterGL')" 'false'
-jq -e '.present.clicks==true and .present.halo==false' ~/.config/BillyShot/settings.json >/dev/null && ok "A1c 老用户原来的开关不变" || bad "A1c 老设置被改" "$(jq -c .present ~/.config/BillyShot/settings.json)"
+jq -e '.present.clicks==true and .present.halo==false' ~/.config/Hopsnap/settings.json >/dev/null && ok "A1c 老用户原来的开关不变" || bad "A1c 老设置被改" "$(jq -c .present ~/.config/Hopsnap/settings.json)"
 
 xdotool mousemove 1300 800; sleep 0.3; shot /tmp/rw_base.png
 R=$(an /tmp/rw_base.png 700 500 0 140); [ "$(val "$R" changed)" -lt 5 ] && ok "A2 点击前那块是平的灰底（对照）" || bad "A2 底图不干净" "$R"
@@ -112,7 +112,7 @@ R=$(EV evalSettings "JSON.stringify([...document.querySelectorAll('$SEL option')
 chk "S1 设置页「波纹样式」：水波纹 / 单圈" "$R" '["water:水波纹","single:单圈（旧样式）"]'
 chk "S2 默认选中水波纹" "$(EV evalSettings "document.querySelector('$SEL').value")" '"water"'
 EV evalSettings "(()=>{const s=document.querySelector('$SEL');s.value='single';s.dispatchEvent(new Event('change'));return 1})()" >/dev/null; sleep 1
-chk "S3 设置页改成单圈：立即保存" "$(jq -r .present.rippleStyle ~/.config/BillyShot/settings.json)" 'single'
+chk "S3 设置页改成单圈：立即保存" "$(jq -r .present.rippleStyle ~/.config/Hopsnap/settings.json)" 'single'
 chk "S3b 正在显示的演示层马上换样式" "$(LAYER | jq -r '.cfg.rippleStyle')" 'single'
 R=$(EV evalSettings "document.querySelector('$SEL').closest('.row').previousElementSibling.querySelector('small').textContent")
 chk "S4 「点击波纹」说明改成水波" "$R" '"点击时像水波一样荡开，左键和右键颜色不同"'
@@ -154,7 +154,7 @@ refr_run() {   # $1 = 输出名；EXTRA_ENV 控制是否抓画面
 }
 stripes_root
 EXTRA_ENV="" refr_run on
-EXTRA_ENV="BILLYSHOT_TEST_NOPATCH=1" refr_run off
+EXTRA_ENV="HOPSNAP_TEST_NOPATCH=1" refr_run off
 RON=$(python3 test/ripple_diff.py /tmp/rf_base_on.png /tmp/rf_on 700 500 25 150); ROFF=$(python3 test/ripple_diff.py /tmp/rf_base_off.png /tmp/rf_off 700 500 25 150)
 echo "    折射: $RON   不折射: $ROFF"
 chk "E1 条纹桌面上点击：拿到了画面，开启折射" "$REF_on" '[true]'
@@ -179,7 +179,7 @@ if grep -qE "Uncaught|REPORTED_ERROR|TEST ERR" /tmp/app.log; then bad "C 无报�
 # ================================================================ D 电脑不支持 WebGL → 自动退回单圈，功能照常
 stop_app
 fresh zh '"present":{"clicks":true}'
-EXTRA_ENV="BILLYSHOT_TEST_NOGL=1" start_app 6
+EXTRA_ENV="HOPSNAP_TEST_NOGL=1" start_app 6
 cmd '{"cmd":"present","action":"demo","on":true}' 1.5
 chk "D1 没有 WebGL 时检测得到" "$(LAYER | jq -r '.waterGL')" 'false'
 xdotool mousemove 700 500 click 1; sleep 0.1

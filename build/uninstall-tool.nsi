@@ -1,4 +1,4 @@
-﻿; 「卸载 BillyShot」小工具：放在安装包旁边，双击就能找到这台电脑上已安装的 BillyShot 并打开它的卸载程序
+﻿; 「卸载呱咔」小工具：放在安装包旁边，双击就能找到这台电脑上已安装的 Hopsnap 并打开它的卸载程序
 ; 编译：node scripts/build-uninstall-tool.js（npm run dist:win 会自动编译）
 ; 本文件含中文，必须保存为 UTF-8 带 BOM
 Unicode true
@@ -8,26 +8,26 @@ ManifestDPIAware true
 !include FileFunc.nsh
 
 !ifndef OUTFILE
-  !define OUTFILE "dist\卸载BillyShot-Uninstall.exe"
+  !define OUTFILE "dist\Uninstall-Hopsnap.exe"
 !endif
 !ifndef VERSION
   !define VERSION "0.0.0"
 !endif
-; electron-builder 按 appId（com.billyshot.app）算出的固定 GUID，安装程序把卸载信息写在这个键下
-!define APP_GUID "c5641b28-4afb-5c59-acf2-9d7515db2c14"
+; electron-builder 按 appId（com.hopsnap.app）算出的固定 GUID，安装程序把卸载信息写在这个键下
+!define APP_GUID "95ec7fca-7294-586e-85e6-3495dca24a25"
 !define UNKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_GUID}"
 !define INSTKEY "Software\${APP_GUID}"
 
-Name "BillyShot Uninstall"
-Caption "BillyShot"
+Name "Hopsnap Uninstall"
+Caption "Hopsnap"
 OutFile "${OUTFILE}"
 Icon "..\assets\icon.ico"
 RequestExecutionLevel user
 ; 不显示安装界面；是否「静默」看命令行有没有 /S（SilentInstall silent 会让 ${Silent} 永远为真，不能用）
 SilentInstall silent
 VIProductVersion "${VERSION}.0"
-VIAddVersionKey "ProductName" "BillyShot Uninstall"
-VIAddVersionKey "FileDescription" "Uninstall BillyShot / 卸载 BillyShot"
+VIAddVersionKey "ProductName" "Hopsnap Uninstall"
+VIAddVersionKey "FileDescription" "Uninstall Hopsnap / 卸载呱咔"
 VIAddVersionKey "FileVersion" "${VERSION}"
 VIAddVersionKey "ProductVersion" "${VERSION}"
 VIAddVersionKey "LegalCopyright" "Free for everyone"
@@ -43,8 +43,8 @@ Function readFrom
     ${If} $cmd == ""
       ReadRegStr $1 HKCU "${INSTKEY}" "InstallLocation"
       ${If} $1 != ""
-      ${AndIf} ${FileExists} "$1\Uninstall BillyShot.exe"
-        StrCpy $cmd '"$1\Uninstall BillyShot.exe" /currentuser'
+      ${AndIf} ${FileExists} "$1\Uninstall Hopsnap.exe"
+        StrCpy $cmd '"$1\Uninstall Hopsnap.exe" /currentuser'
       ${EndIf}
     ${EndIf}
   ${Else}
@@ -52,8 +52,8 @@ Function readFrom
     ${If} $cmd == ""
       ReadRegStr $1 HKLM "${INSTKEY}" "InstallLocation"
       ${If} $1 != ""
-      ${AndIf} ${FileExists} "$1\Uninstall BillyShot.exe"
-        StrCpy $cmd '"$1\Uninstall BillyShot.exe" /allusers'
+      ${AndIf} ${FileExists} "$1\Uninstall Hopsnap.exe"
+        StrCpy $cmd '"$1\Uninstall Hopsnap.exe" /allusers'
       ${EndIf}
     ${EndIf}
   ${EndIf}
@@ -92,23 +92,23 @@ Section
   ${EndIf}
   ; 注册表被清理过：试默认安装位置
   ${If} $cmd == ""
-  ${AndIf} ${FileExists} "$LOCALAPPDATA\Programs\BillyShot\Uninstall BillyShot.exe"
-    StrCpy $cmd '"$LOCALAPPDATA\Programs\BillyShot\Uninstall BillyShot.exe" /currentuser'
+  ${AndIf} ${FileExists} "$LOCALAPPDATA\Programs\Hopsnap\Uninstall Hopsnap.exe"
+    StrCpy $cmd '"$LOCALAPPDATA\Programs\Hopsnap\Uninstall Hopsnap.exe" /currentuser'
   ${EndIf}
 
   ${If} $cmd == ""
     ${If} $quiet == 1
       ; 静默模式不弹窗
     ${ElseIf} $zh == 1
-      MessageBox MB_OK|MB_ICONINFORMATION "这台电脑上没有找到已安装的 BillyShot。$\r$\n$\r$\n如果你用的是免安装版（zip），直接删除那个文件夹即可。"
+      MessageBox MB_OK|MB_ICONINFORMATION "这台电脑上没有找到已安装的 Hopsnap。$\r$\n$\r$\n如果你用的是免安装版（zip），直接删除那个文件夹即可。"
     ${Else}
-      MessageBox MB_OK|MB_ICONINFORMATION "BillyShot is not installed on this computer.$\r$\n$\r$\nIf you use the portable (zip) version, just delete its folder."
+      MessageBox MB_OK|MB_ICONINFORMATION "Hopsnap is not installed on this computer.$\r$\n$\r$\nIf you use the portable (zip) version, just delete its folder."
     ${EndIf}
     SetErrorLevel 2
     Quit
   ${EndIf}
 
-  ; 找到了：打开 BillyShot 自己的卸载程序（它会确认、关闭正在运行的 BillyShot，并询问是否删除设置）
+  ; 找到了：打开 Hopsnap 自己的卸载程序（它会确认、关闭正在运行的 Hopsnap，并询问是否删除设置）
   ${If} $quiet == 1
     ExecWait '$cmd /S' $2
     SetErrorLevel $2

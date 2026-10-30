@@ -1,7 +1,7 @@
 // 通用预加载：只暴露受控的 IPC 通道
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
-const PREFIXES = ['overlay:', 'settings:', 'hotkeys:', 'history:', 'dialog:', 'shell:', 'app:', 'rec:', 'recbar:', 'pin:', 'frame:', 'present:', 'cam:', 'filetools:', 'notch:'];
+const PREFIXES = ['overlay:', 'settings:', 'hotkeys:', 'history:', 'dialog:', 'shell:', 'app:', 'rec:', 'recbar:', 'pin:', 'frame:', 'present:', 'cam:', 'perm:', 'filetools:', 'notch:'];
 const ok = (ch) => typeof ch === 'string' && PREFIXES.some((p) => ch.startsWith(p));
 
 contextBridge.exposeInMainWorld('api', {

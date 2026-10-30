@@ -1,0 +1,89 @@
+# 打 tag 就出包：git tag v2.0.0 && git push --tags
+# 产物：Hopsnap-<版本>-mac-AppleSilicon.zip / -Intel.zip / Hopsnap-Setup-<版本>.exe / -Windows-x64-win.zip / Uninstall-Hopsnap.exe
+#
+# Mac 签名（三选一，按仓库 Secrets 自动判断）：
+#   · Developer ID + 公证：CSC_LINK（.p12 的 base64）、CSC_KEY_PASSWORD、APPLE_ID、APPLE_APP_SPECIFIC_PASSWORD、APPLE_TEAM_ID
+#   · 固定自签名证书：      HOPSNAP_SIGN_CERT_PEM、HOPSNAP_SIGN_KEY_PEM（pem 文件内容）
+#   · 都没有：ad-hoc（只能自己试用，每次升级要重新授权屏幕录制）
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-14
+    env:
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      HOPSNAP_SIGN_CERT_PEM: ${{ secrets.HOPSNAP_SIGN_CERT_PEM }}
+      HOPSNAP_SIGN_KEY_PEM: ${{ secrets.HOPSNAP_SIGN_KEY_PEM }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Build (Developer ID + notarize)
+        if: env.CSC_LINK != ''
+        run: npm run dist:mac:release
+      - name: Build (self-signed certificate)
+        if: env.CSC_LINK == '' && env.HOPSNAP_SIGN_CERT_PEM != ''
+        run: |
+          brew install rcodesign
+          mkdir -p "$RUNNER_TEMP/sign"
+          printf '%s' "$HOPSNAP_SIGN_CERT_PEM" > "$RUNNER_TEMP/sign/cert.pem"
+          printf '%s' "$HOPSNAP_SIGN_KEY_PEM" > "$RUNNER_TEMP/sign/key.pem"
+          HOPSNAP_SIGN_DIR="$RUNNER_TEMP/sign" npm run dist:mac
+      - name: Build (ad-hoc, for testing only)
+        if: env.CSC_LINK == '' && env.HOPSNAP_SIGN_CERT_PEM == ''
+        run: HOPSNAP_ADHOC=1 npm run dist:mac
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: dist/Hopsnap-*-mac-*.zip
+          if-no-files-found: error
+
+  win:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run dist:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win
+          path: |
+            dist/Hopsnap-Setup-*.exe
+            dist/Hopsnap-*-Windows-*.zip
+            dist/Uninstall-Hopsnap.exe
+          if-no-files-found: error
+
+  publish:
+    needs: [mac, win]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { path: out, merge-multiple: true }
+      - name: Release notes from CHANGELOG
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          awk -v v="$V" '/^## /{p = index($0, v) > 0} p' CHANGELOG.md > notes.md || true
+          [ -s notes.md ] || echo "Hopsnap $V" > notes.md
+          (cd out && shasum -a 256 * > SHA256SUMS.txt)
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: 呱咔 Hopsnap ${{ github.ref_name }}
+          body_path: notes.md
+          files: out/*

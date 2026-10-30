@@ -69,7 +69,7 @@ api.on('cam:cfg', (c) => {
   document.body.classList.toggle('rounded', c.shape === 'rounded');
   document.body.classList.toggle('mirror', !!c.mirror);
   document.body.classList.toggle('outside', !!c.outside);
-  $('bSize').textContent = ({ s: 'S', m: 'M', l: 'L' })[c.size] || 'M';
+  $('bSizeT').textContent = ({ s: 'S', m: 'M', l: 'L' })[c.size] || 'M';
   if (first || c.deviceId !== curDevice) open(c.deviceId, !first); // 打开中途换设备也立刻换
 });
 

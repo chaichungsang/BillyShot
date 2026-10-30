@@ -1,14 +1,14 @@
 #!/bin/bash
 # 1.2.3 录音改动测试：回声消除 / 关自动增益 / 戴耳机提示 / 立体声混音提示
-cd /home/claude/billyshot
+cd "$(dirname "$0")/.."
 source test/env.sh
 PASS=0; FAIL=0
 ok()  { PASS=$((PASS+1)); echo "PASS  $1"; }
 bad() { FAIL=$((FAIL+1)); echo "FAIL  $1 -- $2"; }
 EV()  { local c=$1 js=$2; local n=$(grep -c EVAL /tmp/app.log); cmd "{\"cmd\":\"$c\",\"js\":\"$js\"}" 1; local m=$(grep -c EVAL /tmp/app.log); [ "$m" -gt "$n" ] && grep EVAL /tmp/app.log | tail -1 | sed 's/^EVAL //' || echo NOEVAL; }
-VD=~/Videos/BillyShot
-rm -rf ~/.config/BillyShot; mkdir -p ~/.config/BillyShot $VD; rm -f $VD/*
-cat > ~/.config/BillyShot/settings.json <<J
+VD=~/Videos/Hopsnap
+rm -rf ~/.config/Hopsnap; mkdir -p ~/.config/Hopsnap $VD; rm -f $VD/*
+cat > ~/.config/Hopsnap/settings.json <<J
 {"general":{"firstRun":false,"language":"zh"},"record":{"countdown":0,"quality":"1080","fps":30,"format":"mp4","regionFormat":"mp4","systemAudio":true,"mic":true},"sound":{"record":false,"countdown":false}}
 J
 start_x; start_app 6

@@ -1,11 +1,11 @@
-﻿; BillyShot 安装 / 卸载的自定义步骤（由 electron-builder 的 NSIS 模板引入）
+﻿; Hopsnap 安装 / 卸载的自定义步骤（由 electron-builder 的 NSIS 模板引入）
 ; 本文件含中文，必须保存为 UTF-8 带 BOM，否则 makensis 会按 ANSI 读取导致乱码
 
 ; ---------------------------------------------------------------------------
 ; 高分辨率屏幕（4K / 2K）：声明「DPI 感知」
 ; 不声明的话，Windows 会先按 100% 缩放把安装界面画好，再整张拉大到 150% / 200%，文字发糊。
 ; 声明后按系统实际缩放直接绘制：4K 屏就是 4K 清晰度，1080p 屏就是 1080p，都不拉伸。
-; 这个文件被安装程序和卸载程序（Uninstall BillyShot.exe）共用，两个都会生效。
+; 这个文件被安装程序和卸载程序（Uninstall Hopsnap.exe）共用，两个都会生效。
 ; ---------------------------------------------------------------------------
 ManifestDPIAware true
 
@@ -76,15 +76,15 @@ ManifestDPIAware true
   FunctionEnd
 !macroend
 
-; 安装：在开始菜单加一个「卸载 BillyShot」快捷方式（英文系统叫 Uninstall BillyShot）
+; 安装：在开始菜单加一个「卸载呱咔」快捷方式（英文系统叫 Uninstall Hopsnap）
 !macro customInstall
-  Delete "$SMPROGRAMS\卸载 BillyShot.lnk"
-  Delete "$SMPROGRAMS\Uninstall BillyShot.lnk"
+  Delete "$SMPROGRAMS\卸载呱咔.lnk"
+  Delete "$SMPROGRAMS\Uninstall Hopsnap.lnk"
   ${if} $LANGUAGE == 2052
   ${orIf} $LANGUAGE == 1028
-    CreateShortCut "$SMPROGRAMS\卸载 BillyShot.lnk" "$INSTDIR\${UNINSTALL_FILENAME}" "" "$INSTDIR\uninstallerIcon.ico" 0 SW_SHOWNORMAL "" "卸载 BillyShot"
+    CreateShortCut "$SMPROGRAMS\卸载呱咔.lnk" "$INSTDIR\${UNINSTALL_FILENAME}" "" "$INSTDIR\uninstallerIcon.ico" 0 SW_SHOWNORMAL "" "卸载呱咔"
   ${else}
-    CreateShortCut "$SMPROGRAMS\Uninstall BillyShot.lnk" "$INSTDIR\${UNINSTALL_FILENAME}" "" "$INSTDIR\uninstallerIcon.ico" 0 SW_SHOWNORMAL "" "Uninstall BillyShot"
+    CreateShortCut "$SMPROGRAMS\Uninstall Hopsnap.lnk" "$INSTDIR\${UNINSTALL_FILENAME}" "" "$INSTDIR\uninstallerIcon.ico" 0 SW_SHOWNORMAL "" "Uninstall Hopsnap"
   ${endIf}
 !macroend
 
@@ -99,9 +99,9 @@ ManifestDPIAware true
   ${andIfNot} ${isUpdated}
     ${if} $LANGUAGE == 2052
     ${orIf} $LANGUAGE == 1028
-      StrCpy $R8 "要同时删除 BillyShot 的设置和截图历史吗？$\r$\n$\r$\n是：卸载，并删除快捷键、录屏选项和截图历史。$\r$\n否：卸载，但保留这些设置，以后重新安装还能接着用。$\r$\n取消：不卸载。$\r$\n$\r$\n你保存的截图和录屏视频不会被删除。"
+      StrCpy $R8 "要同时删除 Hopsnap 的设置和截图历史吗？$\r$\n$\r$\n是：卸载，并删除快捷键、录屏选项和截图历史。$\r$\n否：卸载，但保留这些设置，以后重新安装还能接着用。$\r$\n取消：不卸载。$\r$\n$\r$\n你保存的截图和录屏视频不会被删除。"
     ${else}
-      StrCpy $R8 "Also delete BillyShot's settings and screenshot history?$\r$\n$\r$\nYes: uninstall and delete shortcuts, recording options and screenshot history.$\r$\nNo: uninstall but keep them, so a reinstall picks up where you left off.$\r$\nCancel: don't uninstall.$\r$\n$\r$\nYour saved screenshots and recordings are never deleted."
+      StrCpy $R8 "Also delete Hopsnap's settings and screenshot history?$\r$\n$\r$\nYes: uninstall and delete shortcuts, recording options and screenshot history.$\r$\nNo: uninstall but keep them, so a reinstall picks up where you left off.$\r$\nCancel: don't uninstall.$\r$\n$\r$\nYour saved screenshots and recordings are never deleted."
     ${endIf}
     MessageBox MB_YESNOCANCEL|MB_ICONQUESTION|MB_DEFBUTTON2 "$R8" IDYES billyshot_del_yes IDNO billyshot_del_no
       Quit
@@ -114,18 +114,18 @@ ManifestDPIAware true
 
 ; 卸载：
 ;  · 清理开机自启注册表项（新旧两种名称）
-;  · 删除开始菜单里的「卸载 BillyShot」快捷方式
-;  · 用户选了「是」就删除设置和截图历史（%APPDATA%\BillyShot）
+;  · 删除开始菜单里的「卸载呱咔」快捷方式
+;  · 用户选了「是」就删除设置和截图历史（%APPDATA%\Hopsnap）
 ; 升级安装时也会先运行旧版卸载程序（isUpdated），这时以上都不能做，否则设置和开机自启会丢
 !macro customUnInstall
   ${ifNot} ${isUpdated}
-    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "BillyShot"
-    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "com.billyshot.app"
-    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "electron.app.BillyShot"
-    Delete "$SMPROGRAMS\卸载 BillyShot.lnk"
-    Delete "$SMPROGRAMS\Uninstall BillyShot.lnk"
+    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Hopsnap"
+    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "com.hopsnap.app"
+    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "electron.app.Hopsnap"
+    Delete "$SMPROGRAMS\卸载呱咔.lnk"
+    Delete "$SMPROGRAMS\Uninstall Hopsnap.lnk"
     ${if} $billyshotDelData == "1"
-      RMDir /r "$APPDATA\BillyShot"
+      RMDir /r "$APPDATA\Hopsnap"
     ${endIf}
   ${endIf}
 !macroend

@@ -7,7 +7,17 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-process.env.BILLYSHOT_FFMPEG = path.join(__dirname, '..', 'vendor', 'ffmpeg', 'linux-x64', 'ffmpeg');
+// Linux CI 用 linux-x64；在 Mac 上跑同一套测试时用本机架构的 LGPL ffmpeg（linux 二进制在这里跑不起来）。
+const bundledFfmpeg = path.join(__dirname, '..', 'vendor', 'ffmpeg', `${process.platform}-${process.arch}`, process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
+process.env.HOPSNAP_FFMPEG = fs.existsSync(bundledFfmpeg)
+  ? bundledFfmpeg
+  : path.join(__dirname, '..', 'vendor', 'ffmpeg', 'linux-x64', 'ffmpeg');
+function systemFfmpeg() {
+  for (const p of ['/usr/bin/ffmpeg', '/opt/homebrew/bin/ffmpeg', '/usr/local/bin/ffmpeg']) {
+    if (fs.existsSync(p)) return p;
+  }
+  return 'ffmpeg';
+}
 
 const { nextTo } = require('../src/filetools/paths');
 const plan = require('../src/filetools/plan');
@@ -217,7 +227,8 @@ test('images: convert, compress keeps PNG, resize never upscales', async () => {
   assert.equal(capMeta.capped, true);
   const heic = path.join(dir, 'photo.heic');
   fs.writeFileSync(heic, 'not a photo');
-  await assert.rejects(() => image.compress(heic, path.join(dir, 'photo.jpg'), { quality: 70 }), (e) => e.code === 'HEIC_UNSUPPORTED');
+  // Linux 上没有 HEIC 解码器，直接 HEIC_UNSUPPORTED。Mac 上 sips 会试着读，假文件以 EHEIC 失败。
+  await assert.rejects(() => image.compress(heic, path.join(dir, 'photo.jpg'), { quality: 70 }), (e) => e.code === 'HEIC_UNSUPPORTED' || e.code === 'EHEIC');
 });
 
 test('Make PDF mixes images and PDF pages in natural filename order', async () => {
@@ -277,10 +288,10 @@ test('not enough disk blocks the job before it starts', async () => {
 });
 
 test('video actions through the LGPL ffmpeg, including a short GIF', { timeout: 60000 }, async () => {
-  assert.equal(fs.existsSync(process.env.BILLYSHOT_FFMPEG), true);
+  assert.equal(fs.existsSync(process.env.HOPSNAP_FFMPEG), true);
   const dir = fs.mkdtempSync(path.join(root, 'vid-'));
   const srcMp4 = path.join(dir, 'in.mp4');
-  const made = spawnSync('/usr/bin/ffmpeg', [
+  const made = spawnSync(systemFfmpeg(), [
     '-y', '-f', 'lavfi', '-i', 'testsrc=size=160x120:rate=12:duration=1',
     '-pix_fmt', 'yuv420p', '-c:v', 'libx264', srcMp4,
   ], { encoding: 'utf8' });
@@ -511,13 +522,13 @@ test('opaque images become JPEG in a PDF, and encrypted PDFs get a clear error',
 });
 
 function bundledFfmpegPids() {
-  const bin = process.env.BILLYSHOT_FFMPEG;
+  const bin = process.env.HOPSNAP_FFMPEG;
   const r = spawnSync('ps', ['-eo', 'pid,args'], { encoding: 'utf8' });
   return r.stdout.split('\n').filter((line) => line.includes(bin)).map((line) => Number(line.trim().split(/\s+/)[0])).filter((n) => n > 0);
 }
 
 async function h264Clip(file, size, seconds) {
-  const made = spawnSync('/usr/bin/ffmpeg', [
+  const made = spawnSync(systemFfmpeg(), [
     '-y', '-f', 'lavfi', '-i', `testsrc=size=${size}:rate=12:duration=${seconds}`,
     '-pix_fmt', 'yuv420p', '-c:v', 'libx264', file,
   ], { encoding: 'utf8' });
@@ -881,20 +892,34 @@ function packagedLayout() {
     if (f.endsWith('.js')) fs.copyFileSync(path.join(__dirname, '..', 'src', 'filetools', f), path.join(asarSrc, f));
   }
   // app.asar 里也“看得到”一个 ffmpeg，但它不能执行，和真实 asar 一样。
-  const fake = path.join(res, 'app.asar', 'vendor', 'ffmpeg', 'linux-x64');
-  fs.mkdirSync(fake, { recursive: true });
-  fs.writeFileSync(path.join(fake, 'ffmpeg'), 'not runnable inside asar\n', { mode: 0o644 });
-  const real = path.join(res, 'app.asar.unpacked', 'vendor', 'ffmpeg', 'linux-x64');
-  fs.mkdirSync(real, { recursive: true });
-  fs.copyFileSync(process.env.BILLYSHOT_FFMPEG, path.join(real, 'ffmpeg'));
-  fs.chmodSync(path.join(real, 'ffmpeg'), 0o755);
-  return { res, asarSrc, realBin: path.join(real, 'ffmpeg') };
+  // 路径断言固定看 linux-x64（和原来的测试一样）。当前平台不是 linux 时，再放一份带 dylib 的，worker 才跑得起来。
+  const srcDir = path.dirname(process.env.HOPSNAP_FFMPEG);
+  function installTree(folder, full) {
+    const binName = folder.startsWith('win32') ? 'ffmpeg.exe' : 'ffmpeg';
+    const fake = path.join(res, 'app.asar', 'vendor', 'ffmpeg', folder);
+    fs.mkdirSync(fake, { recursive: true });
+    fs.writeFileSync(path.join(fake, binName), 'not runnable inside asar\n', { mode: 0o644 });
+    const real = path.join(res, 'app.asar.unpacked', 'vendor', 'ffmpeg', folder);
+    fs.mkdirSync(real, { recursive: true });
+    if (full) {
+      for (const name of fs.readdirSync(srcDir)) {
+        const from = path.join(srcDir, name);
+        if (fs.statSync(from).isFile()) fs.copyFileSync(from, path.join(real, name));
+      }
+    } else fs.copyFileSync(process.env.HOPSNAP_FFMPEG, path.join(real, binName));
+    fs.chmodSync(path.join(real, binName), 0o755);
+    return path.join(real, binName);
+  }
+  const here = `${process.platform}-${process.arch}`;
+  const realBin = installTree('linux-x64', here === 'linux-x64');
+  if (here !== 'linux-x64') installTree(here, true);
+  return { res, asarSrc, realBin };
 }
 
 test('ffmpeg-bin never returns a path inside app.asar, with or without app', () => {
   const { unpackedPath, insideAsar, roots, ffmpegBin } = require('../src/filetools/ffmpeg-bin');
   assert.equal(unpackedPath('/A/Resources/app.asar/vendor/ffmpeg'), '/A/Resources/app.asar.unpacked/vendor/ffmpeg');
-  assert.equal(unpackedPath('C:\\P\\BillyShot\\resources\\app.asar\\vendor\\ffmpeg'), 'C:\\P\\BillyShot\\resources\\app.asar.unpacked\\vendor\\ffmpeg');
+  assert.equal(unpackedPath('C:\\P\\Hopsnap\\resources\\app.asar\\vendor\\ffmpeg'), 'C:\\P\\Hopsnap\\resources\\app.asar.unpacked\\vendor\\ffmpeg');
   assert.equal(unpackedPath('/x/app.asar.unpacked/vendor'), '/x/app.asar.unpacked/vendor');
   assert.equal(unpackedPath('/x/my.app.asarish/vendor'), '/x/my.app.asarish/vendor');
   const { res, asarSrc, realBin } = packagedLayout();
@@ -913,10 +938,10 @@ test('ffmpeg-bin never returns a path inside app.asar, with or without app', () 
 test('main hands the resolved ffmpeg to the file-job worker', () => {
   const { workerEnv } = require('../src/filetools/jobs');
   const env = workerEnv({ PATH: '/bin' }, () => '/R/app.asar.unpacked/vendor/ffmpeg/darwin-arm64/ffmpeg');
-  assert.equal(env.BILLYSHOT_FFMPEG, '/R/app.asar.unpacked/vendor/ffmpeg/darwin-arm64/ffmpeg');
+  assert.equal(env.HOPSNAP_FFMPEG, '/R/app.asar.unpacked/vendor/ffmpeg/darwin-arm64/ffmpeg');
   assert.equal(env.PATH, '/bin');
-  assert.equal(workerEnv({ BILLYSHOT_FFMPEG: '/keep' }, () => '/other').BILLYSHOT_FFMPEG, '/keep');
-  assert.equal('BILLYSHOT_FFMPEG' in workerEnv({}, () => null), false);
+  assert.equal(workerEnv({ HOPSNAP_FFMPEG: '/keep' }, () => '/other').HOPSNAP_FFMPEG, '/keep');
+  assert.equal('HOPSNAP_FFMPEG' in workerEnv({}, () => null), false);
   const jobs = fs.readFileSync(path.join(__dirname, '..', 'src', 'filetools', 'jobs.js'), 'utf8');
   assert.match(jobs, /utilityProcess\.fork\([^)]*env: workerEnv\(\)/);
 });
@@ -928,8 +953,8 @@ test('packaged layout without app: the job worker runs all four video actions wi
   await h264Clip(src, '160x120', 2);
   const { fork } = require('child_process');
   const env = { ...process.env, NODE_PATH: path.join(__dirname, '..', 'node_modules') };
-  delete env.BILLYSHOT_FFMPEG;
-  delete env.BILLYSHOT_FFMPEG_ROOT;
+  delete env.HOPSNAP_FFMPEG;
+  delete env.HOPSNAP_FFMPEG_ROOT;
   delete env.ELECTRON_RUN_AS_NODE;
   const runJob = (job) => new Promise((resolve) => {
     // 与 utilityProcess 一样：worker 脚本在 app.asar 里，进程里没有 electron 的 app。
@@ -1060,8 +1085,8 @@ test('Windows tray: paintTray composes one ring per scale factor and sets the tr
   const sharp = require('sharp');
   const { createFileTools } = require('../src/filetools/bridge');
   const { deps, handlers } = fakeElectron();
-  const reps = { 1: fs.readFileSync(path.join(__dirname, '..', 'assets', 'logos', 'portrait', 'tray.png')),
-    1.5: fs.readFileSync(path.join(__dirname, '..', 'assets', 'logos', 'portrait', 'tray@1.5x.png')) };
+  const reps = { 1: fs.readFileSync(path.join(__dirname, '..', 'assets', 'logos', 'frog', 'tray.png')),
+    1.5: fs.readFileSync(path.join(__dirname, '..', 'assets', 'logos', 'frog', 'tray@1.5x.png')) };
   const base = { getScaleFactors: () => [1, 1.5], toPNG: (o) => reps[(o && o.scaleFactor) || 1], getSize: () => ({ width: 16, height: 16 }) };
   const set = [];
   const tray = { isDestroyed: () => false, setImage: (img) => set.push(img), on() {} };

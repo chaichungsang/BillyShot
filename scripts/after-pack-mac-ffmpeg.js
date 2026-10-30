@@ -16,7 +16,7 @@ exports.default = async function afterPack(context) {
   const keep = `darwin-${archName}`;
   const ffmpegRoot = path.join(
     context.appOutDir,
-    'BillyShot.app',
+    'Hopsnap.app',
     'Contents',
     'Resources',
     'app.asar.unpacked',

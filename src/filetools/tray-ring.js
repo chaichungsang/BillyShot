@@ -18,8 +18,8 @@ function ringRaw(size, ratio, indeterminate) {
       const t = ang / (Math.PI * 2);
       const on = t <= span;
       const o = (y * s + x) * 4;
-      if (on) { data[o] = 232; data[o + 1] = 201; data[o + 2] = 122; data[o + 3] = 255; }
-      else { data[o] = 212; data[o + 1] = 168; data[o + 2] = 75; data[o + 3] = 60; }
+      if (on) { data[o] = 59; data[o + 1] = 203; data[o + 2] = 124; data[o + 3] = 255; }
+      else { data[o] = 59; data[o + 1] = 203; data[o + 2] = 124; data[o + 3] = 70; }
     }
   }
   return data;

@@ -41,7 +41,7 @@ def render(w, h):
     d = ImageDraw.Draw(img)
     # 产品名
     f = ImageFont.truetype(FONT, round(W * 0.135))
-    name = 'BillyShot'
+    name = 'Hopsnap'
     tw = d.textlength(name, font=f)
     ty = cy + icon_size // 2 + round(H * 0.07)
     d.text(((W - tw) / 2, ty), name, font=f, fill=(233, 207, 156))

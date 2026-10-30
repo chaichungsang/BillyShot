@@ -4,16 +4,17 @@
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
 <title>文件工具</title>
+<link rel="stylesheet" href="settings.css">
 <link rel="stylesheet" href="filetools/window.css">
 </head>
 <body>
-<div class="winbar"><b>BillyShot 文件工具</b><span>□</span></div>
+<div class="winbar"><b>Hopsnap 文件工具</b><span>□</span></div>
 <div class="chrome"><b id="winTitle">文件工具</b><button class="x" id="winClose" type="button" aria-label="关闭">×</button></div>
 <div class="pad">
   <div class="drop" id="drop">
     <strong>把文件拖到这里</strong>
     <span>图片 · 录屏 · PDF · 全在本机处理，不上网</span>
-    <button type="button" class="gold pick" id="pick">选择文件…</button>
+    <button type="button" class="primary pick" id="pick">选择文件…</button>
   </div>
   <div class="sub" id="picked" hidden></div>
   <div class="actions" id="actions"></div>

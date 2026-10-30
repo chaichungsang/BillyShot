@@ -78,7 +78,7 @@ function createNotch(deps) {
   function preference() {
     let saved = '';
     try { saved = timerPreference ? timerPreference() : ''; } catch {}
-    return L.timerPlacement(L.readTimerPreference(process.env.BILLYSHOT_NOTCH_TIMER, saved));
+    return L.timerPlacement(L.readTimerPreference(process.env.HOPSNAP_NOTCH_TIMER, saved));
   }
 
   function displaysNow() {

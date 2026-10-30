@@ -1,6 +1,6 @@
 #!/bin/bash
-# BillyShot 端到端回归测试（Xvfb + openbox + xcompmgr）
-cd /home/claude/billyshot
+# Hopsnap 端到端回归测试（Xvfb + openbox + xcompmgr）
+cd "$(dirname "$0")/.."
 source test/env.sh
 PASS=0; FAIL=0; RESULTS=()
 ok()   { PASS=$((PASS+1)); RESULTS+=("PASS  $1"); echo "PASS  $1"; }
@@ -11,12 +11,12 @@ vis()  { status | grep -o '"overlayVisible":[a-z]*' | cut -d: -f2; }
 recon(){ status | grep -o '"rec":[a-z]*' | cut -d: -f2; }
 newest(){ ls -t $1 2>/dev/null | head -1; }
 probe(){ ffprobe -v error -show_entries format=duration -of csv=p=0 "$1" 2>/dev/null; }
-VD=~/Videos/BillyShot
+VD=~/Videos/Hopsnap
 
 # 干净的设置
-rm -rf ~/.config/BillyShot ~/BillyShot; mkdir -p $VD; rm -f $VD/*
-mkdir -p ~/.config/BillyShot
-cat > ~/.config/BillyShot/settings.json <<J
+rm -rf ~/.config/Hopsnap ~/Hopsnap; mkdir -p $VD; rm -f $VD/*
+mkdir -p ~/.config/Hopsnap
+cat > ~/.config/Hopsnap/settings.json <<J
 {"general":{"firstRun":false},"record":{"countdown":0,"quality":"1080","fps":30,"format":"mp4"},"sound":{"record":true,"countdown":true}}
 J
 start_x; start_app 6
@@ -102,10 +102,10 @@ F=$(newest "$VD/*.gif"); NF=$(ffprobe -v error -count_frames -select_streams v -
 [ -n "$F" ] && [ "${NF:-0}" -gt 3 ] && ok "GIF 录制 ($NF 帧)" || bad "GIF" "file=$F frames=$NF"
 cmd '{"cmd":"setSettings","patch":{"record":{"format":"mp4"}}}' 0.5
 
-# 13 保存文件夹不可写 → 自动改存到 ~/BillyShot
-cmd '{"cmd":"setSettings","patch":{"record":{"saveDir":"/proc/billyshot-nope"}}}' 0.5
+# 13 保存文件夹不可写 → 自动改存到 ~/Hopsnap
+cmd '{"cmd":"setSettings","patch":{"record":{"saveDir":"/proc/hopsnap-nope"}}}' 0.5
 cmd '{"cmd":"recordFull"}' 1.5; xdotool mousemove 800 500; sleep 1.2; cmd '{"cmd":"stop"}' 3
-F=$(newest "$HOME/BillyShot/*.mp4"); D=$(probe "$F")
+F=$(newest "$HOME/Hopsnap/*.mp4"); D=$(probe "$F")
 [ -n "$F" ] && awk "BEGIN{exit !($D>0.5)}" && ok "文件夹不可写时自动改存 ($F)" || bad "不可写文件夹回退" "file=$F"
 cmd "{\"cmd\":\"setSettings\",\"patch\":{\"record\":{\"saveDir\":\"$VD\"}}}" 0.5
 
@@ -122,7 +122,7 @@ xdotool key Escape; sleep 0.5
 
 # 16 全局：没有未捕获异常 / 报告的错误
 if grep -qE "Uncaught|REPORTED_ERROR|TEST ERR" /tmp/app.log; then bad "全程无报错" "$(grep -E 'Uncaught|REPORTED_ERROR|TEST ERR' /tmp/app.log | head -3)"; else ok "全程无报错"; fi
-grep -E "ERROR " ~/.config/BillyShot/logs/billyshot.log 2>/dev/null | head -3
+grep -E "ERROR " ~/.config/Hopsnap/logs/hopsnap.log 2>/dev/null | head -3
 
 echo "=========================="
 printf '%s\n' "${RESULTS[@]}"

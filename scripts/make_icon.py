@@ -1,4 +1,4 @@
-"""BillyShot 玻璃图标渲染器：高度场 → 法线 → 折射(含色散) + 菲涅尔 + 高光。
+"""Hopsnap 玻璃图标渲染器：高度场 → 法线 → 折射(含色散) + 菲涅尔 + 高光。
 用法: python3 scripts/make_icon.py [variant] [out.png]
 variant: vivid（彩色底 + 清透玻璃图形） | clear（整块透明玻璃）
 """

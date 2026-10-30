@@ -35,10 +35,10 @@ function lowerPriority(pid) {
 // 主进程有 app，能可靠找到 app.asar.unpacked 里的 ffmpeg；把结果交给子进程，子进程就不用再猜。
 function workerEnv(base = process.env, resolve = ffmpegBin) {
   const env = { ...base };
-  if (!env.BILLYSHOT_FFMPEG) {
+  if (!env.HOPSNAP_FFMPEG) {
     let bin = null;
     try { bin = resolve(); } catch { bin = null; }
-    if (bin) env.BILLYSHOT_FFMPEG = bin;
+    if (bin) env.HOPSNAP_FFMPEG = bin;
   }
   return env;
 }
@@ -48,7 +48,7 @@ function spawnWorker(script) {
   if (process.versions && process.versions.electron) {
     try {
       const { utilityProcess } = require('electron');
-      const child = utilityProcess.fork(script, [], { serviceName: 'billyshot-file-job', stdio: 'inherit', env: workerEnv() });
+      const child = utilityProcess.fork(script, [], { serviceName: 'hopsnap-file-job', stdio: 'inherit', env: workerEnv() });
       return {
         pid: () => child.pid,
         send: (msg) => child.postMessage(msg),

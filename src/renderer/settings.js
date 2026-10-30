@@ -25,18 +25,44 @@ function patchOf(path, value) { const keys = path.split('.'); const out = {}; le
 async function set(path, value) { const r = await api.invoke('settings:set', patchOf(path, value)); S = r.settings; STATUS = r.status || STATUS; renderHotkeys(); renderKeyHints(); }
 function toast(msg) { let t = $('.toast'); if (!t) { t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); } t.textContent = msg; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 1400); }
 
+// -------------------------------------------------- 吉祥物
+$$('.mascot').forEach((el) => Frog.mount(el, el.dataset.mood || 'idle'));
+// 开始页的小青蛙偶尔眨一下眼
+(function blink() {
+  const el = $('#heroFrog'); if (!el) return;
+  setInterval(() => {
+    if (document.hidden || !$('section[data-tab="welcome"].on')) return;
+    if ((el.dataset.mood || 'idle') !== 'idle') return;
+    Frog.mount(el, 'blink'); setTimeout(() => Frog.mount(el, el.dataset.mood || 'idle'), 160);
+  }, 4200);
+})();
+
 // -------------------------------------------------- 导航
 function showTab(tab) {
   if (!$(`section[data-tab="${tab}"]`)) tab = 'welcome';
   $$('nav a').forEach((a) => a.classList.toggle('on', a.dataset.tab === tab));
   $$('section').forEach((s) => s.classList.toggle('on', s.dataset.tab === tab));
   if (tab === 'history') loadHistory();
+  if (tab === 'welcome') loadRecent();
 }
 $$('nav a').forEach((a) => a.addEventListener('click', () => showTab(a.dataset.tab)));
+$$('[data-go]').forEach((a) => a.addEventListener('click', () => showTab(a.dataset.go)));
 api.on('settings:tab', showTab);
 $('#qCapture').addEventListener('click', () => api.invoke('app:action', 'capture'));
 $('#qRecord').addEventListener('click', () => api.invoke('app:action', 'record'));
+$('#qRecordFull').addEventListener('click', () => api.invoke('app:action', 'recordFull'));
 $$('[data-act]').forEach((b) => b.addEventListener('click', () => api.invoke('app:action', b.dataset.act)));
+
+// -------------------------------------------------- 联动：从属设置随开关显示 / 隐藏
+// data-dep="present.halo"（开关为真才显示）| "capture.imageFormat=jpg"（等于某值）| "a|b"（任一满足）
+function depOk(expr) {
+  return expr.split('|').some((part) => {
+    const [k, v] = part.split('=');
+    const cur = get(k.trim());
+    return v === undefined ? !!cur : String(cur) === v.trim();
+  });
+}
+function applyDeps() { $$('[data-dep]').forEach((el) => el.classList.toggle('dep-off', !depOk(el.dataset.dep))); }
 
 // -------------------------------------------------- 普通设置绑定
 function bindFields() {
@@ -50,9 +76,10 @@ function bindFields() {
       let val = el.type === 'checkbox' ? el.checked : el.value;
       if ('num' in el.dataset) val = Number(val);
       const em2 = $(`[data-v="${k}"]`); if (em2) em2.textContent = val;
-      set(k, val).then(() => { toast(tx('已保存')); updateAudioTips(); });
+      set(k, val).then(() => { toast(tx('已保存')); updateAudioTips(); applyDeps(); });
     });
   });
+  applyDeps();
   $$('[data-pick]').forEach((b) => {
     if (b._bound) return; b._bound = true;
     b.addEventListener('click', async () => { const p = await api.invoke('dialog:pickDir', get(b.dataset.pick)); if (p) { await set(b.dataset.pick, p); bindFields(); toast(tx('已保存')); } });
@@ -273,143 +300,7 @@ $('#hkReset').addEventListener('click', async () => {
 });
 $('#resetAll').addEventListener('click', async () => {
   if (!confirm(tx('确定恢复全部默认设置？'))) return;
-  const r = await api.invoke('settings:reset'); S = r.settings; STATUS = r.status; bindFields(); renderHotkeys(); renderKeyHints(); renderLogo(); renderThemes(); toast(tx('已恢复默认'));
-});
-
-// -------------------------------------------------- 应用图标
-const LOGO_HINT = isMac
-  ? tx('菜单栏、程序坞和「应用程序」里的 BillyShot 会一起换成所选图标')
-  : api.platform === 'win32' ? tx('托盘、窗口、桌面 / 开始菜单 / 任务栏快捷方式会一起换成所选图标') : tx('托盘和窗口会换成所选图标');
-function renderLogo() {
-  const name = get('general.logo') === 'purple' ? 'purple' : 'portrait';
-  $$('.logo-opt').forEach((o) => { o.classList.toggle('on', o.dataset.logo === name); $('input', o).checked = o.dataset.logo === name; });
-  $$('.logo-img').forEach((img) => { img.src = `../../assets/logos/${name}/icon256.png`; });
-  $('#logoHint').textContent = LOGO_HINT;
-}
-function logoMessage(r) {
-  const m = $('#logoMsg'); const parts = []; let warn = false;
-  if (r.shortcuts && r.shortcuts.failed) { parts.push(tx('有快捷方式没改成功，可在快捷方式上右键 → 属性 → 更改图标')); warn = true; }
-  else if (r.shortcuts && r.shortcuts.changed) parts.push(tx('已更新 {n} 个快捷方式，桌面图标若没立刻变，稍等几秒或按 F5 刷新', { n: r.shortcuts.changed }));
-  if (r.finder && !r.finder.ok && !r.finder.skipped) { parts.push(tx('「应用程序」里的图标系统没让改（菜单栏和程序坞已换）。可在访达里选中 BillyShot → 显示简介，把图标拖上去')); warn = true; }
-  else if (r.finder && r.finder.ok && !r.finder.unchanged) parts.push(tx('访达里的图标已更换，程序坞里固定的图标在下次打开时更新'));
-  m.hidden = !parts.length; m.textContent = parts.join(tx('。')); m.classList.toggle('warn', warn);
-}
-$$('.logo-opt input').forEach((inp) => inp.addEventListener('change', async () => {
-  if (!inp.checked) return;
-  $$('.logo-opt').forEach((o) => o.classList.add('busy'));
-  try {
-    const r = await api.invoke('settings:logo', inp.value);
-    if (r.settings) S = r.settings;
-    renderLogo(); renderThemes(); logoMessage(r); toast(tx('图标已更换'));
-  } finally { $$('.logo-opt').forEach((o) => o.classList.remove('busy')); }
-}));
-
-
-// -------------------------------------------------- 主题配色
-// 预览小图用的颜色（浅色模式）：侧栏、背景、强调色两端
-const THEMES = [
-  ['midnight', '午夜紫', '#0f0f13', '#f6f6f8', '#6e6bff', '#a66bff'],
-  ['gold', '黑金', '#0b0b0c', '#f7f5f1', '#c99a52', '#e9cf9c'],
-  ['graphite', '石墨', '#18181b', '#f4f4f5', '#27272a', '#52525b'],
-  ['ocean', '深海蓝', '#08121f', '#f4f7fb', '#2f7bff', '#22c3ee'],
-  ['forest', '森林绿', '#0b1511', '#f4f8f6', '#16a36a', '#5ad3a0'],
-  ['rose', '玫瑰粉', '#170d12', '#fbf6f7', '#f2557f', '#ff9a76'],
-  ['paper', '纯白', '#ffffff', '#f6f6f8', '#6e6bff', '#a66bff'],
-  ['glass', '透明玻璃', 'rgba(255,255,255,.5)', 'radial-gradient(at 15% 10%,#cbb9ff,transparent 55%),radial-gradient(at 90% 20%,#9fd8ff,transparent 50%),radial-gradient(at 60% 100%,#ffc6e2,transparent 55%),#eef0f7', '#5b7cfa', '#b06bff'],
-  ['matrix', 'Matrix 代码雨', '#000000', '#020804', '#00ff66', '#00b84a'],
-];
-let CAN_MATERIAL = false;
-// 「跟随图标」：头像版 → 黑金，紫色版 → 午夜紫
-function autoTheme() { return get('general.logo') === 'purple' ? 'midnight' : 'gold'; }
-function resolvedTheme() {
-  const v = get('general.theme');
-  return THEMES.some((t) => t[0] === v) ? v : autoTheme();
-}
-function themePreview(id) {
-  const t = THEMES.find((x) => x[0] === id);
-  const el = document.createElement('div'); el.className = 'tp';
-  el.innerHTML = '<i class="tp-side"><b></b><b></b><b></b></i><i class="tp-main"><b class="tp-card"></b><b class="tp-btn"></b></i>';
-  el.querySelector('.tp-side').style.background = t[2];
-  el.querySelector('.tp-main').style.background = t[3];
-  el.querySelector('.tp-btn').style.background = `linear-gradient(135deg, ${t[4]}, ${t[5]})`;
-  el.querySelector('.tp-side b').style.background = t[4];
-  if (id === 'paper') el.querySelector('.tp-side').style.boxShadow = 'inset -1px 0 0 #e4e4ea';
-  if (id === 'matrix') { el.querySelector('.tp-card').style.background = '#06160b'; el.querySelector('.tp-card').style.borderColor = '#0f3a1c'; el.classList.add('tp-matrix'); }
-  if (id === 'glass') { el.querySelector('.tp-card').style.background = 'rgba(255,255,255,.6)'; el.querySelector('.tp-side').style.backdropFilter = 'blur(4px)'; }
-  return el;
-}
-function renderThemes() {
-  const box = $('#themeOpts'); if (!box) return;
-  const cur = get('general.theme') || 'auto';
-  const resolved = resolvedTheme(), auto = autoTheme();
-  box.textContent = '';
-  const items = [['auto', tx('跟随图标')]].concat(THEMES.map((t) => [t[0], tx(t[1])]));
-  for (const [id, name] of items) {
-    const lab = document.createElement('label'); lab.className = 'theme-opt'; lab.dataset.theme = id;
-    lab.classList.toggle('on', cur === id || (id === 'auto' && !THEMES.some((t) => t[0] === cur)));
-    const inp = document.createElement('input'); inp.type = 'radio'; inp.name = 'theme'; inp.value = id; inp.checked = lab.classList.contains('on');
-    lab.appendChild(inp);
-    lab.appendChild(themePreview(id === 'auto' ? auto : id));
-    const cap = document.createElement('span');
-    const sub = id === 'auto' ? tx('{name}（按图标）', { name: tx(THEMES.find((t) => t[0] === auto)[1]) })
-      : id === 'glass' ? (CAN_MATERIAL ? tx('透出桌面') : tx('毛玻璃效果')) : id === 'matrix' ? tx('只有深色') : '';
-    cap.innerHTML = '<b></b><small></small>'; cap.querySelector('b').textContent = name; cap.querySelector('small').textContent = sub;
-    lab.appendChild(cap);
-    if (id === 'auto') { const badge = document.createElement('em'); badge.className = 'tp-auto'; badge.textContent = tx('默认'); lab.appendChild(badge); }
-    inp.addEventListener('change', () => { if (inp.checked) chooseTheme(id); });
-    box.appendChild(lab);
-  }
-  $('#modeSel').disabled = resolved === 'matrix';
-  $('#modeSel').title = resolved === 'matrix' ? tx('Matrix 只有深色') : '';
-}
-async function chooseTheme(id) {
-  $$('.theme-opt').forEach((o) => o.classList.add('busy'));
-  try {
-    const r = await api.invoke('settings:theme', id);
-    if (r.settings) S = r.settings;
-    if (r.rebuilding) return;   // Mac：设置窗口正在按新主题重建，这个窗口马上会被换掉
-    applyThemeDom(r.theme, r.material);
-    renderThemes(); toast(tx('配色已更换'));
-  } finally { $$('.theme-opt').forEach((o) => o.classList.remove('busy')); }
-}
-// Matrix 侧栏代码雨：低帧率、窗口隐藏时暂停，系统开了「减少动态效果」就不动
-let rain = null;
-function startRain() {
-  if (rain) return;
-  const aside = $('aside'); const cv = document.createElement('canvas'); cv.id = 'rain'; aside.prepend(cv);
-  const ctx = cv.getContext('2d'); const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEF$#*+<>=';
-  let cols = [], fs = 14, timer = 0;
-  const still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  function size() {
-    const dpr = window.devicePixelRatio || 1; cv.width = aside.clientWidth * dpr; cv.height = aside.clientHeight * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); cols = Array.from({ length: Math.ceil(aside.clientWidth / fs) }, () => Math.random() * -40);
-  }
-  function frame() {
-    if (document.hidden) return;
-    ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.fillRect(0, 0, aside.clientWidth, aside.clientHeight);
-    ctx.font = fs + 'px monospace';
-    cols.forEach((y, i) => {
-      const ch = chars[(Math.random() * chars.length) | 0];
-      ctx.fillStyle = Math.random() > .96 ? '#d6ffe2' : '#00ff66';
-      ctx.fillText(ch, i * fs, y * fs);
-      cols[i] = y * fs > aside.clientHeight && Math.random() > .975 ? 0 : y + 1;
-    });
-  }
-  size(); window.addEventListener('resize', size);
-  if (still) { for (let i = 0; i < 60; i++) frame(); } else timer = setInterval(frame, 70);
-  rain = { stop() { clearInterval(timer); window.removeEventListener('resize', size); cv.remove(); } };
-}
-function stopRain() { if (rain) { rain.stop(); rain = null; } }
-function applyThemeDom(theme, material) {
-  const h = document.documentElement;
-  h.dataset.theme = theme;
-  h.classList.toggle('material', !!material);
-  if (theme === 'matrix') startRain(); else stopRain();
-}
-api.on('settings:theme', (r) => {
-  if (!r) return;
-  if (S && S.general && r.setting) S.general.theme = r.setting;
-  applyThemeDom(r.theme, r.material); renderThemes();
+  const r = await api.invoke('settings:reset'); S = r.settings; STATUS = r.status; bindFields(); renderHotkeys(); renderKeyHints(); toast(tx('已恢复默认'));
 });
 
 // -------------------------------------------------- 声音试听
@@ -446,7 +337,7 @@ async function loadHistory() {
   const grid = $('#histGrid');
   const items = await api.invoke('history:list');
   grid.innerHTML = '';
-  if (!items.length) { grid.innerHTML = `<div class="empty">${tx('还没有截图。按截图快捷键试试吧。')}</div>`; return; }
+  if (!items.length) { grid.innerHTML = `<div class="empty" style="grid-column:1/-1">${Frog.svg('sad', 96, 'class="mascot"')}<div>${tx('还没有截图。按截图快捷键试试吧。')}</div></div>`; return; }
   for (const it of items) {
     const d = document.createElement('div'); d.className = 'item';
     const t = new Date(it.time);
@@ -463,15 +354,32 @@ async function loadHistory() {
   }
 }
 $('#histRefresh').addEventListener('click', loadHistory);
-$('#histClear').addEventListener('click', async () => { if (confirm(tx('清空全部截图历史？'))) { await api.invoke('history:clear'); loadHistory(); } });
-api.on('history:changed', () => { if ($('section[data-tab="history"]').classList.contains('on')) loadHistory(); });
+$('#histClear').addEventListener('click', async () => { if (confirm(tx('清空全部截图历史？'))) { await api.invoke('history:clear'); loadHistory(); loadRecent(); } });
+api.on('history:changed', () => { if ($('section[data-tab="history"]').classList.contains('on')) loadHistory(); if ($('section[data-tab="welcome"]').classList.contains('on')) loadRecent(); });
+// 开始页：最近 4 张，点击复制
+async function loadRecent() {
+  const box = $('#recentGrid'); if (!box) return;
+  const items = (await api.invoke('history:list')).slice(0, 4);
+  box.innerHTML = '';
+  if (!items.length) {
+    const k = (S && S.hotkeys.capture && (prettyKey(S.hotkeys.capture.keyboard) || prettyMouse(S.hotkeys.capture.mouse))) || tx('未设置');
+    box.innerHTML = `<div class="empty" style="grid-column:1/-1">${Frog.svg('wink', 84, 'class="mascot"')}<div>${tx('还没有截图')}<br><small>${tx('按下 {k} 试试', { k })}</small></div></div>`;
+    return;
+  }
+  for (const it of items) {
+    const d = document.createElement('div'); d.className = 'thumb'; d.title = `${new Date(it.time).toLocaleString(I18N.locale())} · ${it.width}×${it.height}`;
+    d.innerHTML = `<img src="${it.thumb}" alt="">`;
+    d.addEventListener('click', () => histCopy(it.id));
+    box.appendChild(d);
+  }
+}
 
 // 主进程改了设置（例如快捷键被占用后自动换键）时刷新界面；正在录入快捷键时不打断
 api.on('settings:changed', async () => {
   if (listening) return;
   const r = await api.invoke('settings:get');
   S = r.settings; STATUS = r.status || {};
-  bindFields(); renderHotkeys(); renderKeyHints(); renderLogo(); renderThemes();
+  bindFields(); renderHotkeys(); renderKeyHints();
 });
 
 // -------------------------------------------------- macOS 权限状态（1.3.5）
@@ -479,18 +387,31 @@ async function renderMacPerm() {
   if (!isMac || !$('#macPerm')) return;
   let st = null; try { st = await api.invoke('app:action', 'macPermState'); } catch {}
   if (!st || !st.mac) return;
-  $$('#macPerm .mperm').forEach((el) => {
+  $$('.mperm').forEach((el) => {
     const v = st[el.dataset.perm], ok = v === 'granted';
     const optional = !ok && el.dataset.perm === 'accessibility' && !st.axNeeded;   // 没用鼠标快捷键 / 点击波纹：不需要，不标红
+    const compact = !!el.closest('#welcomePerm');
     el.classList.toggle('ok', ok); el.classList.toggle('bad', !ok && !optional);
-    el.querySelector('em').textContent = ok ? tx('已允许') : optional ? tx('未允许（用鼠标快捷键 / 点击波纹时才需要）') : tx('未允许');
+    el.querySelector('em').textContent = ok ? tx('已允许') : optional ? (compact ? tx('可选') : tx('未允许（用鼠标快捷键 / 点击波纹时才需要）')) : tx('未允许');
   });
+  // 开始页：权限都好了就把那一行收起来（只在需要时出现）
+  const wp = $('#welcomePerm'); if (wp) wp.parentElement.hidden = st.screen === 'granted' && (st.accessibility === 'granted' || !st.axNeeded);
+  const hf = $('#heroFrog'); if (hf) { hf.dataset.mood = st.screen === 'granted' ? 'idle' : 'sad'; Frog.mount(hf, hf.dataset.mood); }
 }
 if (isMac) {
   window.addEventListener('focus', renderMacPerm);
-  setInterval(() => { if (document.hasFocus() && $('section[data-tab="general"].on')) renderMacPerm(); }, 3000);
+  setInterval(() => { if (document.hasFocus() && ($('section[data-tab="general"].on') || $('section[data-tab="welcome"].on'))) renderMacPerm(); }, 3000);
   api.on('settings:changed', renderMacPerm);
 }
+// 关于 → 检查更新
+if ($('#checkUpdate')) $('#checkUpdate').addEventListener('click', async () => {
+  const st = $('#updateStatus'); st.className = 'status-inline'; st.textContent = tx('检查中…');
+  let r = null; try { r = await api.invoke('app:action', 'checkUpdate'); } catch {}
+  if (!r || !r.ok) { st.textContent = tx('没连上 GitHub，稍后再试'); return; }
+  if (!r.hasUpdate) { st.textContent = tx('已是最新版本'); return; }
+  st.className = 'status-inline ok'; st.textContent = '';
+  const a = document.createElement('a'); a.textContent = tx('有新版本 {v}，去下载', { v: r.latest }); a.addEventListener('click', () => api.invoke('app:action', 'openReleases')); st.append(a);
+});
 if ($('#macDiag')) $('#macDiag').addEventListener('click', async () => {
   try { await api.invoke('app:action', 'macDiag'); toast(tx('诊断信息已复制，可以直接粘贴发给我们')); } catch { toast(tx('复制失败')); }
 });
@@ -499,14 +420,11 @@ if ($('#macDiag')) $('#macDiag').addEventListener('click', async () => {
 (async () => {
   const r = await api.invoke('settings:get');
   S = r.settings; STATUS = r.status || {};
-  $('#ver').textContent = 'v' + r.version;
-  CAN_MATERIAL = !!r.canMaterial; applyThemeDom(r.theme, r.material);
-  bindFields(); renderHotkeys(); renderKeyHints(); renderLogo(); renderThemes(); scanMics(false); scanCams(false);
+  $('#ver').textContent = 'v' + r.version; $('#verSide').textContent = r.version;
+  bindFields(); renderHotkeys(); renderKeyHints(); scanMics(false); scanCams(false);
   PST = await api.invoke('app:action', 'presentState'); renderPresent();
   const q = new URLSearchParams(location.search);
   showTab(q.get('tab') || 'welcome');
   renderMacPerm();
-  // Mac 切入 / 切出「透明玻璃」时设置窗口会重建：回到原来的滚动位置，并提示配色已更换
   if (+q.get('scroll') > 0) $('main').scrollTop = +q.get('scroll');
-  if (q.get('toast') === 'theme') toast(tx('配色已更换'));
 })();

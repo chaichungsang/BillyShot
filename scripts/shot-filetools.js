@@ -1,12 +1,12 @@
 // 用 Electron 把动作弧、预览面板、快捷键小窗画出来，存到 /opt/cursor/artifacts。
-// 跑法：BILLYSHOT_SHOT=1 ./node_modules/.bin/electron .
+// 跑法：HOPSNAP_SHOT=1 ./node_modules/.bin/electron .
 const { app, BrowserWindow } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { ringModel, LEVELS, estimateVideoBytes } = require('../src/filetools/plan');
 const { placeArc } = require('../src/filetools/arc-layout');
 
-const outDir = process.env.BILLYSHOT_SHOT_DIR || '/opt/cursor/artifacts';
+const outDir = process.env.HOPSNAP_SHOT_DIR || '/opt/cursor/artifacts';
 
 function layout(count, cursor, area) {
   const placement = placeArc({ cursor, workArea: area, count, anchor: 'tray' });

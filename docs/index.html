@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>呱咔 Hopsnap — 免费的截图、录屏、贴图工具</title>
+<meta name="description" content="呱咔 Hopsnap：免费、无广告、不上传任何内容的截图 / 录屏 / 贴图工具，常驻在菜单栏，一个快捷键随叫随到。macOS 与 Windows。">
+<meta property="og:title" content="呱咔 Hopsnap">
+<meta property="og:description" content="免费的截图、录屏、贴图工具。一只青蛙，一个快捷键。">
+<meta property="og:image" content="img/og.png">
+<link rel="icon" href="img/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #23A85F; --accent-ink: #15804A; --accent-soft: #E3F6EB; --bg: #FAF6EC; --panel: #fff; --line: #ECE5D4; --text: #1F2A24; --sub: #6B746E; --mute: #9AA39D;
+    --head: "Nunito", -apple-system, "PingFang SC", "Microsoft YaHei UI", sans-serif; --body: -apple-system, "SF Pro Text", "PingFang SC", "Microsoft YaHei UI", "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root { --accent: #2FBF71; --accent-ink: #8AE6B0; --accent-soft: rgba(59,203,124,.14); --bg: #121B16; --panel: #192420; --line: #27352E; --text: #ECF2EE; --sub: #9DAAA2; --mute: #6C7872; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.6 var(--body); color: var(--text); background: var(--bg); -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent-ink); text-decoration: none; } a:hover { text-decoration: underline; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+  .brand { display: flex; align-items: center; gap: 10px; font: 800 20px var(--head); color: var(--text); }
+  .brand .m { width: 36px; height: 36px; } .brand .m svg { width: 100%; height: 100%; display: block; }
+  nav a { margin-left: 22px; color: var(--sub); font-weight: 600; } nav a:hover { color: var(--text); text-decoration: none; }
+  .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; padding: 48px 0 56px; }
+  .hero h1 { font: 900 clamp(34px, 5vw, 52px)/1.1 var(--head); margin: 0 0 14px; letter-spacing: -.02em; }
+  .hero h1 small { display: block; font: 700 18px/1.4 var(--head); color: var(--sub); margin-top: 8px; }
+  .hero p { font-size: 18px; color: var(--sub); margin: 0 0 26px; max-width: 460px; }
+  .hero .m { width: min(320px, 70vw); margin: 0 auto; } .hero .m svg { width: 100%; height: 100%; display: block; }
+  .dl { display: flex; flex-wrap: wrap; gap: 10px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; height: 46px; padding: 0 20px; border-radius: 999px; font: 700 15px var(--head); color: var(--text); background: var(--panel); border: 1px solid var(--line); transition: transform .08s; }
+  .btn:hover { text-decoration: none; transform: translateY(-1px); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn svg { width: 18px; height: 18px; }
+  .fine { color: var(--mute); font-size: 13px; margin-top: 12px; }
+  .fine code { font: 600 12.5px var(--head); background: var(--accent-soft); color: var(--accent-ink); padding: 1px 7px; border-radius: 6px; }
+  .shot { margin: 0 0 56px; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--panel); }
+  .shot img { display: block; width: 100%; height: auto; }
+  h2 { font: 800 26px var(--head); margin: 0 0 18px; letter-spacing: -.01em; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 56px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 20px; }
+  .card b { display: block; font: 800 17px var(--head); margin-bottom: 6px; }
+  .card p { margin: 0; color: var(--sub); font-size: 14.5px; }
+  .kbd { display: inline-block; font: 800 12px/20px var(--head); padding: 0 7px; border-radius: 7px; background: var(--accent-soft); color: var(--accent-ink); }
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 56px; }
+  .steps .card { position: relative; padding-left: 58px; }
+  .steps .card i { position: absolute; left: 20px; top: 20px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font: 800 13px/26px var(--head); text-align: center; font-style: normal; }
+  details { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); padding: 12px 18px; margin-bottom: 10px; }
+  summary { cursor: pointer; font-weight: 700; }
+  details p { color: var(--sub); margin: 8px 0 4px; font-size: 14.5px; }
+  footer { color: var(--mute); font-size: 13.5px; padding: 32px 0 48px; display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; }
+  footer .m { width: 28px; height: 28px; } footer .m svg { width: 100%; height: 100%; display: block; }
+  @media (max-width: 720px) { .hero { grid-template-columns: 1fr; text-align: center; padding-top: 16px; } .hero p { margin-left: auto; margin-right: auto; } .dl { justify-content: center; } .hero .m { order: -1; } nav { display: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="./"><span class="m" data-mood="idle"></span>呱咔 <span style="color:var(--sub);font-weight:700">Hopsnap</span></a>
+    <nav><a href="#features">功能</a><a href="#download">下载</a><a href="#faq">常见问题</a><a href="https://github.com/chaichungsang/BillyShot">GitHub</a></nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <h1>一只青蛙，<br>一个快捷键。<small>Free screenshot, recording &amp; pin tool for macOS and Windows.</small></h1>
+      <p>截图标注、录屏 / GIF、贴图、演示光圈，常驻在菜单栏。免费、无广告、无账号、不上传任何内容。</p>
+      <div class="dl" id="download">
+        <a class="btn primary" id="dlMacArm" href="https://github.com/chaichungsang/BillyShot/releases/latest"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.4 12.6c0-2.4 2-3.5 2-3.6-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9s-1.8-.8-3-.8C6.9 7.3 4 9.3 4 13.3c0 1.9.5 3.8 1.5 5.4.8 1.2 1.8 2.6 3.1 2.5 1.2 0 1.7-.8 3.2-.8s1.9.8 3.2.8 2.2-1.3 3-2.5c.6-.9 1-1.8 1.3-2.8-2.1-.9-2.9-2.3-2.9-3.3zM14 5.4c.6-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1 .1 2.1-.6 2.8-1.4z"/></svg>macOS · Apple Silicon</a>
+        <a class="btn" id="dlMacIntel" href="https://github.com/chaichungsang/BillyShot/releases/latest">macOS · Intel</a>
+        <a class="btn" id="dlWin" href="https://github.com/chaichungsang/BillyShot/releases/latest"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.5l7.5-1v7H3zm8.5-1.2L21 3v8.5h-9.5zM3 12.5h7.5v7L3 18.5zm8.5 0H21V21l-9.5-1.3z"/></svg>Windows</a>
+      </div>
+      <div class="fine" id="dlNote">版本 <span id="dlVer">—</span> · <a href="https://github.com/chaichungsang/BillyShot/releases">全部版本</a> · MIT 开源</div>
+    </div>
+    <div class="m" data-mood="happy" id="heroFrog"></div>
+  </section>
+
+  <figure class="shot"><img src="img/welcome-zh.png" alt="呱咔的开始页：快捷键、最近截图、权限状态" loading="lazy"></figure>
+
+  <h2 id="features">能做什么</h2>
+  <div class="grid">
+    <div class="card"><b>截图 <span class="kbd">⌃⌘A</span></b><p>区域 / 窗口 / 全屏，原生分辨率。矩形、箭头、画笔、荧光笔、马赛克、文字、序号，可撤销、可拖动修改。</p></div>
+    <div class="card"><b>录屏 <span class="kbd">⌃⌘R</span></b><p>区域或全屏，MP4（H.264）或 GIF，最高 4K 60 fps，系统声音 + 麦克风，可暂停。</p></div>
+    <div class="card"><b>贴图 <span class="kbd">⌃⌘P</span></b><p>把截图钉在屏幕最上层，缩放、拖动、复制，做对照和抄数字再也不用切窗口。</p></div>
+    <div class="card"><b>演示</b><p>鼠标光圈、点击波纹、聚光灯、摄像头画中画——录屏和会议共享里都看得到。</p></div>
+    <div class="card"><b>文件工具 <span class="kbd">⌃⌥F</span></b><p>把图片、录屏、PDF 拖到菜单栏图标上：转格式、压缩、改尺寸、剪头尾、转 GIF、合成 PDF，全在本机处理。</p></div>
+    <div class="card"><b>随叫随到</b><p>常驻菜单栏 / 托盘，键盘和鼠标（中键、侧键）快捷键都能自定义，中英文界面跟随系统。</p></div>
+    <div class="card"><b>你的东西留在你电脑上</b><p>没有账号，没有云端，不上传任何内容。唯一的联网是每天问一次 GitHub 有没有新版本，可以关掉。</p></div>
+  </div>
+
+  <h2>第一次打开（macOS）</h2>
+  <div class="steps">
+    <div class="card"><i>1</i><b>解压，拖进「应用程序」</b><p>从下载文件夹直接打开会让系统授权对不上，呱咔会提醒你搬过去。</p></div>
+    <div class="card"><i>2</i><b>允许「屏幕录制」</b><p>截图和录屏都需要。呱咔会弹出权限助手，一步步带你在系统设置里打开开关，开了自动检测。</p></div>
+    <div class="card"><i>3</i><b>重新打开一次</b><p>macOS 的硬要求：权限只给重新打开后的进程。助手里有「重新打开」按钮，之后就不用再管了。</p></div>
+  </div>
+
+  <h2 id="faq">常见问题</h2>
+  <details><summary>macOS 说「无法验证开发者」/「已损坏」怎么办？</summary><p>当前版本还没有 Apple 公证。打开 系统设置 → 隐私与安全性，拉到最下面点「仍要打开」；或者在终端运行 <code>xattr -cr /Applications/Hopsnap.app</code> 再打开。公证版本上线后这一步会消失。</p></details>
+  <details><summary>Windows SmartScreen 拦截了安装程序？</summary><p>点「更多信息」→「仍要运行」。安装包没有购买代码签名证书，SmartScreen 会对新软件这样提示；可以在 GitHub Releases 核对 SHA256。</p></details>
+  <details><summary>从 BillyShot 升级，设置和历史还在吗？</summary><p>在。2.0 第一次启动会自动把 BillyShot 的设置和截图历史搬过来，原来的文件夹不动，保存位置也保持原样。</p></details>
+  <details><summary>它是开源的吗？</summary><p>MIT 协议，源码在 <a href="https://github.com/chaichungsang/BillyShot">GitHub</a>。欢迎提 issue。</p></details>
+
+  <footer><span class="m" data-mood="wink"></span><span>呱咔 Hopsnap · Made by Billy Chai · MIT License</span><a href="https://github.com/chaichungsang/BillyShot">GitHub</a><a href="https://github.com/chaichungsang/BillyShot/issues">反馈问题</a></footer>
+</div>
+<script src="frog.js"></script>
+<script>
+  document.querySelectorAll('[data-mood]').forEach((el) => Frog.mount(el, el.dataset.mood, 320));
+  // 眨眼
+  const hero = document.getElementById('heroFrog');
+  (function blink() { setTimeout(() => { Frog.mount(hero, 'wink', 320); setTimeout(() => { Frog.mount(hero, 'happy', 320); blink(); }, 180); }, 2600 + Math.random() * 1500); })();
+  // 下载按钮：从 GitHub Releases 取最新版本的直链；取不到就留在 releases 页
+  fetch('https://api.github.com/repos/chaichungsang/BillyShot/releases/latest', { headers: { Accept: 'application/vnd.github+json' } }).then((r) => r.ok ? r.json() : null).then((j) => {
+    if (!j || !j.assets) return;
+    document.getElementById('dlVer').textContent = (j.tag_name || '').replace(/^v/, '');
+    const pick = (re, id) => { const a = j.assets.find((x) => re.test(x.name)); if (a) document.getElementById(id).href = a.browser_download_url; };
+    pick(/mac-AppleSilicon\.zip$/, 'dlMacArm'); pick(/mac-Intel\.zip$/, 'dlMacIntel'); pick(/Setup-.*\.exe$/, 'dlWin');
+  }).catch(() => {});
+</script>
+</body>
+</html>

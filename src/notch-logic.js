@@ -178,7 +178,7 @@
   // Status icons sit in the right auxiliary area and grow toward the notch.
   // Their frames are not a public API, so a 78pt right ear cannot be ruled
   // safe. The timer therefore lives in a chin under the notch unless the
-  // user opts into ears (BILLYSHOT_NOTCH_TIMER=ear or settings notch.timer).
+  // user opts into ears (HOPSNAP_NOTCH_TIMER=ear or settings notch.timer).
   function earWidthRisk() {
     return { rightEarPt: SPEC.earRight, leftEarPt: SPEC.earLeft, ruledOut: false, placement: 'chin' };
   }

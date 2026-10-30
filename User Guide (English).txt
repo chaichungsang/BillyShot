@@ -154,7 +154,7 @@ Mac
   · Optionally remove Hopsnap from System Settings → Privacy & Security
 
 
-Source: https://github.com/chaichungsang/BillyShot (MIT)
+Source: https://github.com/chaichungsang/Hopsnap (MIT)
   npm install
   npm start            run from source
   npm run dist:win     Windows installer (on Apple Silicon Macs: brew install makensis first)
